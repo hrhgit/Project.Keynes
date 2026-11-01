@@ -44,7 +44,7 @@ echo "=== macOS rebuild: arch=$SCONS_ARCH, jobs=$JOBS ==="
 echo
 
 echo "=== [1/3] Building target=template_debug ==="
-scons platform=macos target=template_debug arch="$SCONS_ARCH" dev_build=no disable_exceptions=no -j"$JOBS"
+scons platform=macos target=template_debug arch="$SCONS_ARCH" dev_build=no -j"$JOBS"
 if [[ $? -ne 0 ]]; then
     echo
     echo "=== ERROR: template_debug build FAILED ==="
@@ -53,7 +53,7 @@ fi
 
 echo
 echo "=== [2/3] Building target=template_release ==="
-scons platform=macos target=template_release arch="$SCONS_ARCH" dev_build=no disable_exceptions=no -j"$JOBS"
+scons platform=macos target=template_release arch="$SCONS_ARCH" dev_build=no -j"$JOBS"
 if [[ $? -ne 0 ]]; then
     echo
     echo "=== ERROR: template_release build FAILED ==="

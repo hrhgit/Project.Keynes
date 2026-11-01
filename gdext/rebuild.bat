@@ -41,7 +41,7 @@ echo Using SCons: "%SCONS_CMD%"
 echo.
 
 echo === [1/3] Building target=template_debug ===
-"%SCONS_CMD%" platform=windows target=template_debug dev_build=no disable_exceptions=no -j8
+"%SCONS_CMD%" platform=windows target=template_debug dev_build=no -j8
 if errorlevel 1 (
     echo.
     echo === ERROR: template_debug build FAILED ===
@@ -51,7 +51,7 @@ if errorlevel 1 (
 
 echo.
 echo === [2/3] Building target=template_release ===
-"%SCONS_CMD%" platform=windows target=template_release dev_build=no disable_exceptions=no -j8
+"%SCONS_CMD%" platform=windows target=template_release dev_build=no -j8
 if errorlevel 1 (
     echo.
     echo === ERROR: template_release build FAILED ===

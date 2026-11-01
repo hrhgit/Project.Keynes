@@ -2,7 +2,7 @@
 """
 SConstruct for ProjectKeynes DOTS GDExtension (`dots_ext`).
 
-Targets Godot 4.7.x via godot-cpp 10.0.0-stable (pinned by submodule).
+Targets Godot 4.6.x via godot-cpp master (pinned by submodule).
 
 Build commands (run from gdext/ directory in a VS 2022 x64 Native Tools Command Prompt):
     scons platform=windows target=template_debug
@@ -11,7 +11,7 @@ Build commands (run from gdext/ directory in a VS 2022 x64 Native Tools Command 
     scons platform=android target=template_release arch=arm64
 
 Web (needs emsdk 4.0.20 activated — must match the Emscripten version used to build
-the official Godot 4.7 templates, otherwise the side module fails to load):
+the official Godot 4.6 templates, otherwise the side module fails to load):
     scons platform=web target=template_release arch=wasm32 threads=no lto=none
 
 Output goes directly into the Godot project's addons/dots_ext/bin/<platform>/
@@ -21,10 +21,7 @@ import os
 
 # Inherit the godot-cpp environment (it sets up compiler flags, include paths,
 # and exposes env["platform"], env["suffix"], env["SHLIBSUFFIX"], etc.).
-# Native runtime guards throw/catch C++ exceptions on every platform. Set the
-# default before godot-cpp configures compiler flags for the extension and library.
-ARGUMENTS.setdefault("disable_exceptions", "no")
-env = SConscript("godot-cpp/SConstruct", {"api_version": "4.7"})
+env = SConscript("godot-cpp/SConstruct")
 
 # ---------------------------------------------------------------------------
 # Source layout

@@ -8,7 +8,7 @@ C++ implementation of the DataCore world hot loop, part of the DOTS roadmap
 ```
 gdext/
 ├── SConstruct           # SCons build script (wraps godot-cpp)
-├── godot-cpp/           # git submodule, pinned to the Godot 4.7-compatible stable commit
+├── godot-cpp/           # git submodule, pinned to a 4.6-compatible commit on master
 └── src/
     ├── register_types.{h,cpp}      # GDExtension init / class registration
     ├── world_ext.{h,cpp}           # DCWorldExt main type
@@ -42,18 +42,20 @@ builds are incremental.
 git submodule update --init --recursive
 ```
 
-## Why we pin godot-cpp 10.0.0-stable
+## Why we use master HEAD of godot-cpp
 
-The submodule is pinned to the `10.0.0-stable` release, whose bundled
-`extension_api-4-7.json` targets `v4.7.stable.official`. `gdext/SConstruct`
-passes `api_version=4.7` explicitly, so a future movement on godot-cpp `master`
-cannot silently change the generated bindings.
+godot-cpp does not yet ship a stable `4.6` branch. The `master` head at the
+time of writing already targets `v4.6.stable.official` (verified in
+`gdext/godot-cpp/gdextension/extension_api.json`), making it ABI-compatible
+with Godot 4.6.x. The submodule is pinned to a specific commit, so future
+movement on godot-cpp `master` (toward 4.7 etc.) will not surprise us — we
+explicitly bump when ready.
 
 ## Targeted Godot version
 
-Godot **4.7.2** (Windows / macOS arm64 / Linux / Android arm64 / Web).
-The project and extension metadata require Godot 4.7 so the editor, native
-extension, and export templates use the same API generation.
+Godot **4.6.2** (Windows / Linux / Android arm64).
+`compatibility_minimum = 4.4` is set in `.gdextension` because no API beyond
+4.4 is currently used; if a 4.6-only API is adopted, bump it.
 
 ## I3.A scope reminder
 
