@@ -24,8 +24,8 @@ permissions:
   contents: write
 
 env:
-  GODOT_VERSION: "4.6.2"
-  GODOT_RELEASE: "4.6.2-stable"
+  GODOT_VERSION: "4.7.2"
+  GODOT_RELEASE: "4.7.2-stable"
   EM_VERSION: "4.0.20"
 
 jobs:

@@ -16,7 +16,7 @@ rem      nothreads variant anyway (menu/world-gen only, then it hangs).
 rem
 rem      disable_exceptions=no is required: godot-cpp forces -fno-exceptions by
 rem      default, but the native runtime uses C++ exceptions for economy
-rem      invariant failures. The Godot 4.6 dlink Web main module ships a wasm
+rem      invariant failures. The Godot 4.7 dlink Web main module ships a wasm
 rem      exception tag, so an exceptions-enabled side module links and loads.
 rem   2. Prebake the loading catalogs (effect/economy/technology/research/display)
 rem      into Project\project-keynes\data\loading_catalog_v1\ before exporting.
@@ -49,10 +49,10 @@ rem   4. Export the Godot "Web" preset into WebBuild\.
 rem
 rem Requirements:
 rem   * emsdk checked out at <repo>\emsdk, with 4.0.20 installed + activated
-rem     (4.0.20 is the Emscripten release the official Godot 4.6 templates use;
+rem     (4.0.20 is the Emscripten release the official Godot 4.7 templates use;
 rem      any other version makes the side module fail to load in the browser).
-rem   * Godot 4.6.x editor binary (set GODOT_BIN, or installed next to the repo).
-rem   * 4.6.2.stable web export templates (%APPDATA%\Godot\export_templates).
+rem   * Godot 4.7.x editor binary (set GODOT_BIN, or installed next to the repo).
+rem   * 4.7.2.stable web export templates (%APPDATA%\Godot\export_templates).
 rem
 rem Usage:
 rem   Build-Web.cmd                 rebuild native release + export release
@@ -97,17 +97,17 @@ rem downloaded archive was extracted into a folder named like the executable,
 rem a plain sibling binary, then anything named godot on PATH.
 set "GODOT="
 if defined GODOT_BIN set "GODOT=%GODOT_BIN%"
-call :find_godot "%ROOT%..\..\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64.exe"
-call :find_godot "%ROOT%..\..\Godot_v4.6.2-stable_win64.exe"
-call :find_godot "%ROOT%..\Godot_v4.6.2-stable_win64.exe"
-call :find_godot "%ROOT%..\Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64.exe"
-call :find_godot "%ROOT%Godot_v4.6.2-stable_win64.exe\Godot_v4.6.2-stable_win64.exe"
+call :find_godot "%ROOT%..\..\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe"
+call :find_godot "%ROOT%..\..\Godot_v4.7.2-stable_win64.exe"
+call :find_godot "%ROOT%..\Godot_v4.7.2-stable_win64.exe"
+call :find_godot "%ROOT%..\Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe"
+call :find_godot "%ROOT%Godot_v4.7.2-stable_win64.exe\Godot_v4.7.2-stable_win64.exe"
 if not defined GODOT for %%G in (godot.exe godot4.exe) do (
     if not defined GODOT where %%G >nul 2>nul && set "GODOT=%%G"
 )
 if not defined GODOT (
     echo === ERROR: Godot editor binary not found ===
-    echo Set GODOT_BIN to the Godot 4.6.x executable and retry.
+    echo Set GODOT_BIN to the Godot 4.7.x executable and retry.
     exit /b 1
 )
 rem Canonicalise: cmd cannot launch a quoted path that still contains "..\"

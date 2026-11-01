@@ -1,8 +1,8 @@
 [configuration]
 
 entry_symbol = "dots_ext_init"
-compatibility_minimum = "4.4"
-compatibility_maximum = "4.6"
+compatibility_minimum = "4.7"
+compatibility_maximum = "4.7"
 
 [libraries]
 

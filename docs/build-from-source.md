@@ -4,7 +4,7 @@
 `WebBuild/`、`Build/` 里的产物**不再进版本库**（见 §7），所以新设备要么自己构建，
 要么下载 CI 产物（见 §8）。
 
-> 已在本机验证过的组合：Windows 10/11 + VS 2022 + Godot 4.6.2 + emsdk 4.0.20。
+> 已在本机验证过的组合：Windows 10/11 + VS 2022 + Godot 4.7.2 + emsdk 4.0.20。
 > macOS / Linux / Android 的脚本与路径见各节，命令来自仓库里现成的脚本，
 > 但**没有在本文写作时的那台机器上实跑**，首次使用请按 §9 的清单逐项确认。
 
@@ -37,7 +37,7 @@ git clone --recurse-submodules https://github.com/HkingAuditore/Project.Keynes.g
 git submodule update --init --recursive
 ```
 
-- `gdext/godot-cpp` 是子模块，**钉死在某个 commit**（当前目标 Godot 4.6 的 API）。
+- `gdext/godot-cpp` 是子模块，**钉死在某个 commit**（当前目标 Godot 4.7 的 API）。
   不初始化就一定编不过，报错通常是 `gdextension_interface.h: No such file`。
 - 仓库本身较大（`addons/` 里有历史遗留的调试二进制），首次 clone 会慢，属正常。
 
@@ -49,15 +49,15 @@ git submodule update --init --recursive
 | --- | --- | --- | --- |
 | Python 3 | 3.10+ | 全部 | 装 SCons：`python -m pip install scons` |
 | SCons | 4.x | 全部 | `scons --version` 能跑通即可；注意它必须和 Godot 用的不是同一个东西，只是构建用 |
-| Godot 编辑器 | **4.6.2.stable** | 导出 / 预烘 | 用 `GODOT_BIN` 环境变量指定路径最省事 |
-| 导出模板 | **4.6.2.stable** | 导出 | 编辑器 → 管理导出模板，或手动解压到 `%APPDATA%\Godot\export_templates\4.6.2.stable\` |
+| Godot 编辑器 | **4.7.2.stable** | 导出 / 预烘 | 用 `GODOT_BIN` 环境变量指定路径最省事 |
+| 导出模板 | **4.7.2.stable** | 导出 | 编辑器 → 管理导出模板，或手动解压到 `%APPDATA%\Godot\export_templates\4.7.2.stable\` |
 | MSVC | VS 2022（x64） | Windows / Android | 从「x64 Native Tools Command Prompt for VS 2022」启动，否则 `cl.exe` 找不到 |
 | Xcode CLT | 最新 | macOS | `xcode-select --install` |
 | Emscripten | **4.0.20**（不能用别的版本） | Web | 见 §4.1 |
 | Android SDK + NDK | Side-by-side | Android | 见 §5.2 |
 | FMOD Studio | **2.03.15** | 仅改音频时 | 见 §6；日常构建**不需要** |
 
-版本是**硬约束**的两个地方：Emscripten 4.0.20、Godot 4.6.2。其它工具版本宽松。
+版本是**硬约束**的两个地方：Emscripten 4.0.20、Godot 4.7.2。其它工具版本宽松。
 
 ---
 
@@ -138,7 +138,7 @@ scons platform=linux target=template_release dev_build=no -j"$(nproc)"
 
 ### 4.1 为什么 Emscripten 必须是 4.0.20
 
-Godot 4.6 官方 Web 导出模板就是用 4.0.20 编的。版本不一致时，side module 的
+Godot 4.7 官方 Web 导出模板就是用 4.0.20 编的。版本不一致时，side module 的
 pthread/异常 ABI 对不上，浏览器控制台只会给一句
 `failed to load dynamic library`，非常难查。
 
@@ -180,8 +180,8 @@ Build-Web.cmd skip-native  :: 不重编 wasm，只预烘 + 重新导出（改 GD
 
 脚本能用的前提：
 - `emsdk/emsdk_env.bat` 存在；
-- Godot 4.6.x 能找到（`GODOT_BIN`，或按脚本里的候选路径搜索）；
-- 4.6.2 的 Web 导出模板已安装。
+- Godot 4.7.x 能找到（`GODOT_BIN`，或按脚本里的候选路径搜索）；
+- 4.7.2 的 Web 导出模板已安装。
 
 日志全在 `tmp/`：`web_native_<target>.log`、`web_prebake.log`、`web_export_release.log`。
 任何一步失败脚本都会 `exit /b 1`，**不会**产出一个半成品包。
@@ -213,7 +213,7 @@ scons platform=web arch=wasm32 threads=yes lto=none disable_exceptions=no -j16 t
 `std::thread` + 条件变量驱动每日仿真，没有 pthread 时 worker 不推进。
 **除非你先把 host 改成单线程内联模式，否则不要用这个变体。**
 
-### 4.6 本地预览与验证
+### 4.7 本地预览与验证
 
 ```bat
 serve_web.bat            :: 默认 8060 端口，会自己开浏览器
@@ -319,7 +319,7 @@ FMOD Studio 版本固定在 **2.03.15**，命令行工具路径写死在
 
 1. checkout（含子模块）→ 装 Python + SCons；
 2. 装 emsdk 4.0.20（带缓存）；
-3. 下载 Godot 4.6.2 win64 编辑器 + Web 导出模板；
+3. 下载 Godot 4.7.2 win64 编辑器 + Web 导出模板；
 4. 跑 `Build-Web.cmd release`；
 5. 把 `WebBuild/` 作为 **artifact** 上传；推 tag `v*` 时再附加到 Release。
 
@@ -335,8 +335,8 @@ FMOD Studio 版本固定在 **2.03.15**，命令行工具路径写死在
 
 - [ ] `git clone --recurse-submodules`，确认 `git submodule status` 没有前缀 `-`
 - [ ] `python -m pip install scons`，`scons --version` 有输出
-- [ ] 装 Godot 4.6.2，设 `GODOT_BIN`，确认 `%GODOT_BIN% --version` 是 4.6.2
-- [ ] 编辑器里装 4.6.2 导出模板
+- [ ] 装 Godot 4.7.2，设 `GODOT_BIN`，确认 `%GODOT_BIN% --version` 是 4.7.2
+- [ ] 编辑器里装 4.7.2 导出模板
 - [ ] 关掉 Godot，跑 `gdext\rebuild.bat`（Windows）→ 确认 `bin\windows\` 有时间戳是今天的 dll
 - [ ] 打开 Godot 跑一次游戏，确认 C++ 路径生效（控制台会出现 `[native_generation/base] path=gdext`）
 - [ ] 要 Web：装 emsdk 4.0.20 到仓库根 `emsdk/`，跑 `Build-Web.cmd`
