@@ -66,9 +66,12 @@ rg -n "path=|gdext|gdscript|native_ms|compute_ms|flush|sync|fallback" Project\pr
 
 ## Architecture Rules
 
-Keep the runtime layering explicit:
+Put simulation decisions, calculations, and writes on the background executor. It owns
+player-choice waits. The foreground reads published data, forwards requests, and renders.
+Use [current state](../../../docs/architecture/current-state.md) to identify migration gaps
+and compatibility paths before changing an existing entry point.
 
-- GDScript is the orchestration layer: feature gates, method probes, knobs construction, stage state machines, fallback, UI/debug, and Godot object operations.
+- Godot handles requests, presentation, and object operations. Existing GDScript simulation orchestration is a compatibility boundary to migrate.
 - `DCWorld` is the GDScript DataCore world: component slots, `bind_map_data()`, `write_*`, dirty mask, and GDScript-side views.
 - `DCWorldExt` is the C++ compute world: slot/SoA buffers, C++ pass kernels, native snapshots, slot refresh/flush, and GDExtension bindings.
 - `NativeCountryRuntime` is a native peer authority: country SoA, territory CSR, nationwide

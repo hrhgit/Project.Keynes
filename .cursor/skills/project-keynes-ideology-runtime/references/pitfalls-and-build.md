@@ -137,13 +137,11 @@ reason is the earlier message — which sends you hunting in the wrong function.
 
 ## 5. Architecture facts that are easy to get wrong
 
-- **The ideology worker POD does no instance reconciliation.** `activation`
-  appears **zero times** in `runtime_ideology_pod.cpp`; `EffectActivation` and
-  `submit_instances` run on the main thread only. A change to per-instance
-  payloads therefore needs no POD catalogue, ABI, or parity work — verify this
-  before assuming a change crosses four layers.
+- **Instance reconciliation still uses a compatibility bridge.** Target matching and
+  legacy Effect submissions are remaining migration work. Recheck catalogue, ABI,
+  and parity when moving them to the background owner.
 - **Three mirrors of the selector ceiling** must stay in sync:
-  `EffectRuntime::SELECTOR_MAX_KIND` (main thread),
+  `EffectRuntime::SELECTOR_MAX_KIND` (legacy runtime),
   `RuntimeEffectPodAuthority::MAX_SELECTOR_KIND` (worker POD), and
   `effect_catalog.gd:POD_MAX_SELECTOR_KIND` (GDScript). One out-of-range card
   fails the whole POD catalogue validation, which drops the EFFECT bit and takes

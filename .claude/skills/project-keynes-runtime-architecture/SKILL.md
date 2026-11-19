@@ -44,24 +44,20 @@ For runtime architecture work, inspect:
 
 ## Current Layering
 
-Current runtime is a layered hybrid, not full native DOTS:
+Follow the [architecture target](../../../docs/architecture/design.md): the background executor owns
+all simulation decisions, calculations, and state writes. The foreground reads published data,
+forwards requests, and renders or formats the result. The simulation decides when a player reply
+is required, publishes the pending choice, and waits at that point.
 
-```text
-WorldClock / main.gd
-  -> MapGenerator orchestration
-  -> DCSystemScheduler
-  -> SusSchedulerExt budget / skip / stats
-  -> DCSystem or retained SusJob state machines
-  -> DCWorldExt C++ slots and pass kernels
-  -> report / flush / visual intent
-  -> MapData, debug, CSV, renderer, Godot uploads
-```
+Read [current state](../../../docs/architecture/current-state.md) for the production executor and
+the handoffs that still require foreground work. The full-day background path runs through
+`NativeSimulationHost`. The scheduler and pass graph below describe the retained SUS path.
 
 Layer responsibilities:
 
 - `MapGenerator`: host facade, world/map ownership, generate/load lifecycle, public runtime APIs, bridge delegation, weather/native daily/ocean helper facade, and a few local runtime helper functions for scheduler registration/native daily availability/disabled visual reports.
 - `scripts/simulation/bootstrap/*`: not a current production layer. A previous extraction attempt was removed because new bootstrap preloads caused Godot script-resolution failures; do not recreate this layer without validating Godot parse/headless startup.
-- `DCSystemScheduler`: production scheduler facade. It registers `DCSystem` instances, builds topology from declared reads/writes, and delegates execution/stats to SUS.
+- `DCSystemScheduler`: scheduler facade for registered SUS systems. It registers `DCSystem` instances, builds topology from declared reads/writes, and delegates execution/stats to SUS.
 - `SusSchedulerExt`: C++ scheduler shell for priority, policy, frame budget, skip accounting, and log windows. It is not business authority.
 - `DCWorld`: GDScript DataCore world, component slots, dirty mask, and `MapData` mirror binding.
 - `DCWorldExt`: C++ DataCore world, SoA slots, C++ pass kernels, native daily graph state, refresh/flush/snapshot APIs.
@@ -90,21 +86,22 @@ For every change, answer: which authority is moving?
 
 ## Scheduler Model
 
-Production registration is `DCSystemScheduler` only. Legacy `_use_dc_system_scheduler=false` and old alias jobs have been removed from the production path.
+The full-day executor owns simulation progression. `DCSystemScheduler` registers the retained
+SUS systems, including presentation and synchronous compatibility work.
 
-Current important scheduler facts:
+SUS scheduler facts:
 
 - `WorldClock.day_changed` drives one `MapGenerator.sus_tick_daily()` call.
-- `DCSystemScheduler.register_system()` is the production registration surface.
+- `DCSystemScheduler.register_system()` is the SUS registration surface.
 - `SusSchedulerExt` applies policy, priority, dependency, frame-budget, skip, and stats behavior.
 - `frame_budget_ms` decides whether another slice starts; it cannot preempt a native pass already running.
 - `slice_budget_ms` is cooperative and job-local.
 - `must_run=true` is only for simulation work that cannot safely freeze; do not use it to hide poor cadence or overly long native calls.
 - `use_job_should_run=true` is for stateful eligibility that cannot be represented by a policy descriptor.
 
-Native daily ACTIVE:
+SUS native daily ACTIVE:
 
-- `NativeDailySimJob` production hot path must call `MapGenerator.run_native_daily_slice_from_job()`.
+- The `NativeDailySimJob` sliced path must call `MapGenerator.run_native_daily_slice_from_job()`.
 - `DCWorldExt::run_native_daily_slice()` owns the native graph continuation cursor and returns `done=false` across slices.
 - `run_native_daily_tick_from_job()` is debug/full-run helper only.
 - `FAMILY_COMMIT` freezes family behavior CSR and publishes FamilyEffect metrics; it does not evaluate effect programs.
@@ -181,9 +178,10 @@ Visual and upload:
 - `enum_lut` is RGBA8: R/G/B are biome/veg/cover and A is vision fog knowledge
   `fog_k`. `encode_cell_luts` takes it as an optional `fog_k_arr` argument, and
   the GDScript fallback encoder must write the same value.
-- `VisionSolver`, `FogOfWarLayer`, and `CountryBorderLayer` are event-driven off
-  `country_committed`, not daily systems. They are visual/UI authority only and
-  never advance a tick or write simulation slots.
+- The full-day executor computes physical vision and research observations after military
+  settlement. The current bridge prepares inputs and installs the result. `VisionSolver`
+  serves synchronous fallback and parity. `FogOfWarLayer` and `CountryBorderLayer` draw
+  published results and use territory notifications for refresh.
 - `fog_of_war.gdshader` consumes the shared per-pixel `earth_daylight`
   terminator, so it must declare that include's uniform dependencies
   (`season_phase`, `day_phase`, `axial_tilt_rad`, `tod_debug_*`, `tod_sun_dir`)
