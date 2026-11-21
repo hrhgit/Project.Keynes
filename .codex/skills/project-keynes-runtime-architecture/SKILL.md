@@ -91,7 +91,7 @@ SUS systems, including presentation and synchronous compatibility work.
 
 SUS scheduler facts:
 
-- `WorldClock.day_changed` drives one `MapGenerator.sus_tick_daily()` call.
+- The formal clock advances the native admission cursor. `WorldClock.day_changed` announces the published display date. `MapGenerator.sus_tick_daily()` is a split-domain diagnostic entry.
 - `DCSystemScheduler.register_system()` is the SUS registration surface.
 - `SusSchedulerExt` applies policy, priority, dependency, frame-budget, skip, and stats behavior.
 - `frame_budget_ms` decides whether another slice starts; it cannot preempt a native pass already running.
@@ -99,7 +99,7 @@ SUS scheduler facts:
 - `must_run=true` is only for simulation work that cannot safely freeze; do not use it to hide poor cadence or overly long native calls.
 - `use_job_should_run=true` is for stateful eligibility that cannot be represented by a policy descriptor.
 
-SUS native daily ACTIVE:
+SUS native daily diagnostics:
 
 - The `NativeDailySimJob` sliced path must call `MapGenerator.run_native_daily_slice_from_job()`.
 - `DCWorldExt::run_native_daily_slice()` owns the native graph continuation cursor and returns `done=false` across slices.
