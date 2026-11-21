@@ -2729,14 +2729,6 @@ func flush_runtime_economy_resource_writeback() -> Dictionary:
 	return _data_core_world_ext.flush_runtime_economy_resource_writeback()
 
 
-func consume_runtime_visual_patch(generation: int, family: int, cursor: int,
-		max_items: int) -> Dictionary:
-	if _data_core_world_ext == null or not _data_core_world_ext.has_method("consume_runtime_visual_patch"):
-		return {"ok": false, "code": "runtime_worker_api_missing"}
-	return _data_core_world_ext.consume_runtime_visual_patch(
-		generation, family, cursor, max_items)
-
-
 func request_runtime_save(request_id: int) -> Dictionary:
 	if _data_core_world_ext == null or not _data_core_world_ext.has_method("request_runtime_save"):
 		return {"ok": false, "code": "runtime_worker_api_missing"}
