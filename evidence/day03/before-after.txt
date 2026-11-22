@@ -1,0 +1,43 @@
+Day 3 before/after runs, 2026-11-22. Each test is the one the merged PR added or extended.
+BEFORE = Keynes master 9c84e3c92 with the PR's fixed files restored to their pre-PR version (PRs 36, 37, 38: files from the parent of the merge commit; PR 37's two macOS libraries too), test files left at the merged version.
+AFTER  = Keynes master 9c84e3c92 unchanged.
+Command: godot --headless --path Project/project-keynes --script res://<test>   (after: tools/ci/run_regression_checks.py <test>)
+BEFORE for #28 restores tests/dots_completion/*.gd to their pre-PR versions.
+
+=== #29 season history (PR 38): tests/world/season_refresh_consumer_test.gd
+-- BEFORE (fix removed)
+FAIL: missing published biome history does not read cell mirror
+SCRIPT ERROR: Invalid access to property or key '_season_history_missing_warning_keys' on a base object of type 'RefCounted (MapData)'.
+season refresh consumer: 12 checks, 1 failures
+-- AFTER (master)
+season refresh consumer: 19 checks, 0 failures
+
+=== #25 annual report (PR 36): tests/ui/annual_report_ui_test.gd
+-- BEFORE (fix removed)
+[FAIL] a hidden modal layer leaves the report awaiting presentation
+[FAIL] a detached workspace leaves the second report pending
+[FAIL] the open-failure fixture completes
+[FAIL] failed report opening preserves the pending report without marking it viewed
+[FAIL] workspace availability reopens the failed report without a simulation update
+[FAIL] closing the reopened report acknowledges the executor stop
+-- AFTER (master)
+[PASS] a hidden modal layer leaves the report awaiting presentation
+
+=== #26 military construction (PR 37): tests/game/player_command_authority_test.gd
+-- BEFORE (fix removed)
+FAIL same-day completion frees capacity for the legal treasury build
+FAIL the paid and compatibility builds both keep their military slots ([1, -1, 0])
+FAIL a compatibility command with no free slot preserves all current orders
+player command authority: 85 checks, 3 failures
+-- AFTER (master)
+player command authority: 85 checks, 0 failures
+
+=== #28 completion gate (PR 32): tests/dots_completion/dots_completion_gate.gd
+-- BEFORE
+internal errors:
+  ! cannot read res://scripts/main.gd
+=> exit 2 (gate cannot run)
+-- AFTER
+ALL GATES PASSED
+=> exit 0
+annual_report_ui_test AFTER: 0 FAIL lines, 48 PASS lines
