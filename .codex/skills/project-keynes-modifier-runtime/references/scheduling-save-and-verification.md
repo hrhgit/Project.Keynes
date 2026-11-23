@@ -61,7 +61,8 @@ worker and inline modes; assert the authored value and successful snapshot appli
 
 ## Worker derived publication
 
-The main thread owns derived-cell generation; the Economy worker owns a read replica.
+The full-day executor computes the per-cell Ideology fold. The current compatibility bridge
+captures inputs and installs the result, and Economy consumes the completed generation.
 `step_ideology_derived_rebuild` finishes and publishes under one existing input boundary.
 Copy only completed generations, including an empty layer; ordinary instance snapshots
 must neither erase that layer nor be mistaken for publishing it. A new world clears

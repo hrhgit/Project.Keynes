@@ -12,49 +12,15 @@
 - 源码阅读地图
 - 架构变更检查表
 
-## Worker 权威（2026-09-08 起，先读这节）
+## 整日后台路径
 
-**本文余下各节描述的主线程路径，在 Climate 上已经默认不是执行路径。**
-`runtime_climate_authority_enabled` 生产默认 true，generate 时以 per-domain ACTIVE
-（`implemented_domain_mask = CLIMATE|COMMIT = 0x802`）启动 POD worker，下面 native daily
-图里的 14 个 Climate 节点被抑制门跳过，由 worker 在后台线程跑同一份共享纯内核。其余七个
-gameplay domain 仍走主线程，所以余下各节对它们依然成立。
+正式整日模式由后台处理气候与天气。气候从冻结输入计算，发布当日物理场和风轨迹。
+当前主线程把已提交结果写回地图，完成当天交接后才放行下一日。季节慢层到期时由
+日执行器计算，主线程在采集次日输入前安装结果。实际范围和兼容路径见
+[运行现状](../../../../docs/architecture/current-state.md)。
 
-ACTIVE 下每个逻辑日的真实顺序（钉死，不可换序）：
-
-```text
-WorldClock._process() -> day_changed
-  -> apply_runtime_climate_writeback(day N 的 worker 结果 -> MapData，38~39 个场)
-  -> season refresh
-  -> capture_runtime_inputs(day N+1：environment 快照 + round scalars + stage knobs)
-  -> 主线程 14 个 Climate 节点被抑制门跳过
-  -> worker 后台算 day N+1，明天回灌
-```
-
-三条必须先知道的语义：
-
-- **滞后一日。**玩家在 day N+1 看到的是 worker 算的 day N。这是转 ACTIVE 时明确接受的代价。
-- **换序会静默作废。**回灌必须在 season refresh 之前：反过来的话 season refresh 对回灌表内
-  字段的写入会被次日回灌整体覆盖，没有任何报错。
-- **worker 跑的 stage 比主线程少。**round 内八个（`pass_a`..`transpiration`，即下表 1–8）
-  走 `run_climate_round_passes`；`albedo` / `vegetation_dynamics` / `climate_feedback` /
-  `weather_distribute` / `weather_field` 五个走 `climate_stage_knobs` 通道单独接线；
-  `runtime_hydrology` 两侧都不跑（生产侧 `runtime_hydrology_enabled=false` 时
-  `_build_native_daily_runtime_hydrology_knobs` 返回空字典）。
-
-已知偏差与限制：
-
-- **stage 次序与生产不同**：worker 侧 `climate_feedback` 排在 `weather` / `distribute`
-  之前，生产是之后。尚未重排。
-- **ψ / cyclone / monsoon 未接**：worker 的 `WeatherFieldInput` 里这几条留空，kernel 走
-  no-psi 分支，代价是涡旋驱动降水的移动性变弱。留空是刻意的——它们的推进输入是风场，而
-  worker 的 wind pass 在 round 里排在 weather 之后，接上只会把风场分叉传给 ψ。
-- **大地图跟不上节拍**：180x120 下 `writeback_days=30/50`，40ms 窗口内有 20 天回灌未落地。
-- **小地图是负收益**：60x40 下 `sus_sim_avg` +5.5%。真实收益在帧延迟，而 headless 的
-  `frame_wall_ms` 恒 0，量不出来。
-
-回退是一个开关：generate 前把 `runtime_climate_authority_enabled` 设 false，即回到下面
-描述的主线程路径。SHADOW 对拍也要走这条。
+下文的 SUS 图和主线程 slot 入口描述保留的同步、排查与对照路径。新模拟判断和状态写入
+接入后台执行器，画面和 Godot 对象使用已发布结果。
 
 ## 分层
 
@@ -243,11 +209,8 @@ worker→主线程（`apply_runtime_climate_writeback`，次日一次）：
 | Season refresh | active owner gate 可声明 native state | atlas queue、detail scatter、Godot upload |
 | Climate visuals | simulation slots 只读输入 | LUT/atlas encoding与GPU upload仍为 Godot 边界 |
 
-> **Climate ACTIVE 下前六行的"当前主要 owner"要再往上挪一层**：native graph/pass 仍是算法
-> 实现，但**执行者是 worker 线程**，主线程那一份被抑制。"保留边界"列不变——reset/abort、
-> MapData dirty、diagnostics、WeatherFront、LUT/texture、scatter 上传全都仍在主线程，这也是
-> 为什么 worker 权威没有消灭这些边界。Season refresh 是特例：它仍完整跑在主线程，且必须排在
-> 回灌之后。
+> 表格中的同步入口用于排查和对照。整日模式的天气、气候和季节慢层由日执行器计算。
+> 当前地图写回和兼容交接仍在主线程，渲染对象及纹理上传消费已发布数据。
 
 ## 源码阅读地图
 
