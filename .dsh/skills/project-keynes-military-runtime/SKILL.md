@@ -1,13 +1,14 @@
 ---
 name: project-keynes-military-runtime
-description: Guide Project.Keynes native military runtime work covering MilitaryCore SoA stores (soldier lots, training, armies, paths, engagements, wars, truces, reparations, cell controller, military stocks and convoys), the D-day committed digest and D+1 Country/Economy intent bridge, military_daily scheduling and whole-graph ACTIVE catch-up, pathfinding/supply/threat fields, player-only army auto-exploration and explored-only vision trail, plan-then-replay battles, incremental fronts, peace/annex treaties, military AI, PKMI v4 save ordering, render snapshot and z5-11 map layers, events 40-47, performance and validation. Use when changing military_core*.cpp/.h, military_bridge.h, world_ext_military.cpp, MilitaryFacade, MilitaryCatalogCompiler, military_catalog.json, MilitaryDailySystem, military map layers/shaders, military UI commands, or military-related Country/Economy opcodes.
+description: Guide Project.Keynes native military runtime work covering MilitaryCore SoA stores (soldier lots, training, armies, paths, engagements, wars, truces, reparations, cell controller, military stocks and convoys), the D-day committed digest and D+1 Country/Economy intent bridge, military_daily scheduling and the background committed-day handoff, pathfinding/supply/threat fields, player-only army auto-exploration and explored-only vision trail, plan-then-replay battles, incremental fronts, peace/annex treaties, military AI, PKMI v4 save ordering, render snapshot and z5-11 map layers, events 40-47, performance and validation. Use when changing military_core*.cpp/.h, military_bridge.h, world_ext_military.cpp, MilitaryFacade, MilitaryCatalogCompiler, military_catalog.json, MilitaryDailySystem, military map layers/shaders, military UI commands, or military-related Country/Economy opcodes.
 ---
 
 # Project.Keynes Military Runtime
 
-Treat `pk::MilitaryCore` (owned by `DCWorldExt`) as the only authority for military state. It is a
-main-thread synchronous runtime, not a worker domain. GDScript is orchestration, catalog compilation,
-command packing and read-only UI/rendering.
+`pk::MilitaryCore` (owned by `DCWorldExt`) owns military state. The full-day executor computes military
+work from the committed day. The current main-thread bridge still freezes inputs, installs the result,
+and delivers D+1 intents. Treat that bridge as migration work. UI and rendering read published data
+and forward player requests. See [military runtime](../../../docs/cpp-dots-runtime/military-runtime.md).
 
 ## When to use
 
@@ -20,7 +21,7 @@ path; receipt-only tests miss the next-epoch conservation failure.
 - Any edit to `gdext/src/military_*`, `world_ext_military.cpp`, `world_ext_economy_military.cpp`.
 - Military catalog (`data/military/military_catalog.json`, `military_catalog_compiler.gd`), units,
   equipment categories, state buildings, supply classes.
-- `military_daily` scheduling, `WorldRuntimeHost` military catch-up, PKMI save/restore.
+- `military_daily` scheduling, `world_runtime_daily_adapter_part3.gd` committed-day handoff, PKMI save/restore.
 - Player auto-exploration: `military_core_explore.cpp`, `army.explore`, exploration trail/view,
   `world_runtime_host.gd` pre-day hook, or the save-time trail flush.
 - Military map layers (`scripts/rendering/military_*`, `shaders/military_*`) or military panel commands.
@@ -35,10 +36,11 @@ Read before editing (code wins over plans):
 
 1. `docs/cpp-dots-runtime/military-runtime.md` (current truth + known gaps §12).
 2. `gdext/src/military_bridge.h`, `military_core.h` (frozen contract), the relevant `military_core_*.cpp`.
-3. `gdext/src/world_ext_military.cpp` (digest capture, `translate_military_intent`, receipts, snapshots).
+3. `gdext/src/world_ext_military_digest.cpp` (input capture) and `gdext/src/world_ext_military.cpp`
+   (day work, `translate_military_intent`, receipts, snapshots).
 4. `scripts/military/military_facade.gd`, `scripts/simulation/systems/military_daily_system.gd`.
 5. Wiring: `map_generator.gd` (`_configure_military_runtime`, `_maybe_register_military_system`),
-   `world_runtime_host.gd` (`_drain_runtime_military_commits`), `game_save_coordinator.gd` (`pkmi`).
+   `world_runtime_daily_adapter_part3.gd` (`_drain_runtime_military_commits`), `game_save_coordinator.gd` (`pkmi`).
 6. Plans only for intent: `docs/plans/military-system-design.md`, `military-implementation-contract.md`.
 
 ## Enlistment pipeline (soldiers = Economy cohorts)
@@ -115,18 +117,13 @@ opcodes travel on the same POD lane as 24, and all of them name cohorts by **sig
   with `pkmi_lot_army_missing` (the seasonal terrain refresh walks this path).
 - `army.transfer` requires both formations in one cell (`command_armies_not_colocated`).
 
-Naval transport (design §7.4): water is gated by the cell's WATER TIER, never by the length of a
-crossing. The tier comes from the landform (0 deep / 1 far / 2 shallow / 3 lake, see
-`gdext/src/water_tier.h`, the same table the economy trade corridors use). Four technologies unlock
-one tier each: `tech.river_transport` (lake), `tech.military.coastal_transport` (shallow),
-`tech.celestial_navigation` (far), `tech.oceanic_ship_design` (deep); tiers nest, so a higher tier
-also covers the lower ones and a 6-cell-wide shallow shelf is crossable with the shallow bit alone.
-The gates read `MilitaryCatalog.water_lake_bit / water_shallow_bit / water_far_bit / water_deep_bit`
-(resolved from the catalog JSON `unlock_tech_ids`, default -1) against the digest's unlock bits and
+Naval transport (design §7.4): water is impassable until the country unlocks
+`tech.military.coastal_transport` (runs of ≤3 consecutive water cells, land embark/disembark) or
+`tech.military.naval_transport` (no run limit). The gates read `MilitaryCatalog.coastal_transport_bit` /
+`ocean_transport_bit` (resolved from the catalog JSON, default -1) against the digest's unlock bits and
 participate in the catalog hash. Sea steps cost 1.5x, an army at sea is forced to
 `MILITARY_STANCE_EMBARKED` and reverts on landing, takes 0.2%/day sea attrition, and never engages on
-water. `find_path`, `find_exploration_path` and `preview_path` all search one state per cell; without
-the matching tier they must still refuse water.
+water. `preview_path` applies the same gate; without the tech it must still refuse water.
 
 Get these right or the economy faults hours later:
 
@@ -209,11 +206,10 @@ copy of `MapData.explored_arr` and drains an explored-only movement trail.
   updates `last_plan_day`, so budget-starved rows retry fairly next day.
 - **Vision boundary**: every actual cell entered by a player army is appended to a dense-stamped
   trail; multi-cell days record each step. The trail is explored-only, is not saved or hashed, and
-  never writes `visible_arr` / `fog_k_arr`. `WorldRuntimeHost._prepare_military_exploration_day()`
-  drains it before each military day in inline, legacy and whole-graph catch-up paths (once per
-  replayed day), merges it into `MapData.explored_arr`, reuses the existing `_refresh_vision()` only
-  when needed, then pushes a copied frozen explored snapshot to native. The army's final cell remains
-  the ordinary low-budget vision source. `GameSaveCoordinator` flushes the trail after the safe
+  never writes `visible_arr` / `fog_k_arr`. The current host bridge freezes exploration separately
+  for each military day. After military settlement, `world_runtime_vision_boundary.gd` merges that
+  day's trail and schedules the background vision calculation when needed. The army's final cell is
+  a low-budget vision source. `GameSaveCoordinator` flushes any remaining trail after the safe
   boundary and before provider collection; a flush failure must reject the save.
 - **Persistence**: `PKMI_VERSION=4`, bridge `MILB` wrapper version 4, and section 23 must always be
   present (empty tasks are `count=0`). Empty tables skip state-hash mixing so exploration-free worlds
@@ -291,8 +287,9 @@ submit → request_command("military.peace.propose") → set_command_result() on
 - PKMI restore is transactional (decode to temp, validate, swap); PKMI provider stays after `pkcn` and
   before `pkef`/`ecp2`.
 - Military layers stay below fog z12; foreign armies/battles/convoys are fog-gated.
-- `military_daily` registers before the native/legacy fork in `_setup_sus`; in whole-graph ACTIVE its
-  `should_run` is false and the host replays committed days (≤4/frame).
+- `military_daily` serves the synchronous compatibility path. In full-day background mode the host
+  schedules one result for each committed day, polls while pending, and finishes the handoff before
+  the executor admits the next day.
 
 ## Extension SOPs
 
@@ -402,8 +399,9 @@ needs `role+tier`.
 7. `res://tests/military/economy_day_progress_probe.gd` — proves whether the Economy day (and therefore a POD
    command's plan) actually advances: prints `last_committed_day`, epoch/busy state and military
    `pending_intents`. Use it before blaming the bridge when nothing lands.
-8. For schedule changes: run a session in both legacy/domain ACTIVE and whole-graph ACTIVE and confirm one
-   military step per committed day (`last_step_day`, no `military_day_already_stepped` storms).
+8. For schedule changes, confirm one military settlement per committed day in background and
+   synchronous runs. Run `background_daily_military_replay_test.gd` for movement, territory changes,
+   vision, and save continuation. Compare results at fixed command days under load.
 9. Peace window: `res://tests/military/military_peace_window_test.gd` (view model + window + launcher card +
    `PlayerController` highlight contract, headless) and `res://tests/qa/military_peace_window_screenshot_qa.gd`
    (rendered, 1280/1920 UI width × white-peace/picked). `ui_scene_structure_test.gd` must keep passing

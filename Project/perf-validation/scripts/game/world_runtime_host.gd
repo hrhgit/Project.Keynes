@@ -212,10 +212,6 @@ var _pending_load_bundle: Dictionary = {}
 var _runtime_ready_for_ticks: bool = false
 var _runtime_commit_generation: int = 0
 var _runtime_commit_day: int = -1
-var _runtime_commit_family_cursors: Dictionary = {}
-var _runtime_commit_family_done: Dictionary = {}
-var _runtime_pending_visual_generation: int = 0
-var _runtime_pending_dirty_families: int = 0
 var _runtime_last_commit: Dictionary = {}
 ## Whole-graph ACTIVE bypasses SUS, so natural resources need a separate
 ## committed-day cursor.  The target remains queued while the Economy boundary
@@ -606,10 +602,6 @@ func generate_world(seed_override: int = -1, safe_area: Rect2 = Rect2()) -> void
 	_clear_climate_capacity_pending()
 	_runtime_commit_generation = 0
 	_runtime_commit_day = -1
-	_runtime_commit_family_cursors.clear()
-	_runtime_commit_family_done.clear()
-	_runtime_pending_visual_generation = 0
-	_runtime_pending_dirty_families = 0
 	_runtime_last_commit.clear()
 	_runtime_natural_resource_last_commit_day = 0
 	_runtime_natural_resource_pending_target_day = -1
@@ -1548,10 +1540,6 @@ func _consume_runtime_commit_if_ready() -> void:
 		_runtime_last_commit = commit.duplicate(false)
 		if economy_worker_authoritative:
 			_queue_runtime_natural_resource_commit(_runtime_commit_day)
-		_runtime_commit_family_cursors.clear()
-		_runtime_commit_family_done.clear()
-		_runtime_pending_visual_generation = generation
-		_runtime_pending_dirty_families = int(commit.get("dirty_families", 0))
 		# Whole-graph ACTIVE bypasses run_daily_tick, including its visual and
 		# recorder tail. Publish those consumers from the committed boundary.
 		var whole_graph := bool(report.get("authority_ready", false))
@@ -1567,8 +1555,13 @@ func _consume_runtime_commit_if_ready() -> void:
 				if _renderer.has_method("refresh_terrain_weather_field_tex"):
 					_renderer.refresh_terrain_weather_field_tex()
 			_pending_tick_render_ms = (Time.get_ticks_usec() - publish_started_usec) / 1000.0
+			_runtime_last_visual_apply_ms = _pending_tick_render_ms
+			_sched_proc_visual_ms += _runtime_last_visual_apply_ms
+			if _generator.has_method("record_runtime_visual_timings"):
+				_generator.record_runtime_visual_timings(_runtime_last_ui_feedback_ms,
+					_runtime_last_visual_apply_ms, _runtime_last_gpu_upload_ms)
 			mark_map_overlay_dirty(&"worker_committed")
-		# 只通知一次最新完整日提交；后续帧仅继续消费尚未应用的视觉 patch。
+		# 发布当日结算，地图接收已提交的天气。
 		simulation_committed.emit(
 			int(commit.get("from_day", _runtime_commit_day)),
 			_runtime_commit_day,
@@ -1596,55 +1589,6 @@ func _consume_runtime_commit_if_ready() -> void:
 				and not bool(resource_writeback.get("pending", false)):
 			_drain_runtime_natural_resource_commits()
 	_sched_proc_resource_ms += _sched_elapsed_ms(resource_usec)
-	if _runtime_pending_visual_generation <= 0 \
-			or _runtime_pending_visual_generation != _runtime_commit_generation:
-		return
-	# 当前 skeleton 的 COMMIT 阶段可能没有 visual intents；仍走同一消费边界，
-	# 以后新增 family 时无需把 worker 对象暴露给主线程。交互期间缩小预算，
-	# 但不等待或取消 worker，只把剩余 patch 留到下一渲染帧。
-	var apply_started_us := Time.get_ticks_usec()
-	var interactive := bool(report.get("interactive", false))
-	var budget_us := 250 if interactive else 750
-	var max_items := 128 if interactive else 512
-	for family_index in range(9):
-		if Time.get_ticks_usec() - apply_started_us >= budget_us:
-			break
-		var family_bit := 1 << family_index
-		if (_runtime_pending_dirty_families & family_bit) == 0 \
-				or bool(_runtime_commit_family_done.get(family_bit, false)):
-			continue
-		var cursor := int(_runtime_commit_family_cursors.get(family_bit, 0))
-		var patch: Dictionary = _generator.consume_runtime_visual_patch(
-			_runtime_pending_visual_generation, family_bit, cursor, max_items)
-		if not bool(patch.get("available", false)):
-			if String(patch.get("code", "")) == "runtime_generation_expired":
-				# A newer commit will be picked up on the next frame. Do not spin
-				# forever trying to consume a generation already evicted by the ring.
-				_runtime_commit_family_done[family_bit] = true
-			continue
-		if int(patch.get("generation", _runtime_pending_visual_generation)) \
-				!= _runtime_pending_visual_generation:
-			_runtime_commit_family_done[family_bit] = true
-			continue
-		_runtime_commit_family_cursors[family_bit] = int(patch.get("next_cursor", cursor))
-		_runtime_commit_family_done[family_bit] = bool(patch.get("done", false))
-		_apply_runtime_visual_patch(family_bit, patch)
-	_runtime_last_visual_apply_ms = float(Time.get_ticks_usec() - apply_started_us) / 1000.0
-	_sched_proc_visual_ms += _runtime_last_visual_apply_ms
-	if _generator.has_method("record_runtime_visual_timings"):
-		_generator.record_runtime_visual_timings(
-			_runtime_last_ui_feedback_ms,
-			_runtime_last_visual_apply_ms,
-			_runtime_last_gpu_upload_ms)
-	var all_done := true
-	for family_index in range(9):
-		var family_bit := 1 << family_index
-		if (_runtime_pending_dirty_families & family_bit) != 0 \
-				and not bool(_runtime_commit_family_done.get(family_bit, false)):
-			all_done = false
-			break
-	if all_done:
-		_runtime_pending_visual_generation = 0
 
 
 func _queue_runtime_natural_resource_commit(day: int) -> void:
@@ -1681,9 +1625,7 @@ func _drain_runtime_natural_resource_commits() -> void:
 ## 如果这里不回灌，MapData 就永久停在转权威那一天。
 ##
 ## 语义上滞后一日：worker 提交第 N 天之后，主线程在下一个渲染帧才把它应用到
-## MapData，所以同一帧里读 MapData 的消费者看到的是第 N-1 天。这与视觉 patch
-## 消费的滞后一致，也是 worker 不阻塞主线程的代价。需要同帧一致的读者必须走
-## simulation_committed 信号，而不是直接轮询 MapData。
+## MapData。需要读取指定提交日的消费者通过 simulation_committed 信号刷新。
 func _apply_climate_writeback_if_authoritative(report: Dictionary) -> void:
 	if not bool(report.get("climate_worker_authoritative", false)):
 		return
@@ -1908,13 +1850,6 @@ func climate_authority_diagnostics() -> Dictionary:
 		"writeback_drop_count": int(_runtime_climate_writeback_drops),
 		"authority_policy": _resolve_climate_authority_policy(),
 	}
-
-
-## 视觉 intent 的兼容适配点。worker 只发布数值 intent；具体 MapData/GPU
-## 更新仍留在主线程。当前未迁移的 family 不做隐式写入，避免误把 probe
-## 数据当成权威状态。
-func _apply_runtime_visual_patch(_family: int, _patch: Dictionary) -> void:
-	return
 
 
 func _map_overlay_refresh_interval_msec() -> int:

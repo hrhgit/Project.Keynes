@@ -87,8 +87,8 @@ The pattern that works is **plan then replay**:
 
 - Workers run a pure-read pass per cell and emit an intent buffer (who is
   hired/fired, which slot request, what cost), touching nothing global.
-- The main thread replays intents in a fixed cell order and performs every
-  allocation and mutation.
+- The owning simulation executor replays intents in a fixed cell order and performs
+  allocations and mutations on the background simulation path.
 
 Determinism comes from the replay order, not from the worker order. Order
 inside the plan is usually free, because the CSR buckets are already sorted by

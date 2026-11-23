@@ -1,16 +1,6 @@
 ---
 name: project-keynes-ideology-runtime
-description: >-
-  Guide Project.Keynes native ideology-system development and review: IdeologyCatalog compilation
-  (cards, synergies, route tags 体系, target selectors and DNF tag predicates, declarative effect
-  programs), NativeIdeologyRuntime (collection, slots, offers with pity/refine/ban, era decay,
-  understanding, levels, gates, synergies, runtime magnitude overrides 卡改卡), class-opinion support
-  gates, exclusion groups, ACK-gated Effect/Modifier transitions, PKID schema 7 persistence,
-  IdeologyFacade/PlayerController/UI, and verification. Use whenever the user mentions 理念,
-  ideology, 民族精神, national spirit, 三选一抽卡, 抽卡保底, 精进, 封存, ideology slots, 阶层民意, class opinion,
-  ideology synergy, 体系羁绊, route_tag, 地块级理念, 目标标签, 选择器, 卡改卡, override, PKID, ideology_runtime,
-  ideology workspace, or wants to add/change/debug an ideology card, its cell-level effect, its
-  synergy, or the ideology panel.
+description: Guide Project.Keynes native ideology-system development and review: IdeologyCatalog compilation (cards, synergies, route tags 体系, target selectors and DNF tag predicates, declarative effect programs), NativeIdeologyRuntime (collection, slots, offers with pity/refine/ban, era decay, understanding, levels, gates, synergies, runtime magnitude overrides 卡改卡), class-opinion support gates, exclusion groups, ACK-gated Effect/Modifier transitions, PKID schema 7 persistence, IdeologyFacade/PlayerController/UI, and verification. Use whenever the user mentions 理念, ideology, 民族精神, national spirit, 三选一抽卡, 抽卡保底, 精进, 封存, ideology slots, 阶层民意, class opinion, ideology synergy, 体系羁绊, route_tag, 地块级理念, 目标标签, 选择器, 卡改卡, override, PKID, ideology_runtime, ideology workspace, or wants to add/change/debug an ideology card, its cell-level effect, its synergy, or the ideology panel.
 ---
 
 # Project.Keynes Ideology Runtime
@@ -145,9 +135,9 @@ or a second Modifier writer for equipped ideas.
 
 ### Invariants added by the infrastructure layers
 
-- **The ideology worker POD does no instance reconciliation** (`activation` is
-  absent from `runtime_ideology_pod.cpp`). Per-instance payload changes stay on
-  the main thread and need no POD catalogue/ABI/parity work.
+- **Existing instance reconciliation uses a compatibility bridge.** Target matching,
+  metric capture and legacy Effect handoff still pass through the foreground.
+  Move simulation decisions and writes to the background owner when migrating this path.
 - **Three mirrors of the selector ceiling** must move together:
   `EffectRuntime::SELECTOR_MAX_KIND`, `RuntimeEffectPodAuthority::MAX_SELECTOR_KIND`,
   `effect_catalog.gd:POD_MAX_SELECTOR_KIND`. One card past the ceiling fails the
@@ -352,9 +342,9 @@ For ideology panel work, preserve card/slot nodes on support_revision and pendin
 Remove the point-scroll ledger text button entirely; do not replace it with another character. Render card hover details through ideology_detail_tooltip.gd and the read-only detail_model, not one concatenated Label. Separate identity/status, understanding progress, individual current effects, next-level effects, directional support score/threshold and restrictions. Effect-number emphasis must preserve authored strings; gauges read native snapshot values. Bound tooltip height to the logical viewport and forward wheel input from the hovered card to long details without scrolling the collection. Verify actual mouse-hover creation, long-detail scroll isolation, and absence of a replacement point-bar button in ideology_workspace_stability_test.gd.
 
 
-## Main-thread continuation under worker authority
+## Remaining foreground continuation under worker authority
 
-The host must continue pending instance refresh and derived rebuild from frame liveness,
+The existing bridge services pending instance refresh and derived rebuild from frame liveness,
 even while the calendar cannot admit another day. Both native calls share the IDEOLOGY
 main-boundary request: finish one before starting the other, stop polling completed work,
 and reset day markers for a new world. Never wait for a later daily tick to release a
