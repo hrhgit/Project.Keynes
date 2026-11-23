@@ -192,6 +192,8 @@ temp = clamp(temp_baseline + transport + local_anomaly, 0, 1)
 约束：
 
 - `field_solver.gd` 与 `world_ext_weather.cpp` 是 SAME_SOURCE 镜像。
+- 近地风辐合用邻格风速加权的净流入除以总流量，负值归零。均匀流应接近零；原生缓存版、直接计算版和脚本版共用口径。
+- 雨、风暴和季风须同时达到降水率、云层、云水和水汽条件。地球预设的陆地和水域降水率门槛为 0.095 和 0.076，降水空间平滑为 0.30。
 - 非降水类型的残余 precip 在 solve 后回流 vapor 并归零；distribute/hydrology 再按 RAIN/STORM/BLIZZARD/MONSOON gate。
 - cold precip、land snow-cover、water wind gate 必须在 native/fallback 一致。
 - transition alpha 使用 `rate * dt_days`，稳定态必须归一为 `type=target`、`prev=target`、`alpha=0`。
