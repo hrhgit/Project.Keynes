@@ -178,6 +178,25 @@ temp = clamp(temp_baseline + transport + local_anomaly, 0, 1)
 
 ## Weather field and fronts
 
+> 2026-11-20 变更（降水频率治理，见 `docs/plans/weather-precipitation-frequency-plan.md` 与
+> `docs/architecture/feature-guides.md`「天气场分类与降水频率」）：
+> - `convergence` 只剩「有符号净流入」一种语义：`w_d=clamp(|v_nb|/1.2,0,1.25)`、
+>   `inflow/outflow` 分别累计 `max(0,±cos)`、`conv=clamp((in−out)/(in+out),0,1)`。
+>   旧的半波整流均值已删（均匀风场会读 0.3333），运行时开关 `PK_CLIMATE_CONVERGENCE_LEGACY` 已退役。
+>   四份镜像：`wf_wind_convergence_idx_xy`、`wf_wind_convergence_idx_cached`、
+>   GDScript `wind_convergence_for_cell` / `wind_convergence_idx`。分布 p50≈0.016 / p90≈0.458 / p95≈0.636。
+> - 六个消费者阈值按新分位标定：`frontal_convergence(0.02,0.46)`、`drv_cv=(conv−0.02)/0.44`、
+>   `strat_drive conv*0.70`、`river/dynamic_forcing conv*0.76`、boost `CONVERGENCE_THRESHOLD=0.64`。
+> - RAIN 是四项合取：`precip > gate && effective_cloud > mp_cloud_gate && pcm > 0.35*mp_cloud_gate && vapor > mp_vapor_gate`；
+>   `gate` 来自 `ClimateProfile.weather_precip_classify_gate_land/water`（生产 0.095/0.076），
+>   `mp_cloud_gate` 0.18（水）/0.10（陆）。STORM/MONSOON 也必须过 `meaningful_precip`。
+> - 分类口径用 `weather_target_type`；`weather_type` 过过渡状态机，headless 短窗口会停在 prev。
+> - 面积约束：`area = mean_P/P̄ = 1/conc` 且 `P̄ ≤ soft_cap(0.16)` ⇒ `area ≥ mean_P/0.16`。
+>   任何面积目标必须附 `ΣP/mean_P/P̄/conc/下界` 五元组，见 `tests/world/weather_frequency_probe.gd`。
+> - 反直觉但已实测：**硬降水率门下，空间平滑会压缩降水面积**（0.30→24.76%、0→32.46%），
+>   不要用「关平滑」降面积；`soft_cap` 本身在压缩总降水，抬它会让雨更猛也更多。
+
+
 核心 weather state 是 vapor、cloud water、cloud、precip、convergence、instability、type/target/prev/alpha。
 
 主要流程：
@@ -192,9 +211,6 @@ temp = clamp(temp_baseline + transport + local_anomaly, 0, 1)
 约束：
 
 - `field_solver.gd` 与 `world_ext_weather.cpp` 是 SAME_SOURCE 镜像。
-- 近地风辐合用邻格风速加权的净流入除以总流量，负值归零。均匀流应接近零；原生缓存版、直接计算版和脚本版共用口径。
-- 气旋生成、强度和尾流沿用原有的邻格向内风分量均值及门槛。原生路径按风速加权，脚本尾流保留未加权均值。该评分现场计算，天气场仍发布净流入。
-- 雨、风暴和季风须同时达到降水率、云层、云水和水汽条件。锋面增强沿用同样的降水判据，气旋只可将已判为有效降水的海格提升为风暴。两个地球预设的陆地和水域降水率门槛均为 0.095 和 0.076，降水空间平滑为 0.30。
 - 非降水类型的残余 precip 在 solve 后回流 vapor 并归零；distribute/hydrology 再按 RAIN/STORM/BLIZZARD/MONSOON gate。
 - cold precip、land snow-cover、water wind gate 必须在 native/fallback 一致。
 - transition alpha 使用 `rate * dt_days`，稳定态必须归一为 `type=target`、`prev=target`、`alpha=0`。
