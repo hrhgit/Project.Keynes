@@ -1,0 +1,63 @@
+[use-ai] call_id=20261124-205858-15f8 已启动（codex app-server）。插话：ai_ctl.py steer 20261124-205858-15f8 --message '...'；打断：ai_ctl.py interrupt 20261124-205858-15f8 [--message '新指示']
+## 1. Skills whose names contain `perf`
+
+- `project-keynes-headless-perf` — `/Users/herh/MyFiles/games/keynes-wt-day13/.agents/skills/project-keynes-headless-perf/SKILL.md`
+- `project-keynes-headless-perf` — `/Users/herh/MyFiles/games/keynes-wt-day13/.codex/skills/project-keynes-headless-perf/SKILL.md`
+- `project-keynes-perf-change-check` — `/Users/herh/MyFiles/games/keynes-wt-day13/.agents/skills/project-keynes-perf-change-check/SKILL.md`
+- `project-keynes-perf-change-check` — `/Users/herh/MyFiles/games/keynes-wt-day13/.codex/skills/project-keynes-perf-change-check/SKILL.md`
+
+## 2. Skill steps and commands
+
+**Step 1 — Find the claimed metrics.** I used the `.agents` copy of the skill. The two copies were identical. I read the saved PR and issue and verified the original comparison base.
+
+```sh
+git log master --first-parent --format='%H %P %s' --grep='Merge pull request #72 '
+git merge-base 5fc4c7114914bd3653ef3ee6cec47bf45a3d6295^1 ec9a22ce2ec349504c474fef3099f01c8b79d3c0
+python3 tools/perf/perf_change_check.py history
+```
+
+The merge was `5fc4c7114914bd3653ef3ee6cec47bf45a3d6295`. Its first parent, `9ddb127342622cc1230b4690d2ea07b96e2c7be7`, was the base. The second parent matched the saved PR head, `ec9a22ce2ec349504c474fef3099f01c8b79d3c0`. The archive listed three records for two other commits.
+
+I checked the exact metric names in those earlier reports.
+
+```sh
+python3 - <<'PY'
+import json
+from pathlib import Path
+archive = Path('/Users/herh/.keynes-perf')
+for path in sorted((archive / 'comparisons').glob('*/report.json')):
+    rows = json.loads(path.read_text())['metrics']
+    names = [row['metric'] for row in rows]
+    print(path, f'({len(names)} metrics)')
+    print('overlay/elevation/wind/texture/bake/upload:', [name for name in names if any(word in name.lower() for word in ('overlay', 'elevation', 'wind', 'texture', 'bake', 'upload'))])
+PY
+python3 - <<'PY'
+import json
+from pathlib import Path
+path = Path('/Users/herh/.keynes-perf/comparisons/6ce469e952a2..7ebdf9d20ac6-20261124-183817/report.json')
+report = json.loads(path.read_text())
+for row in report['metrics']:
+    if 'overlay' in row['metric']:
+        print(json.dumps(row, sort_keys=True))
+PY
+```
+
+Each report contained 409 metrics. The closest metric, `csv.tail_overlay_refresh_count.mean`, was `[0.0, 0.0, 0.0]` on both sides of the latest archived comparison. All three `csv.tail_overlay_last_bake_ms` summaries were also zero on both sides. The recorder source confirmed that the standard run leaves both overlays closed. Issue 66 calls for counting generations and texture upload calls with each overlay open. The archive contained no metric for those per-overlay counts. The exact source inspection command is in the saved notes.
+
+**Steps 2–4 — Comparison, verdict, and targeted test.** I stopped at step 1 under the skill’s rule for a missing supported claim. I did not run `compare` or the targeted test. No `PERF_CHECK_RESULT` line was produced.
+
+## 3. Result and saved output
+
+**Stopped before measurement.** There is no `report.md` or `report.json` for PR 72. I saved the commands, evidence, and stop reason in [stop-notes.md](/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run1/stop-notes.md). Windowed frame time and GPU work were not measured. The detached checkout was clean at the final status check.
+
+## 4. Decision and input needed
+
+I used the merge commit’s first parent to recover the pre-merge base. Using today’s `master` would return the PR head itself as the merge base.
+
+To continue, please identify a supported `--claim` metric that measures this improvement with the relevant overlay open, or confirm that I should run the separate headless player-scene count check and byte-for-byte targeted test for issue 66.
+
+============================================================
+[use-ai] call_id=20261124-205858-15f8 cli=codex status=ok model=gpt-6.2-sol effort=high duration=116.7s out_tokens=5240 commands=19 edits=0
+[use-ai] 审阅完结果后必须评分：ai_stats.py rate 20261124-205858-15f8 --outcome good|partial|bad [--rework none|minor|major] --note '...'
+
+[exited with code 0]

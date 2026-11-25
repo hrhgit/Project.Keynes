@@ -1,0 +1,59 @@
+[use-ai] call_id=20261124-211013-70f7 已启动（codex app-server）。插话：ai_ctl.py steer 20261124-211013-70f7 --message '...'；打断：ai_ctl.py interrupt 20261124-211013-70f7 [--message '新指示']
+## 1. Skills with `perf` in their name
+
+- project-keynes-headless-perf: `r12/project-keynes-headless-perf/SKILL.md`
+- project-keynes-headless-perf: `r0/project-keynes-headless-perf/SKILL.md`
+- project-keynes-perf-change-check: `r12/project-keynes-perf-change-check/SKILL.md`
+- project-keynes-perf-change-check: `r0/project-keynes-perf-change-check/SKILL.md`
+
+## 2. Steps carried out
+
+**Cleanup and skill review.** From `run2/`, I ran `/bin/rm -r -- repo perf user-home tmp old-build-git-pointer old-submodule-git-pointer`. It succeeded and left the notes and logs in place. I then ran `cat /Users/herh/MyFiles/games/keynes-wt-day13/.agents/skills/project-keynes-perf-change-check/SKILL.md` and confirmed the checkout was at `b71345d39f94151b227f4087ed1c71369249f632`. Step 1’s conclusion still applies. The headless recorder leaves the overlays closed.
+
+**Step 2.** From the checkout root, I ran the same comparison command twice with the default archive, scenario, and budget. I saved each invocation’s output to its own log.
+
+```sh
+python3 tools/perf/perf_change_check.py compare 9ddb127342622cc1230b4690d2ea07b96e2c7be7 ec9a22ce2ec349504c474fef3099f01c8b79d3c0 --tier quick --unmeasured 'Issue #66 counts full elevation and wind overlay builds and texture uploads while each overlay is open. The headless recorder leaves the overlays closed, so csv.tail_overlay_refresh_count.mean does not measure the claim.'
+```
+
+The first invocation built and imported both commits, then exited 75 after starting round two.
+
+```text
+PERF_CHECK_RESULT={"status": "deferred", "reasons": ["the 10-minute run budget expired"]}
+```
+
+The second invocation reused both cached builds. Neither commit had a completed measurement record to reuse. It reached all six rounds and exited 1 after Godot returned exit 6 in head round 3.
+
+```text
+PERF_CHECK_RESULT={"status": "fail", "reasons": ["head round 3: godot exit=6; result rows=49 expected 50; perf csv has 49 data rows, expected 50"], "report": "/Users/herh/.keynes-perf/comparisons/9ddb12734262..ec9a22ce2ec3-20261124-212523/report.md"}
+```
+
+**Steps 3–5.** I read the verdict and ran `cat ~/.keynes-perf/comparisons/9ddb12734262..ec9a22ce2ec3-20261124-212523/report.md`. It confirmed both daily repeat checks passed and the daily hashes matched across commits. I stopped at the invalid round as directed by the skill. The targeted overlay test was unrun.
+
+## 3. Result and reports
+
+**The performance check failed because one recording was incomplete.** Daily simulation results matched. The report excluded the invalid round and summarized the five valid rounds. It counted 409 metrics, with 2 improved, 3 regressed, 140 unchanged, and 264 within noise. All six headline metrics were within noise.
+
+| Headline metric | Base median | Head median | Change |
+|---|---:|---:|---:|
+| Run time | 1,318 ms | 1,347 ms | +2.2% |
+| Simulation days/s | 96.79 | 96.93 | +0.1% |
+| Adjusted days/s | 96.79 | 96.93 | +0.1% |
+| Map generation | 20,460 ms | 20,380 ms | −0.4% |
+| Peak memory | 998.3 MB | 997.8 MB | −0.1% |
+| CPU time | 13.75 s | 13.96 s | +1.5% |
+
+- [report.md](/Users/herh/.keynes-perf/comparisons/9ddb12734262..ec9a22ce2ec3-20261124-212523/report.md) · [report.json](/Users/herh/.keynes-perf/comparisons/9ddb12734262..ec9a22ce2ec3-20261124-212523/report.json)
+- [Deferred run log](/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2/retry-comparison.log) · [Completed retry log](/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2/retry-after-deferred.log) · [Failed round’s Godot log](/Users/herh/.keynes-perf/records/ec9a22ce2ec3/days50_foreign_count3_height40_seed20260718_speed50_width60/20261124-212149-fd50095c6e657082/round-3/godot.log:268)
+
+## 4. Decisions and limits
+
+I applied the invalid-round stop rule before the targeted test. The missing CSV row needs diagnosis before another comparison. The checkout remained clean and detached at `b71345d39f94151b227f4087ed1c71369249f632`.
+
+`csv.tail_overlay_refresh_count.mean` was zero in all valid rounds. Issue 66 still needs build and upload counts with each overlay open. Windowed frame time and GPU work remain unmeasured.
+
+============================================================
+[use-ai] call_id=20261124-211013-70f7 cli=codex status=ok model=gpt-6.2-sol effort=high duration=966.0s out_tokens=13272 commands=19 edits=0
+[use-ai] 审阅完结果后必须评分：ai_stats.py rate 20261124-211013-70f7 --outcome good|partial|bad [--rework none|minor|major] --note '...'
+
+[exited with code 0]

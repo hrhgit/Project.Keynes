@@ -1,0 +1,77 @@
+$ /bin/zsh -lc pwd
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n -i 'perf.change.check|day13|pr.?72|issue.?66|elevation.*wind|wind.*elevation' /Users/herh/.codex/memories/MEMORY.md"
+  -> exit 1
+
+$ /bin/zsh -lc 'cat /private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/inputs/pr-72.md /private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/inputs/issue-66.md'
+  -> exit 0
+
+$ /bin/zsh -lc 'diff -u /Users/herh/MyFiles/games/keynes-wt-day13/.agents/skills/project-keynes-perf-change-check/SKILL.md /Users/herh/MyFiles/games/keynes-wt-day13/.codex/skills/project-keynes-perf-change-check/SKILL.md'
+  -> exit 0
+
+$ /bin/zsh -lc 'cat /Users/herh/MyFiles/games/keynes-wt-day13/.agents/skills/project-keynes-perf-change-check/SKILL.md'
+  -> exit 0
+
+$ /bin/zsh -lc 'ls -la /Users/herh/.keynes-perf /private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13 && command -v godot scons python3'
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n 'def .*history|add_parser|KEYNES_PERF_HOME|git\\(|worktree|claim|overlay' tools/perf/perf_change_check.py docs/architecture/module-map.md"
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-optional-locks status --short --branch && git show-ref && git log -10 --all --oneline --decorate'
+  -> exit 0
+
+$ /bin/zsh -lc "sed -n '535,562p;1028,1155p' tools/perf/perf_change_check.py && rg --files --hidden /Users/herh/.keynes-perf/comparisons -g report.json"
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n -i 'overlay|elevation|wind' Project/project-keynes/tests/game/headless_perf_record*.gd tools/perf/perf_change_check.py && rg -n '海拔.*风向|#66' docs/architecture/feature-status.md"
+  -> exit 0
+
+$ /bin/zsh -lc "git log --all --merges --format='%H %P %s' --grep='\\(#72\\|Issue #66\\)' && git show -s --format='%H %P %s' ec9a22ce2ec349504c474fef3099f01c8b79d3c0 9ddb12734 && git merge-base master ec9a22ce2ec349504c474fef3099f01c8b79d3c0 && git merge-base fork/master ec9a22ce2ec349504c474fef3099f01c8b79d3c0"
+  -> exit 0
+
+$ /bin/zsh -lc 'git merge-base 5fc4c7114914bd3653ef3ee6cec47bf45a3d6295''^1 ec9a22ce2ec349504c474fef3099f01c8b79d3c0 && sed -n '"'181,225p' docs/architecture/feature-status.md && sed -n '735,749p' tools/perf/perf_change_check.py"
+  -> exit 0
+
+$ /bin/zsh -lc "python3 - <<'PY'
+import json
+from pathlib import Path
+archive = Path('/Users/herh/.keynes-perf')
+for path in sorted((archive / 'comparisons').glob('*/report.json')):
+    rows = json.loads(path.read_text())['metrics']
+    names = [row['metric'] for row in rows]
+    print(path, f'({len(names)} metrics)')
+    print('overlay/elevation/wind/texture/bake/upload:', [name for name in names if any(word in name.lower() for word in ('overlay', 'elevation', 'wind', 'texture', 'bake', 'upload'))])
+PY"
+  -> exit 0
+
+$ /bin/zsh -lc 'python3 tools/perf/perf_change_check.py history'
+  -> exit 0
+
+$ /bin/zsh -lc "python3 - <<'PY'
+import json
+from pathlib import Path
+path = Path('/Users/herh/.keynes-perf/comparisons/6ce469e952a2..7ebdf9d20ac6-20261124-183817/report.json')
+report = json.loads(path.read_text())
+for row in report['metrics']:
+    if 'overlay' in row['metric']:
+        print(json.dumps(row, sort_keys=True))
+PY"
+  -> exit 0
+
+$ /bin/zsh -lc "git log master --first-parent --format='%H %P %s' --grep='Merge pull request #72 ' && git grep -n -E 'data_overlay|overlay_mode|overlay_diagnostics|headless|tail_overlay_refresh_count' ec9a22ce2ec349504c474fef3099f01c8b79d3c0 -- 'Project/project-keynes/tests/game/headless_perf_record*.gd' 'Project/project-keynes/tests/game/player_scene_handoff_probe.gd' && rg -n -m 2 'tail_overlay_refresh_count|tail_overlay_last_bake_ms' Project/project-keynes/scripts"
+  -> exit 0
+
+$ /bin/zsh -lc "git show ec9a22ce2ec349504c474fef3099f01c8b79d3c0:Project/project-keynes/tests/game/headless_perf_record.gd | sed -n '138,162p;241,269p'; git grep -n -i -E 'overlay_kind|overlay_key|set_map_overlay|PK_OVERLAY|OVERLAY_.*COUNT' ec9a22ce2ec349504c474fef3099f01c8b79d3c0 -- Project/project-keynes/tests/game/headless_perf_record.gd Project/project-keynes/tests/game/player_scene_handoff_probe.gd Project/project-keynes/scripts/game/world_runtime_overlay.gd"
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-optional-locks status --short --branch && ls -la /private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run1'
+  -> exit 0
+
+$ /bin/zsh -lc "cat > /private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run1/stop-notes.md <<'EOF'
+# PR 72 performance check
+
+Stopped at skill step 1. Issue 66 calls for counting overlay generations and texture upload calls separately while each overlay is open. The standard comparison invokes the simulation recorder, which does not open either overlay. The archive has no per-overlay generation or upload metric. Its generic refresh counter and bake timings are all zero in the newest archived comparison. Windowed frame time and GPU
+  -> exit 0
+

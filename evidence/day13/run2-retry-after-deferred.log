@@ -1,0 +1,10 @@
+estimated work 210s; may wait up to 390s for a quiet machine
+measuring 9ddb12734262 (record status measuring)
+measuring ec9a22ce2ec3 (record status measuring)
+round 1/3 9ddb12734262
+round 1/3 ec9a22ce2ec3
+round 2/3 9ddb12734262
+round 2/3 ec9a22ce2ec3
+round 3/3 9ddb12734262
+round 3/3 ec9a22ce2ec3
+PERF_CHECK_RESULT={"status": "fail", "reasons": ["head round 3: godot exit=6; result rows=49 expected 50; perf csv has 49 data rows, expected 50"], "report": "/Users/herh/.keynes-perf/comparisons/9ddb12734262..ec9a22ce2ec3-20261124-212523/report.md"}

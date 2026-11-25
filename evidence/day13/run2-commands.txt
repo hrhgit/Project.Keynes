@@ -1,0 +1,179 @@
+$ /bin/zsh -lc 'cat .agents/skills/project-keynes-perf-change-check/SKILL.md'
+  -> exit 0
+
+$ /bin/zsh -lc 'cmp .agents/skills/project-keynes-perf-change-check/SKILL.md .codex/skills/project-keynes-perf-change-check/SKILL.md'
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n -i 'perf.change.check|PR.?72|issue.?66|elevation.*wind|keynes-wt-day13' /Users/herh/.codex/memories/MEMORY.md"
+  -> exit 1
+
+$ /bin/zsh -lc "cat '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/inputs/pr-72.md' '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/inputs/issue-66.md'"
+  -> exit 0
+
+$ /bin/zsh -lc "ls -la '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13'"
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n 'worktree|KEYNES_PERF_HOME|def .*history|add_parser|TMPDIR|checkout|archive|def main' tools/perf/perf_change_check.py"
+  -> exit 0
+
+$ /bin/zsh -lc "git log master --first-parent --merges --format='%H %P' --grep='Merge pull request #72 '"
+  -> exit 0
+
+$ /bin/zsh -lc 'git status --short --branch'
+  -> exit 0
+
+$ /bin/zsh -lc 'command -v python3 godot scons'
+  -> exit 0
+
+$ /bin/zsh -lc "sed -n '465,545p;546,606p;630,704p;841,883p;1000,1148p' tools/perf/perf_change_check.py"
+  -> exit 0
+
+$ /bin/zsh -lc 'ls -la ~/.keynes-perf'
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n 'tail_overlay_refresh_count|overlay_mode|overlay.*count' Project/project-keynes/tests/game/headless_perf_record.gd Project/project-keynes/tests/game/player_scene_handoff_probe.gd tools/perf/perf_change_check.py"
+  -> exit 1
+
+$ /bin/zsh -lc "rg --files --hidden '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run1' -g 'report.json' -g 'report.md'"
+  -> exit 1
+
+$ /bin/zsh -lc 'git rev-parse --show-toplevel --git-common-dir HEAD'
+  -> exit 0
+
+$ /bin/zsh -lc 'git submodule status --recursive'
+  -> exit 0
+
+$ /bin/zsh -lc 'df -h . /private/tmp'
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n 'overlay_refresh_count|overlay_refresh|KEYNES_USER_DATA|XDG|tempfile|user_data|def run\\(' tools/perf/perf_change_check.py Project/project-keynes/tests/game/headless_perf_record.gd Project/project-keynes/tests/game tools/ci/check_golden_determinism.py"
+  -> exit 0
+
+$ /bin/zsh -lc "git config --local --get-regexp 'submodule\\..*\\.(url|active)'"
+  -> exit 0
+
+$ /bin/zsh -lc 'git show --stat --oneline ec9a22ce2ec349504c474fef3099f01c8b79d3c0'
+  -> exit 0
+
+$ /bin/zsh -lc "rg --files --hidden ~/.keynes-perf -g report.json -g .perf-built -g .git -g '"'!**/.godot/**'"' -g '"'!**/godot-cpp/**'"'"
+  -> exit 0
+
+$ /bin/zsh -lc 'python3 tools/perf/perf_change_check.py --home ~/.keynes-perf history'
+  -> exit 0
+
+$ /bin/zsh -lc 'git -C ~/.keynes-perf/build rev-parse HEAD'
+  -> exit 0
+
+$ /bin/zsh -lc 'git -C ~/.keynes-perf/build/gdext/godot-cpp rev-parse --absolute-git-dir HEAD'
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n -i 'overlay|user://|write|output' Project/project-keynes/tests/game/headless_perf_record.gd"
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n 'tempfile|HOME|user://|--log-file|ENV|mkdtemp|\\.godot|add_argument' tools/ci/check_golden_determinism.py tools/ci/run_regression_checks.py"
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-pager log -1 --oneline -- tools/perf/perf_change_check.py'
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-pager diff --stat 9ddb127342622cc1230b4690d2ea07b96e2c7be7 ec9a22ce2ec349504c474fef3099f01c8b79d3c0'
+  -> exit 0
+
+$ /bin/zsh -lc 'ls -la gdext/godot-cpp'
+  -> exit 0
+
+$ /bin/zsh -lc "python3 -c 'import json; from pathlib import Path; root=Path.home()/\".keynes-perf/comparisons\"; files=sorted(root.glob(\"*/report.json\")); p=files[-1]; d=json.loads(p.read_text()); print(p); keys=[r[\"metric\"] for r in d[\"metrics\"]]; print(len(keys), \"metrics\"); print(\"\\n\".join(k for k in keys if any(t in k for t in (\"overlay\", \"upload\", \"elevation\", \"wind\", \"frame\", \"gpu\"))))'"
+  -> exit 0
+
+$ /bin/zsh -lc 'godot --version'
+  -> exit 0
+
+$ /bin/zsh -lc 'du -sh ~/.keynes-perf/build ~/.keynes-perf/worktrees/*'
+  -> exit 0
+
+$ /bin/zsh -lc 'ls -ld ~/.keynes-perf/build/Project/project-keynes/.godot/imported ~/.keynes-perf/worktrees/5b69be27c267/Project/project-keynes/.godot/imported'
+  -> exit 0
+
+$ /bin/zsh -lc 'ls -la ~/.keynes-perf/build/gdext/godot-cpp/.git'
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-pager diff --shortstat 5b69be27c267 9ddb127342622cc1230b4690d2ea07b96e2c7be7 -- gdext'
+  -> exit 0
+
+$ /bin/zsh -lc 'git rev-parse 9ddb127342622cc1230b4690d2ea07b96e2c7be7:gdext/godot-cpp ec9a22ce2ec349504c474fef3099f01c8b79d3c0:gdext/godot-cpp'
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n 'def scons_command|env\\[|environ|--log-file|TMPDIR' tools/perf/perf_change_check.py"
+  -> exit 0
+
+$ /bin/zsh -lc "python3 -c 'import json; from pathlib import Path; p=Path.home()/\".keynes-perf/comparisons/6ce469e952a2..7ebdf9d20ac6-20261124-183817/report.json\"; d=json.loads(p.read_text()); print(*(r for r in d[\"metrics\"] if r[\"metric\"] in (\"csv.tail_overlay_refresh_count.mean\", \"csv.tail_overlay_last_bake_ms.mean\", \"csv.render_draw_calls_in_frame.mean\")), sep=\"\\n\")'"
+  -> exit 0
+
+$ /bin/zsh -lc 'git -C ~/.keynes-perf/build status --short --untracked-files=no'
+  -> exit 0
+
+$ /bin/zsh -lc "cat > '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2/prepare.sh' <<'SH'
+#"'!/bin/bash
+set -euo pipefail
+
+run_dir="$(cd "$(dirname "$0")" && pwd)"
+source_repo=/Users/herh/MyFiles/games/keynes-wt-day13
+source_build=/Users/herh/.keynes-perf/build
+cache_commit=5b69be27c2673a8ba165fb6f75663b15021e7b51
+submodule_commit=9e0650a0ae806367854d50342c4751690a09d521
+
+export GIT_ALLOW_PROTOCOL=file
+mkdir -p "$run_dir/perf" "$run_dir/user-home" "$run_dir/tmp"
+git clone --shared --no-checkout "$source_repo" "$run_dir/repo
+  -> exit 0
+
+$ /bin/zsh -lc "/bin/bash '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2/compare.sh'"
+  -> exit 1
+
+$ /bin/zsh -lc 'ls -A ~/.keynes-perf/worktrees'
+  -> exit 0
+
+$ /bin/zsh -lc "sed -n '606,635p;704,744p' tools/perf/perf_change_check.py"
+  -> exit 0
+
+$ /bin/zsh -lc 'head -n 1 /Users/herh/.local/bin/scons'
+  -> exit 0
+
+$ /bin/zsh -lc 'git -C ~/.keynes-perf/build rev-parse --git-common-dir HEAD'
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-optional-locks status --short --branch'
+  -> exit 0
+
+$ /bin/zsh -lc 'scons --version'
+  -> exit 0
+
+$ /bin/zsh -lc 'printenv KEYNES_PERF_HOME GODOT_BIN'
+  -> exit 1
+
+$ /bin/zsh -lc 'git -C ~/.keynes-perf/build/gdext/godot-cpp cat-file -t 9e0650a0ae806367854d50342c4751690a09d521'
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n '"'^MAX_WORKTREES'"' tools/perf/perf_change_check.py"
+  -> exit 0
+
+$ /bin/zsh -lc 'ls -1tr ~/.keynes-perf/worktrees'
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-optional-locks rev-parse HEAD'
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-optional-locks worktree list --porcelain'
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-optional-locks status --short --branch'
+  -> exit 0
+
+$ /bin/zsh -lc "cat > '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2/preflight.md' <<'MD'
+# PR 72 performance check
+
+The saved PR and issue name reductions in full overlay generation and texture upload calls while each overlay is open. The headless recorder leaves the overlays closed. The historical report
+"'`/Users/herh/.keynes-perf/comparisons/6ce469e952a2..7ebdf9d20ac6-20261124-183817/report.json`
+contains 409 metric rows. `csv.tail_overlay_refresh_count.mean`, `csv.tail_overlay_last_bake_ms.mean`, and `csv.render_draw
+  -> exit 0
+

@@ -1,0 +1,7412 @@
+{
+  "status": "fail",
+  "reasons": [
+    "head round 3: godot exit=6; result rows=49 expected 50; perf csv has 49 data rows, expected 50"
+  ],
+  "base": {
+    "commit": "9ddb127342622cc1230b4690d2ea07b96e2c7be7",
+    "subject": "Merge pull request #71 from hrhgit/agent/issue-65",
+    "created": "2026-11-25T05:21:01Z",
+    "reused": false,
+    "rounds": 3,
+    "path": "/Users/herh/.keynes-perf/records/9ddb12734262/days50_foreign_count3_height40_seed20260718_speed50_width60/20261124-212101-fd50095c6e657082",
+    "load_consistency": null
+  },
+  "head": {
+    "commit": "ec9a22ce2ec349504c474fef3099f01c8b79d3c0",
+    "subject": "Issue #66: address Qodo findings 27869f53-480d-4cea-a233-0b07420b4ac6, 3195290e-3206-4d64-8fd3-ec332de7e805, 4dc07bbd-e8dd-4644-8f5e-ca149dd14bb7",
+    "created": "2026-11-25T05:21:49Z",
+    "reused": false,
+    "rounds": 3,
+    "path": "/Users/herh/.keynes-perf/records/ec9a22ce2ec3/days50_foreign_count3_height40_seed20260718_speed50_width60/20261124-212149-fd50095c6e657082",
+    "load_consistency": null
+  },
+  "scenario": {
+    "days": 50,
+    "speed": 50,
+    "seed": 20260718,
+    "width": 60,
+    "height": 40,
+    "foreign_count": 3
+  },
+  "tier": "quick",
+  "requested_rounds": 3,
+  "noise": 0.15,
+  "claims": [],
+  "unmeasured": "Issue #66 counts full elevation and wind overlay builds and texture uploads while each overlay is open. The headless recorder leaves the overlays closed, so csv.tail_overlay_refresh_count.mean does not measure the claim.",
+  "machine": "Mac14,2 Apple M2 8 cpus 24 GiB",
+  "toolchain": "godot 4.6.3.stable.official.7d41c59c4; Apple clang version 21.0.0 (clang-2100.3.34.2); Darwin 27.2.0",
+  "correctness": [],
+  "busy_samples": [],
+  "metrics": [
+    {
+      "metric": "auth.authoritative_days_per_second",
+      "kind": "timing",
+      "better": "higher",
+      "base": [
+        97.32006,
+        96.06554,
+        96.794609
+      ],
+      "head": [
+        96.399831,
+        97.454112
+      ],
+      "base_median": 96.794609,
+      "head_median": 96.92697150000001,
+      "change": 0.0013674573549856842,
+      "status": "within_noise"
+    },
+    {
+      "metric": "auth.committed_days",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        107.0,
+        125.0,
+        117.0
+      ],
+      "head": [
+        119.0,
+        121.0
+      ],
+      "base_median": 117.0,
+      "head_median": 120.0,
+      "change": 0.02564102564102564,
+      "status": "within_noise"
+    },
+    {
+      "metric": "auth.main_wait_on_sim_us",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "auth.measured_days",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        42.0,
+        41.0,
+        42.0
+      ],
+      "head": [
+        39.0,
+        40.0
+      ],
+      "base_median": 42.0,
+      "head_median": 39.5,
+      "change": -0.05952380952380952,
+      "status": "within_noise"
+    },
+    {
+      "metric": "auth.observed",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        113.0,
+        130.0,
+        122.0
+      ],
+      "head": [
+        124.0,
+        126.0
+      ],
+      "base_median": 122.0,
+      "head_median": 125.0,
+      "change": 0.02459016393442623,
+      "status": "within_noise"
+    },
+    {
+      "metric": "auth.pipeline_depth",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        3.0,
+        3.0,
+        3.0
+      ],
+      "head": [
+        3.0,
+        3.0
+      ],
+      "base_median": 3.0,
+      "head_median": 3.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "auth.warmup_days",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        5.0,
+        5.0,
+        5.0
+      ],
+      "head": [
+        5.0,
+        5.0
+      ],
+      "base_median": 5.0,
+      "head_median": 5.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.clock_day_cost_ema_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_day_cost_ema_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_day_cost_ema_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_full_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_full_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_full_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_last_advanced_days.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.clock_loop_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_loop_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_loop_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_pulse_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_pulse_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_pulse_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.clock_throughput_cap.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.continuation_budget_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_budget_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_budget_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_budget_overrun_frames.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.continuation_completed_slices.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.continuation_country_slices.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.continuation_economy_slices.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.continuation_frames.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.continuation_last_slice_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_last_slice_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_last_slice_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_max_budget_overrun_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_max_budget_overrun_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_max_budget_overrun_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_max_frame_wall_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_max_frame_wall_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_max_frame_wall_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_max_slice_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_max_slice_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_max_slice_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_slices.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.continuation_started_slices.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.continuation_wall_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_wall_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.continuation_wall_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.country_read_applied_cells.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.country_read_full_snapshot_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "head": [
+        1.0,
+        1.0
+      ],
+      "base_median": 1.0,
+      "head_median": 1.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.country_read_patch_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        29.7,
+        29.52,
+        29.04
+      ],
+      "head": [
+        29.32,
+        28.96
+      ],
+      "base_median": 29.52,
+      "head_median": 29.14,
+      "change": -0.012872628726287229,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.country_read_rejected_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.country_read_territory_changed_cells.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.country_visual_last_refresh_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        3.033,
+        3.157,
+        3.022
+      ],
+      "head": [
+        2.933,
+        3.014
+      ],
+      "base_median": 3.033,
+      "head_median": 2.9734999999999996,
+      "change": -0.01961754038905385,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.country_visual_last_refresh_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        3.033,
+        3.157,
+        3.022
+      ],
+      "head": [
+        2.9329999999999994,
+        3.014
+      ],
+      "base_median": 3.033,
+      "head_median": 2.9734999999999996,
+      "change": -0.01961754038905385,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.country_visual_last_refresh_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        3.033,
+        3.157,
+        3.022
+      ],
+      "head": [
+        2.933,
+        3.014
+      ],
+      "base_median": 3.033,
+      "head_median": 2.9734999999999996,
+      "change": -0.01961754038905385,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.country_visual_refresh_defer_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.country_visual_refresh_deferred_frames.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.country_visual_refresh_run_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "head": [
+        1.0,
+        1.0
+      ],
+      "base_median": 1.0,
+      "head_median": 1.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.engine_physics_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.06,
+        0.056,
+        0.041
+      ],
+      "head": [
+        0.082,
+        0.036
+      ],
+      "base_median": 0.056,
+      "head_median": 0.059,
+      "change": 0.05357142857142849,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.engine_physics_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.04372,
+        0.044480000000000006,
+        0.0354
+      ],
+      "head": [
+        0.06228000000000001,
+        0.029099999999999997
+      ],
+      "base_median": 0.04372,
+      "head_median": 0.04569,
+      "change": 0.0450594693504117,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.engine_physics_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.06,
+        0.056,
+        0.041
+      ],
+      "head": [
+        0.082,
+        0.036
+      ],
+      "base_median": 0.056,
+      "head_median": 0.059,
+      "change": 0.05357142857142849,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.engine_process_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        33.267,
+        30.197,
+        30.05
+      ],
+      "head": [
+        34.532,
+        35.956
+      ],
+      "base_median": 30.197,
+      "head_median": 35.244,
+      "change": 0.16713580819286686,
+      "status": "regressed"
+    },
+    {
+      "metric": "csv.engine_process_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        30.55924,
+        26.102359999999997,
+        28.27928
+      ],
+      "head": [
+        30.16198,
+        32.071760000000005
+      ],
+      "base_median": 28.27928,
+      "head_median": 31.116870000000002,
+      "change": 0.10034166357842217,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.engine_process_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        33.267,
+        30.197,
+        30.05
+      ],
+      "head": [
+        34.532,
+        35.956
+      ],
+      "base_median": 30.197,
+      "head_median": 35.244,
+      "change": 0.16713580819286686,
+      "status": "regressed"
+    },
+    {
+      "metric": "csv.fast_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.275,
+        0.259,
+        0.248
+      ],
+      "head": [
+        0.249,
+        0.248
+      ],
+      "base_median": 0.259,
+      "head_median": 0.2485,
+      "change": -0.04054054054054058,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.fast_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.18994,
+        0.18838000000000002,
+        0.19297999999999998
+      ],
+      "head": [
+        0.18483999999999998,
+        0.18902000000000002
+      ],
+      "base_median": 0.18994,
+      "head_median": 0.18692999999999999,
+      "change": -0.015847109613562244,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.fast_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.26,
+        0.243,
+        0.24
+      ],
+      "head": [
+        0.241,
+        0.24
+      ],
+      "base_median": 0.243,
+      "head_median": 0.2405,
+      "change": -0.010288065843621408,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.fps.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        30.0,
+        30.0,
+        30.0
+      ],
+      "head": [
+        30.0,
+        30.0
+      ],
+      "base_median": 30.0,
+      "head_median": 30.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.frame_wall_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        41.426,
+        43.201,
+        41.067
+      ],
+      "head": [
+        41.234,
+        41.315
+      ],
+      "base_median": 41.426,
+      "head_median": 41.2745,
+      "change": -0.003657123545599349,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.frame_wall_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        30.53426,
+        32.12254,
+        31.83402
+      ],
+      "head": [
+        31.41018,
+        31.72766
+      ],
+      "base_median": 31.83402,
+      "head_median": 31.56892,
+      "change": -0.00832756905976689,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.frame_wall_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        36.244,
+        41.475,
+        40.058
+      ],
+      "head": [
+        39.369,
+        37.394
+      ],
+      "base_median": 40.058,
+      "head_median": 38.3815,
+      "change": -0.04185181486844069,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.render_draw_calls_in_frame.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.render_objects_in_frame.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.render_primitives_in_frame.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.render_residual_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        41.424,
+        43.198,
+        41.065
+      ],
+      "head": [
+        41.231,
+        41.314
+      ],
+      "base_median": 41.424,
+      "head_median": 41.2725,
+      "change": -0.0036573001158748224,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.render_residual_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        30.53298,
+        32.12082,
+        31.832620000000002
+      ],
+      "head": [
+        31.408640000000002,
+        31.72618
+      ],
+      "base_median": 31.832620000000002,
+      "head_median": 31.567410000000002,
+      "change": -0.008331390881429167,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.render_residual_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        36.242,
+        41.473,
+        40.056
+      ],
+      "head": [
+        39.367,
+        37.392
+      ],
+      "base_median": 40.056,
+      "head_median": 38.3795,
+      "change": -0.04185390453365282,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.row_idx.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        24.5,
+        24.5,
+        24.5
+      ],
+      "head": [
+        24.5,
+        24.5
+      ],
+      "base_median": 24.5,
+      "head_median": 24.5,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_abi_calls.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_budget_yields.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_parity_cell.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_parity_day.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_parity_field.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_parity_reference_bits.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_parity_stage.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_parity_worker_bits.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_changed_cells.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        2399.1,
+        2399.28,
+        2399.18
+      ],
+      "head": [
+        2399.32,
+        2399.32
+      ],
+      "base_median": 2399.18,
+      "head_median": 2399.32,
+      "change": 5.8353270700959256e-05,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_parity_compared.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_parity_matched.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_parity_mismatch_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_parity_reason.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_plan_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        2.207583,
+        2.4115,
+        2.391542
+      ],
+      "head": [
+        2.220541,
+        2.261583
+      ],
+      "base_median": 2.391542,
+      "head_median": 2.241062,
+      "change": -0.06292174672240754,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_plan_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1.44857918,
+        1.4773567,
+        1.4380649600000002
+      ],
+      "head": [
+        1.3925984,
+        1.45211502
+      ],
+      "base_median": 1.44857918,
+      "head_median": 1.4223567099999999,
+      "change": -0.018102199977774232,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_plan_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        2.193916,
+        2.304834,
+        2.190166
+      ],
+      "head": [
+        2.146625,
+        2.216875
+      ],
+      "base_median": 2.193916,
+      "head_median": 2.18175,
+      "change": -0.005545335372913147,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_reference_hash.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_replay_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.005917,
+        0.00725,
+        0.006458
+      ],
+      "head": [
+        0.006792,
+        0.004542
+      ],
+      "base_median": 0.006458,
+      "head_median": 0.005667,
+      "change": -0.12248374109631464,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_replay_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.00471666,
+        0.00407258,
+        0.00414496
+      ],
+      "head": [
+        0.00367672,
+        0.00371668
+      ],
+      "base_median": 0.00414496,
+      "head_median": 0.0036967,
+      "change": -0.10814579634061604,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_replay_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.005875,
+        0.005958,
+        0.004792
+      ],
+      "head": [
+        0.004542,
+        0.004208
+      ],
+      "base_median": 0.005875,
+      "head_median": 0.004375,
+      "change": -0.25531914893617014,
+      "status": "improved"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_state_hash.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_pod_work_units.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        53328.0,
+        53568.0,
+        54144.0
+      ],
+      "head": [
+        53328.0,
+        53856.0
+      ],
+      "base_median": 53568.0,
+      "head_median": 53592.0,
+      "change": 0.00044802867383512545,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_production_stage_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_trace_capacity_exceeded.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_trace_captured.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_trace_consumable.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_trace_reference_pending.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_trace_reference_ready.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_trace_reference_rejected.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_climate_worker_stage_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_command_queue_depth.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_completed_days.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_country_pod_active_country_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_country_pod_active_index_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_country_pod_pending_checks.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_country_pod_snapshot_generation.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_country_pod_state_hash.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_country_pod_work_units.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_country_territory_sync_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_country_territory_sync_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_country_territory_sync_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_country_worker_continuation_index.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.02,
+        0.02,
+        0.02
+      ],
+      "head": [
+        0.02,
+        0.02
+      ],
+      "base_median": 0.02,
+      "head_median": 0.02,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_country_worker_day.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        63.6,
+        71.66,
+        64.32
+      ],
+      "head": [
+        67.54,
+        65.86
+      ],
+      "base_median": 64.32,
+      "head_median": 66.7,
+      "change": 0.037002487562189205,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_country_worker_pending_intents.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.02,
+        0.02,
+        0.02
+      ],
+      "head": [
+        0.02,
+        0.02
+      ],
+      "base_median": 0.02,
+      "head_median": 0.02,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_country_worker_queued_intents.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_day_completed_stage_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        12.0,
+        12.0,
+        12.0
+      ],
+      "head": [
+        12.0,
+        12.0
+      ],
+      "base_median": 12.0,
+      "head_median": 12.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_day_stage_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        12.0,
+        12.0,
+        12.0
+      ],
+      "head": [
+        12.0,
+        12.0
+      ],
+      "base_median": 12.0,
+      "head_median": 12.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_day_work_units.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        115284.72,
+        56611.34,
+        115726.66
+      ],
+      "head": [
+        176124.44,
+        116534.8
+      ],
+      "base_median": 115284.72,
+      "head_median": 146329.62,
+      "change": 0.2692889395923414,
+      "status": "regressed"
+    },
+    {
+      "metric": "csv.runtime_graph_dirty_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_ack_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_committed_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_input_hash.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_plan_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_plan_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_plan_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_planned_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_replay_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_replay_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_replay_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_authority_state_hash.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_stage_fallback_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_domain_stage_fallback_reason.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_active_tax_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        7.0,
+        7.0,
+        7.0
+      ],
+      "head": [
+        7.0,
+        7.0
+      ],
+      "base_median": 7.0,
+      "head_median": 7.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_attempt_slices.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        15.7,
+        16.0,
+        15.7
+      ],
+      "head": [
+        15.7,
+        15.7
+      ],
+      "base_median": 15.7,
+      "head_median": 15.7,
+      "change": 0.0,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_epoch_fiscal_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.233459,
+        0.223916,
+        0.237293
+      ],
+      "head": [
+        0.222627,
+        0.217291
+      ],
+      "base_median": 0.233459,
+      "head_median": 0.21995900000000002,
+      "change": -0.057825999426023345,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_epoch_fiscal_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.16871596,
+        0.17309848,
+        0.16972068
+      ],
+      "head": [
+        0.17040358,
+        0.16457719999999998
+      ],
+      "base_median": 0.16972068,
+      "head_median": 0.16749039,
+      "change": -0.013140944285634629,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_epoch_fiscal_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.219209,
+        0.223124,
+        0.217792
+      ],
+      "head": [
+        0.215875,
+        0.216084
+      ],
+      "base_median": 0.219209,
+      "head_median": 0.2159795,
+      "change": -0.014732515544525985,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_fiscal_settlement_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.371127,
+        0.348331,
+        0.336457
+      ],
+      "head": [
+        0.359168,
+        0.338249
+      ],
+      "base_median": 0.348331,
+      "head_median": 0.3487085,
+      "change": 0.001083739316914013,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_fiscal_settlement_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.24901437999999998,
+        0.25819072,
+        0.24119378000000002
+      ],
+      "head": [
+        0.24481404,
+        0.240013
+      ],
+      "base_median": 0.24901437999999998,
+      "head_median": 0.24241352,
+      "change": -0.026507947051089928,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_fiscal_settlement_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.361711,
+        0.336085,
+        0.334254
+      ],
+      "head": [
+        0.33483,
+        0.336584
+      ],
+      "base_median": 0.336085,
+      "head_median": 0.335707,
+      "change": -0.0011247154737642113,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_income_subsidy_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        8.4e-05,
+        8.4e-05,
+        8.4e-05
+      ],
+      "head": [
+        8.4e-05,
+        4.2e-05
+      ],
+      "base_median": 8.4e-05,
+      "head_median": 6.3e-05,
+      "change": -0.24999999999999997,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_income_subsidy_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        4.1599999999999995e-05,
+        3.496e-05,
+        3.84e-05
+      ],
+      "head": [
+        3.6639999999999995e-05,
+        3.578e-05
+      ],
+      "base_median": 3.84e-05,
+      "head_median": 3.6209999999999994e-05,
+      "change": -0.05703125000000012,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_income_subsidy_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        8.3e-05,
+        4.2e-05,
+        4.2e-05
+      ],
+      "head": [
+        4.2e-05,
+        4.2e-05
+      ],
+      "base_median": 4.2e-05,
+      "head_median": 4.2e-05,
+      "change": 0.0,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_input_requested_day.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        -1.0,
+        -1.0,
+        -1.0
+      ],
+      "head": [
+        -1.0,
+        -1.0
+      ],
+      "base_median": -1.0,
+      "head_median": -1.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_negative_tax_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        3.84,
+        3.76,
+        3.68
+      ],
+      "head": [
+        3.68,
+        3.68
+      ],
+      "base_median": 3.76,
+      "head_median": 3.68,
+      "change": -0.021276595744680753,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_read_view_eval_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_read_view_evicted_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_read_view_serve_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_read_view_serve_us_max.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_read_view_serve_us_total.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_economy_read_view_subscriptions.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_event_dispatch_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_event_dispatch_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_event_dispatch_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_flush_slot_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "head": [
+        1.0,
+        1.0
+      ],
+      "base_median": 1.0,
+      "head_median": 1.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_full_flush_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_gdscript_callbacks.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_gpu_upload_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_gpu_upload_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_gpu_upload_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_implemented_domain_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        4095.0,
+        4095.0,
+        4095.0
+      ],
+      "head": [
+        4095.0,
+        4095.0
+      ],
+      "base_median": 4095.0,
+      "head_median": 4095.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_input_capture_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        63.6,
+        71.68,
+        64.32
+      ],
+      "head": [
+        67.54,
+        65.86
+      ],
+      "base_median": 64.32,
+      "head_median": 66.7,
+      "change": 0.037002487562189205,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_input_capture_reused.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        2.92,
+        2.88,
+        2.9
+      ],
+      "head": [
+        2.9,
+        2.9
+      ],
+      "base_median": 2.9,
+      "head_median": 2.9,
+      "change": 0.0,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_last_elapsed_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_last_elapsed_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_last_elapsed_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_last_status.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_main_wait_on_sim_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_main_wait_on_sim_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_main_wait_on_sim_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_missing_domain_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_native_executor_fault_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_native_executor_workers.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        6.0,
+        6.0,
+        6.0
+      ],
+      "head": [
+        6.0,
+        6.0
+      ],
+      "base_median": 6.0,
+      "head_median": 6.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_pod_completed_domain_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_pod_completed_stage_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_pod_fallback_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_pod_intent_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_pod_work_units.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_post_pulse_flush_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_post_pulse_flush_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_post_pulse_flush_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_pulse_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_receipt_queue_depth.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_required_domain_mask.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        4095.0,
+        4095.0,
+        4095.0
+      ],
+      "head": [
+        4095.0,
+        4095.0
+      ],
+      "base_median": 4095.0,
+      "head_median": 4095.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_simulation_committed_day.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        63.02,
+        71.2,
+        63.82
+      ],
+      "head": [
+        66.98,
+        65.28
+      ],
+      "base_median": 63.82,
+      "head_median": 66.13,
+      "change": 0.03619554998433085,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_simulation_environment_cell_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        2400.0,
+        2400.0,
+        2400.0
+      ],
+      "head": [
+        2400.0,
+        2400.0
+      ],
+      "base_median": 2400.0,
+      "head_median": 2400.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_simulation_environment_day.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        63.76,
+        71.86,
+        64.46
+      ],
+      "head": [
+        67.66,
+        66.0
+      ],
+      "base_median": 64.46,
+      "head_median": 66.83,
+      "change": 0.036766987278932746,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_simulation_environment_generation.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        63.76,
+        71.86,
+        64.46
+      ],
+      "head": [
+        67.66,
+        66.0
+      ],
+      "base_median": 64.46,
+      "head_median": 66.83,
+      "change": 0.036766987278932746,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_simulation_generation.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        63.02,
+        71.2,
+        63.82
+      ],
+      "head": [
+        66.98,
+        65.28
+      ],
+      "base_median": 63.82,
+      "head_median": 66.13,
+      "change": 0.03619554998433085,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_simulation_host_state.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        2.14,
+        2.26,
+        2.16
+      ],
+      "head": [
+        2.22,
+        2.18
+      ],
+      "base_median": 2.16,
+      "head_median": 2.2,
+      "change": 0.018518518518518535,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_simulation_invalid_environment_rejected.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_simulation_time_debt_days.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_stale_environment_rejected.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_ui_input_to_feedback_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_ui_input_to_feedback_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_ui_input_to_feedback_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_visual_apply_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        2.67,
+        2.806,
+        2.683
+      ],
+      "head": [
+        2.641,
+        2.575
+      ],
+      "base_median": 2.683,
+      "head_median": 2.608,
+      "change": -0.027953783078643213,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_visual_apply_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1.82188,
+        1.83366,
+        1.7568000000000001
+      ],
+      "head": [
+        1.8026,
+        1.7770599999999999
+      ],
+      "base_median": 1.82188,
+      "head_median": 1.7898299999999998,
+      "change": -0.017591718444683588,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_visual_apply_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        2.545,
+        2.592,
+        2.484
+      ],
+      "head": [
+        2.556,
+        2.466
+      ],
+      "base_median": 2.545,
+      "head_median": 2.511,
+      "change": -0.013359528487229787,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_visual_diff_cell_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        2400.0,
+        2400.0,
+        2400.0
+      ],
+      "head": [
+        2400.0,
+        2400.0
+      ],
+      "base_median": 2400.0,
+      "head_median": 2400.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_work_done.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_fault_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_boundary_wait_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        2.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        6.0
+      ],
+      "base_median": 0.0,
+      "head_median": 3.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_boundary_wait_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        2.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        2.4
+      ],
+      "base_median": 0.0,
+      "head_median": 1.2,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_boundary_wait_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        2.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        6.0
+      ],
+      "base_median": 0.0,
+      "head_median": 3.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_clock_wait_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        38762.0,
+        88649.0,
+        59909.0
+      ],
+      "head": [
+        66742.0,
+        55873.0
+      ],
+      "base_median": 59909.0,
+      "head_median": 61307.5,
+      "change": 0.023343738002637334,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_clock_wait_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        25636.56,
+        60988.4,
+        28237.96
+      ],
+      "head": [
+        41546.46,
+        33705.02
+      ],
+      "base_median": 28237.96,
+      "head_median": 37625.74,
+      "change": 0.33245248594445204,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_clock_wait_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        38762.0,
+        88649.0,
+        57035.0
+      ],
+      "head": [
+        66742.0,
+        55873.0
+      ],
+      "base_median": 57035.0,
+      "head_median": 61307.5,
+      "change": 0.07491014289471377,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_environment_wait_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_environment_wait_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_environment_wait_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_execute_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1155336.0,
+        1305878.0,
+        1242175.0
+      ],
+      "head": [
+        1257210.0,
+        1278768.0
+      ],
+      "base_median": 1242175.0,
+      "head_median": 1267989.0,
+      "change": 0.020781290880914526,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_execute_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        648074.2,
+        724088.08,
+        659289.64
+      ],
+      "head": [
+        686117.64,
+        669841.12
+      ],
+      "base_median": 659289.64,
+      "head_median": 677979.38,
+      "change": 0.028348299239162912,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_execute_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1125225.0,
+        1273978.0,
+        1200697.0
+      ],
+      "head": [
+        1201322.0,
+        1238895.0
+      ],
+      "base_median": 1200697.0,
+      "head_median": 1220108.5,
+      "change": 0.016166859748962478,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_input_retry_wait_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_input_retry_wait_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_input_retry_wait_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_input_wait_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_input_wait_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_input_wait_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_overhead_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1843.0,
+        1863.0,
+        1772.0
+      ],
+      "head": [
+        1731.0,
+        1668.0
+      ],
+      "base_median": 1843.0,
+      "head_median": 1699.5,
+      "change": -0.07786218122626153,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_overhead_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1445.14,
+        1443.24,
+        1369.32
+      ],
+      "head": [
+        1360.66,
+        1282.54
+      ],
+      "base_median": 1443.24,
+      "head_median": 1321.6,
+      "change": -0.08428258640281595,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_overhead_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1819.0,
+        1838.0,
+        1752.0
+      ],
+      "head": [
+        1689.0,
+        1644.0
+      ],
+      "base_median": 1819.0,
+      "head_median": 1666.5,
+      "change": -0.08383727322704783,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_paused_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        14106.0,
+        12814.0,
+        12786.0
+      ],
+      "head": [
+        15129.0,
+        14061.0
+      ],
+      "base_median": 12814.0,
+      "head_median": 14595.0,
+      "change": 0.13898860621195566,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_paused_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        14106.0,
+        12814.0,
+        12786.0
+      ],
+      "head": [
+        15129.0,
+        14061.0
+      ],
+      "base_median": 12814.0,
+      "head_median": 14595.0,
+      "change": 0.13898860621195566,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_paused_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        14106.0,
+        12814.0,
+        12786.0
+      ],
+      "head": [
+        15129.0,
+        14061.0
+      ],
+      "base_median": 12814.0,
+      "head_median": 14595.0,
+      "change": 0.13898860621195566,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_save_build_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_save_build_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_save_build_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_save_pause_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_save_pause_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_save_pause_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_total_us.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1210049.0,
+        1409204.0,
+        1316642.0
+      ],
+      "head": [
+        1340812.0,
+        1350376.0
+      ],
+      "base_median": 1316642.0,
+      "head_median": 1345594.0,
+      "change": 0.021989272710425462,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_total_us.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        689263.9,
+        799333.72,
+        701682.92
+      ],
+      "head": [
+        744153.76,
+        718892.08
+      ],
+      "base_median": 701682.92,
+      "head_median": 731522.9199999999,
+      "change": 0.04252633083900614,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.runtime_graph_worker_time_total_us.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1179914.0,
+        1377279.0,
+        1272270.0
+      ],
+      "head": [
+        1284882.0,
+        1310479.0
+      ],
+      "base_median": 1272270.0,
+      "head_median": 1297680.5,
+      "change": 0.01997256871576002,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_capture_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_capture_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_capture_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_climate_wait_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_climate_wait_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_climate_wait_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_climate_writeback_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_climate_writeback_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_climate_writeback_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_country_peer_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_country_peer_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_country_peer_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_country_read_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_country_read_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_country_read_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_report_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_report_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_report_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_snapshots_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_snapshots_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_snapshots_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_total_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_total_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_day_total_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_building_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.08,
+        0.073,
+        0.065
+      ],
+      "head": [
+        0.109,
+        0.069
+      ],
+      "base_median": 0.073,
+      "head_median": 0.089,
+      "change": 0.21917808219178084,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_building_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.01248,
+        0.01236,
+        0.01018
+      ],
+      "head": [
+        0.013040000000000001,
+        0.010660000000000001
+      ],
+      "base_median": 0.01236,
+      "head_median": 0.011850000000000001,
+      "change": -0.04126213592232996,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_building_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.071,
+        0.068,
+        0.061
+      ],
+      "head": [
+        0.079,
+        0.062
+      ],
+      "base_median": 0.068,
+      "head_median": 0.07050000000000001,
+      "change": 0.03676470588235297,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_commit_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.902,
+        0.705,
+        0.863
+      ],
+      "head": [
+        0.875,
+        0.833
+      ],
+      "base_median": 0.863,
+      "head_median": 0.854,
+      "change": -0.010428736964078804,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_commit_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.35044,
+        0.36482,
+        0.36134
+      ],
+      "head": [
+        0.3579,
+        0.36184
+      ],
+      "base_median": 0.36134,
+      "head_median": 0.35987,
+      "change": -0.00406819062378915,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_commit_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.496,
+        0.604,
+        0.53
+      ],
+      "head": [
+        0.484,
+        0.557
+      ],
+      "base_median": 0.53,
+      "head_median": 0.5205,
+      "change": -0.017924528301886913,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_country_read_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_country_read_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_country_read_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_country_visual_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.003,
+        0.003,
+        0.003
+      ],
+      "head": [
+        0.005,
+        0.003
+      ],
+      "base_median": 0.003,
+      "head_median": 0.004,
+      "change": 0.3333333333333333,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_country_visual_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.00128,
+        0.0017200000000000002,
+        0.0014000000000000002
+      ],
+      "head": [
+        0.00154,
+        0.00148
+      ],
+      "base_median": 0.0014000000000000002,
+      "head_median": 0.00151,
+      "change": 0.07857142857142846,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_country_visual_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.003,
+        0.003,
+        0.003
+      ],
+      "head": [
+        0.003,
+        0.003
+      ],
+      "base_median": 0.003,
+      "head_median": 0.003,
+      "change": 0.0,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_economy_input_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_economy_input_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_economy_input_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_frames.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.66,
+        0.78,
+        0.72
+      ],
+      "head": [
+        0.74,
+        0.74
+      ],
+      "base_median": 0.72,
+      "head_median": 0.74,
+      "change": 0.027777777777777804,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_last_total_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.21,
+        0.253,
+        2.576
+      ],
+      "head": [
+        2.82,
+        0.406
+      ],
+      "base_median": 0.253,
+      "head_median": 1.613,
+      "change": 5.375494071146244,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_last_total_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.08214,
+        0.07400000000000001,
+        0.12526
+      ],
+      "head": [
+        0.23648,
+        0.07526
+      ],
+      "base_median": 0.08214,
+      "head_median": 0.15587,
+      "change": 0.8976138300462625,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_last_total_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.208,
+        0.127,
+        0.22
+      ],
+      "head": [
+        2.541,
+        0.127
+      ],
+      "base_median": 0.208,
+      "head_median": 1.334,
+      "change": 5.413461538461539,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_overlay_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_overlay_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_overlay_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_peer_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_peer_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_peer_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_resource_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.137,
+        0.125,
+        0.114
+      ],
+      "head": [
+        0.104,
+        0.102
+      ],
+      "base_median": 0.125,
+      "head_median": 0.103,
+      "change": -0.17600000000000005,
+      "status": "improved"
+    },
+    {
+      "metric": "csv.sched_proc_resource_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0828,
+        0.08276,
+        0.08426
+      ],
+      "head": [
+        0.08130000000000001,
+        0.08272
+      ],
+      "base_median": 0.0828,
+      "head_median": 0.08201,
+      "change": -0.009541062801932355,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_resource_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.113,
+        0.105,
+        0.104
+      ],
+      "head": [
+        0.101,
+        0.1
+      ],
+      "base_median": 0.105,
+      "head_median": 0.1005,
+      "change": -0.04285714285714277,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_snapshots_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_snapshots_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_snapshots_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_visual_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        2.67,
+        2.806,
+        2.683
+      ],
+      "head": [
+        2.641,
+        2.575
+      ],
+      "base_median": 2.683,
+      "head_median": 2.608,
+      "change": -0.027953783078643213,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_visual_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1.82188,
+        1.83366,
+        1.7568000000000001
+      ],
+      "head": [
+        1.8026,
+        1.7770599999999999
+      ],
+      "base_median": 1.82188,
+      "head_median": 1.7898299999999998,
+      "change": -0.017591718444683588,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.sched_proc_visual_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        2.545,
+        2.592,
+        2.484
+      ],
+      "head": [
+        2.556,
+        2.466
+      ],
+      "base_median": 2.545,
+      "head_median": 2.511,
+      "change": -0.013359528487229787,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.speed_multiplier.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        50.0,
+        50.0,
+        50.0
+      ],
+      "head": [
+        50.0,
+        50.0
+      ],
+      "base_median": 50.0,
+      "head_median": 50.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.t_render_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.t_render_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.t_render_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.t_sus_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.t_sus_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.t_sus_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.t_ui_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.t_ui_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.t_ui_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_label_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.tail_label_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_label_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_label_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_overlay_interval_msec.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "head": [
+        100.0,
+        100.0
+      ],
+      "base_median": 100.0,
+      "head_median": 100.0,
+      "change": 0.0,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_overlay_last_bake_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_overlay_last_bake_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_overlay_last_bake_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_overlay_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_overlay_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_overlay_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_overlay_refresh_count.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.tail_vegetation_assemble_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_assemble_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_assemble_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_cache_update_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_cache_update_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_cache_update_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_dedup_skips.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.tail_vegetation_encode_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_encode_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_encode_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_forced_tasks.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.tail_vegetation_inflight.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.tail_vegetation_max_task_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_max_task_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_max_task_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_plan_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_plan_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_plan_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_tasks.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "csv.tail_vegetation_upload_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_upload_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tail_vegetation_upload_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.tick_idx.mean",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        62.98,
+        71.14,
+        63.74
+      ],
+      "head": [
+        66.94,
+        65.22
+      ],
+      "base_median": 63.74,
+      "head_median": 66.08,
+      "change": 0.036711641041731975,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.timestamp_ms.max",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        23530.0,
+        25443.0,
+        25412.0
+      ],
+      "head": [
+        25435.0,
+        25626.0
+      ],
+      "base_median": 25412.0,
+      "head_median": 25530.5,
+      "change": 0.004663151267117897,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.timestamp_ms.mean",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        23008.8,
+        24833.12,
+        24796.7
+      ],
+      "head": [
+        24838.06,
+        24994.54
+      ],
+      "base_median": 24796.7,
+      "head_median": 24916.300000000003,
+      "change": 0.004823222444922195,
+      "status": "within_noise"
+    },
+    {
+      "metric": "csv.timestamp_ms.p95",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        23500.0,
+        25411.0,
+        25367.0
+      ],
+      "head": [
+        25379.0,
+        25586.0
+      ],
+      "base_median": 25367.0,
+      "head_median": 25482.5,
+      "change": 0.004553159616825009,
+      "status": "within_noise"
+    },
+    {
+      "metric": "harness.adjusted_days_per_second",
+      "kind": "timing",
+      "better": "higher",
+      "base": [
+        97.32006,
+        96.06554,
+        96.794609
+      ],
+      "head": [
+        96.399831,
+        97.454112
+      ],
+      "base_median": 96.794609,
+      "head_median": 96.92697150000001,
+      "change": 0.0013674573549856842,
+      "status": "within_noise"
+    },
+    {
+      "metric": "harness.adjusted_run_ms",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1214.677,
+        1412.489,
+        1318.475
+      ],
+      "head": [
+        1342.953,
+        1351.009
+      ],
+      "base_median": 1318.475,
+      "head_median": 1346.981,
+      "change": 0.021620432696865765,
+      "status": "within_noise"
+    },
+    {
+      "metric": "harness.capacity_waits",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "harness.consume_ms",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        121.247,
+        131.882,
+        122.191
+      ],
+      "head": [
+        126.037,
+        123.979
+      ],
+      "base_median": 122.191,
+      "head_median": 125.00800000000001,
+      "change": 0.023054071085431883,
+      "status": "within_noise"
+    },
+    {
+      "metric": "harness.idle_wait_ms",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "within_noise"
+    },
+    {
+      "metric": "harness.lower_bound_days_per_second",
+      "kind": "timing",
+      "better": "higher",
+      "base": [
+        348.513011,
+        340.274377,
+        341.688429
+      ],
+      "head": [
+        335.463671,
+        319.800445
+      ],
+      "base_median": 341.688429,
+      "head_median": 327.63205800000003,
+      "change": -0.04113797778033612,
+      "status": "within_noise"
+    },
+    {
+      "metric": "harness.lower_bound_run_ms",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        120.512,
+        120.491,
+        122.919
+      ],
+      "head": [
+        116.257,
+        125.078
+      ],
+      "base_median": 120.512,
+      "head_median": 120.6675,
+      "change": 0.001290327934147666,
+      "status": "within_noise"
+    },
+    {
+      "metric": "harness.pipeline_depth",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        3.0,
+        3.0,
+        3.0
+      ],
+      "head": [
+        3.0,
+        3.0
+      ],
+      "base_median": 3.0,
+      "head_median": 3.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "harness.polls",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        152.0,
+        174.0,
+        162.0
+      ],
+      "head": [
+        166.0,
+        167.0
+      ],
+      "base_median": 162.0,
+      "head_median": 166.5,
+      "change": 0.027777777777777776,
+      "status": "within_noise"
+    },
+    {
+      "metric": "harness.raw_days_per_second",
+      "kind": "timing",
+      "better": "higher",
+      "base": [
+        34.577093,
+        29.026775,
+        31.854984
+      ],
+      "head": [
+        29.04048,
+        29.607501
+      ],
+      "base_median": 31.854984,
+      "head_median": 29.3239905,
+      "change": -0.0794536107756325,
+      "status": "within_noise"
+    },
+    {
+      "metric": "harness.writeback_window_ms",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1094.165,
+        1291.998,
+        1195.556
+      ],
+      "head": [
+        1226.696,
+        1225.931
+      ],
+      "base_median": 1195.556,
+      "head_median": 1226.3135,
+      "change": 0.025726523893485488,
+      "status": "within_noise"
+    },
+    {
+      "metric": "result.barrier_pulses",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.city_good_output_cache_bytes",
+      "kind": "cost",
+      "better": "lower",
+      "base": [
+        10292.0,
+        10292.0,
+        10292.0
+      ],
+      "head": [
+        10292.0,
+        10292.0
+      ],
+      "base_median": 10292.0,
+      "head_median": 10292.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.city_good_output_non_neutral_shared_count",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.city_good_output_override_cell_count",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.city_good_output_override_count",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.city_good_output_shared_count",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        172.0,
+        172.0,
+        172.0
+      ],
+      "head": [
+        172.0,
+        172.0
+      ],
+      "base_median": 172.0,
+      "head_median": 172.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.country_count",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        4.0,
+        4.0,
+        4.0
+      ],
+      "head": [
+        4.0,
+        4.0
+      ],
+      "base_median": 4.0,
+      "head_median": 4.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.days",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        50.0,
+        50.0,
+        50.0
+      ],
+      "head": [
+        50.0,
+        50.0
+      ],
+      "base_median": 50.0,
+      "head_median": 50.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.economy_memory_bytes",
+      "kind": "cost",
+      "better": "lower",
+      "base": [
+        44079624.0,
+        44176469.0,
+        44181328.0
+      ],
+      "head": [
+        44118780.0,
+        44172818.0
+      ],
+      "base_median": 44176469.0,
+      "head_median": 44145799.0,
+      "change": -0.000694261010312979,
+      "status": "within_noise"
+    },
+    {
+      "metric": "result.effect_instance_storage_bytes",
+      "kind": "cost",
+      "better": "lower",
+      "base": [
+        4256.0,
+        8512.0,
+        4256.0
+      ],
+      "head": [
+        8512.0,
+        4256.0
+      ],
+      "base_median": 4256.0,
+      "head_median": 6384.0,
+      "change": 0.5,
+      "status": "within_noise"
+    },
+    {
+      "metric": "result.effect_instances",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        19.0,
+        19.0,
+        19.0
+      ],
+      "head": [
+        19.0,
+        19.0
+      ],
+      "base_median": 19.0,
+      "head_median": 19.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.effect_metric_slab_bytes",
+      "kind": "cost",
+      "better": "lower",
+      "base": [
+        21375.0,
+        42750.0,
+        21375.0
+      ],
+      "head": [
+        42750.0,
+        21375.0
+      ],
+      "base_median": 21375.0,
+      "head_median": 32062.5,
+      "change": 0.5,
+      "status": "within_noise"
+    },
+    {
+      "metric": "result.expected_rows",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        50.0,
+        50.0,
+        50.0
+      ],
+      "head": [
+        50.0,
+        50.0
+      ],
+      "base_median": 50.0,
+      "head_median": 50.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.export_tariff_rate",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.family_branch_count",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        4.0,
+        4.0,
+        4.0
+      ],
+      "head": [
+        4.0,
+        4.0
+      ],
+      "base_median": 4.0,
+      "head_median": 4.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.family_count",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        4.0,
+        4.0,
+        4.0
+      ],
+      "head": [
+        4.0,
+        4.0
+      ],
+      "base_median": 4.0,
+      "head_median": 4.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.family_effect_group_members",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.family_effect_stack_groups",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.family_trait_roll_count",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        12.0,
+        12.0,
+        12.0
+      ],
+      "head": [
+        12.0,
+        12.0
+      ],
+      "base_median": 12.0,
+      "head_median": 12.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.foreign_count",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        3.0,
+        3.0,
+        3.0
+      ],
+      "head": [
+        3.0,
+        3.0
+      ],
+      "base_median": 3.0,
+      "head_median": 3.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.generation_ms",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        18543.5,
+        20464.1,
+        20513.9
+      ],
+      "head": [
+        20058.1,
+        20693.5
+      ],
+      "base_median": 20464.1,
+      "head_median": 20375.8,
+      "change": -0.00431487336359768,
+      "status": "within_noise"
+    },
+    {
+      "metric": "result.goods_error",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.import_tariff_rate",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.ledger_failures",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.money_error",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.population",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        160.0,
+        160.0,
+        160.0
+      ],
+      "head": [
+        160.0,
+        160.0
+      ],
+      "base_median": 160.0,
+      "head_median": 160.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.population_error",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.population_scale",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.rows",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        50.0,
+        50.0,
+        50.0
+      ],
+      "head": [
+        50.0,
+        50.0
+      ],
+      "base_median": 50.0,
+      "head_median": 50.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.run_ms",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        1214.7,
+        1412.5,
+        1318.5
+      ],
+      "head": [
+        1343.0,
+        1351.0
+      ],
+      "base_median": 1318.5,
+      "head_median": 1347.0,
+      "change": 0.02161547212741752,
+      "status": "within_noise"
+    },
+    {
+      "metric": "result.seed",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        20260718.0,
+        20260718.0,
+        20260718.0
+      ],
+      "head": [
+        20260718.0,
+        20260718.0
+      ],
+      "base_median": 20260718.0,
+      "head_median": 20260718.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.speed",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        50.0,
+        50.0,
+        50.0
+      ],
+      "head": [
+        50.0,
+        50.0
+      ],
+      "base_median": 50.0,
+      "head_median": 50.0,
+      "change": 0.0,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.tariff_collected",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.tariff_subsidy_paid",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.trade_base_cumulative",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.trade_country_goods",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.trade_country_partners",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.trade_orders_arrived",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.trade_orders_cumulative",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.trade_orders_dispatched",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.trade_route_expansions",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "result.trade_tariff_lanes",
+      "kind": "gauge",
+      "better": "lower",
+      "base": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "head": [
+        0.0,
+        0.0
+      ],
+      "base_median": 0.0,
+      "head_median": 0.0,
+      "change": null,
+      "status": "unchanged"
+    },
+    {
+      "metric": "rusage.cpu_s",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        13.369073,
+        13.82143,
+        13.75118
+      ],
+      "head": [
+        14.07976,
+        13.847844
+      ],
+      "base_median": 13.75118,
+      "head_median": 13.963802000000001,
+      "change": 0.015462091253259824,
+      "status": "within_noise"
+    },
+    {
+      "metric": "rusage.maxrss_mb",
+      "kind": "cost",
+      "better": "lower",
+      "base": [
+        994.25,
+        999.15625,
+        998.34375
+      ],
+      "head": [
+        997.25,
+        998.40625
+      ],
+      "base_median": 998.34375,
+      "head_median": 997.828125,
+      "change": -0.000516480420696779,
+      "status": "within_noise"
+    },
+    {
+      "metric": "rusage.sys_s",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        0.6913929999999999,
+        0.645976,
+        0.642778
+      ],
+      "head": [
+        0.752153,
+        0.650763
+      ],
+      "base_median": 0.645976,
+      "head_median": 0.7014579999999999,
+      "change": 0.08588863982562807,
+      "status": "within_noise"
+    },
+    {
+      "metric": "rusage.user_s",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        12.67768,
+        13.175454,
+        13.108402
+      ],
+      "head": [
+        13.327607,
+        13.197081
+      ],
+      "base_median": 13.108402,
+      "head_median": 13.262344,
+      "change": 0.011743765563491316,
+      "status": "within_noise"
+    },
+    {
+      "metric": "rusage.wall_s",
+      "kind": "timing",
+      "better": "lower",
+      "base": [
+        23.765847000002395,
+        25.732708249997813,
+        25.621841082989704
+      ],
+      "head": [
+        25.669686667009955,
+        25.964171917003114
+      ],
+      "base_median": 25.621841082989704,
+      "head_median": 25.816929292006535,
+      "change": 0.007614137031953937,
+      "status": "within_noise"
+    }
+  ],
+  "excluded_rounds": [
+    "head round 3: godot exit=6; result rows=49 expected 50; perf csv has 49 data rows, expected 50"
+  ],
+  "elapsed_s": 262,
+  "budget_min": 10,
+  "created": "2026-11-25T05:25:23Z",
+  "method_version": 2
+}

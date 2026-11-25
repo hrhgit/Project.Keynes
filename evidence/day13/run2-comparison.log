@@ -1,0 +1,3 @@
+estimated work 690s; may wait up to 0s for a quiet machine
+measuring 9ddb12734262 (no record)
+PERF_CHECK_RESULT={"status": "fail", "reasons": ["scons platform=macos target=template_debug arch=arm64 dev_build=no -j8 exited 1\nTraceback (most recent call last):\n  File \"/Users/herh/.local/bin/scons\", line 3, in <module>\n    from SCons.Script.Main import main\nModuleNotFoundError: No module named 'SCons'\n"]}

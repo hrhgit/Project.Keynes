@@ -1,0 +1,59 @@
+$ /bin/zsh -lc '/bin/rm -r -- repo perf user-home tmp old-build-git-pointer old-submodule-git-pointer'
+  -> exit 0
+
+$ /bin/zsh -lc 'cat /Users/herh/MyFiles/games/keynes-wt-day13/.agents/skills/project-keynes-perf-change-check/SKILL.md'
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-optional-locks rev-parse HEAD'
+  -> exit 0
+
+$ /bin/zsh -lc "ls -A '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2'"
+  -> exit 0
+
+$ /bin/zsh -lc 'for log_file in ~/.keynes-perf/records/9ddb12734262/*/20*/*.log(N); do tail -n 3 "$log_file"; done'
+  -> exit 0
+
+$ /bin/zsh -lc 'for log_file in ~/.keynes-perf/records/ec9a22ce2ec3/*/20*/*.log(N); do tail -n 3 "$log_file"; done'
+  -> exit 0
+
+$ /bin/zsh -lc 'for log_file in ~/.keynes-perf/records/ec9a22ce2ec3/*/20*/build-*.log(N); do tail -n 3 "$log_file"; done'
+  -> exit 0
+
+$ /bin/zsh -lc "set -o pipefail
+python3 tools/perf/perf_change_check.py compare 9ddb127342622cc1230b4690d2ea07b96e2c7be7 ec9a22ce2ec349504c474fef3099f01c8b79d3c0 --tier quick --unmeasured 'Issue #66 counts full elevation and wind overlay builds and texture uploads while each overlay is open. The headless recorder leaves the overlays closed, so csv.tail_overlay_refresh_count.mean does not measure the claim.' 2>&1 | tee '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2/retry-comparison.log'"
+  -> exit 75
+
+$ /bin/zsh -lc 'ls -a ~/.keynes-perf/worktrees/{9ddb12734262,ec9a22ce2ec3}/.perf-built'
+  -> exit 0
+
+$ /bin/zsh -lc 'python3 tools/perf/perf_change_check.py history'
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-optional-locks status --short --branch'
+  -> exit 0
+
+$ /bin/zsh -lc "set -o pipefail
+python3 tools/perf/perf_change_check.py compare 9ddb127342622cc1230b4690d2ea07b96e2c7be7 ec9a22ce2ec349504c474fef3099f01c8b79d3c0 --tier quick --unmeasured 'Issue #66 counts full elevation and wind overlay builds and texture uploads while each overlay is open. The headless recorder leaves the overlays closed, so csv.tail_overlay_refresh_count.mean does not measure the claim.' 2>&1 | tee '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2/retry-after-deferred.log'"
+  -> exit 1
+
+$ /bin/zsh -lc 'cat ~/.keynes-perf/comparisons/9ddb12734262..ec9a22ce2ec3-20261124-212523/report.md'
+  -> exit 0
+
+$ /bin/zsh -lc 'ls -1 ~/.keynes-perf/worktrees'
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-optional-locks rev-parse HEAD'
+  -> exit 0
+
+$ /bin/zsh -lc "python3 -c 'import json; from pathlib import Path; p=Path.home()/\".keynes-perf/comparisons/9ddb12734262..ec9a22ce2ec3-20261124-212523/report.json\"; d=json.loads(p.read_text()); print(json.dumps({k:d[k] for k in (\"base\",\"head\",\"scenario\",\"correctness\",\"excluded_rounds\",\"elapsed_s\")}, indent=2)); print(*(r for r in d[\"metrics\"] if r[\"metric\"] == \"csv.tail_overlay_refresh_count.mean\"), sep=\"\\n\")'"
+  -> exit 0
+
+$ /bin/zsh -lc 'git --no-optional-locks status --short --branch'
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n -i 'mismatch|golden|pass' ~/.keynes-perf/records/{9ddb12734262/days50_foreign_count3_height40_seed20260718_speed50_width60/20261124-212101-fd50095c6e657082,ec9a22ce2ec3/days50_foreign_count3_height40_seed20260718_speed50_width60/20261124-212149-fd50095c6e657082}/golden.log"
+  -> exit 0
+
+$ /bin/zsh -lc "rg -n 'CSV row count mismatch|expected_rows=|\\[headless-perf\\] ERROR' ~/.keynes-perf/records/ec9a22ce2ec3/days50_foreign_count3_height40_seed20260718_speed50_width60/20261124-212149-fd50095c6e657082"
+  -> exit 0
+

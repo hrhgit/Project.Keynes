@@ -1,0 +1,51 @@
+[use-ai] call_id=20261124-210442-ecfb 已启动（codex app-server）。插话：ai_ctl.py steer 20261124-210442-ecfb --message '...'；打断：ai_ctl.py interrupt 20261124-210442-ecfb [--message '新指示']
+## 1. Skills listed before any tool calls
+
+- project-keynes-headless-perf: `r8/project-keynes-headless-perf/SKILL.md`
+- project-keynes-headless-perf: `r0/project-keynes-headless-perf/SKILL.md`
+- project-keynes-perf-change-check: `r8/project-keynes-perf-change-check/SKILL.md`
+- project-keynes-perf-change-check: `r0/project-keynes-perf-change-check/SKILL.md`
+
+## 2. Skill steps and output
+
+1. **Read the skill, resolve the commits, and identify the metric.** `cmp` confirmed both skill copies are identical. The merge lookup returned the merge commit, its first parent, and the PR head.
+
+   ```sh
+   git log master --first-parent --merges --format='%H %P' --grep='Merge pull request #72 '
+   ```
+
+   ```text
+   5fc4c7114914bd3653ef3ee6cec47bf45a3d6295 9ddb127342622cc1230b4690d2ea07b96e2c7be7 ec9a22ce2ec349504c474fef3099f01c8b79d3c0
+   ```
+
+   `python3 tools/perf/perf_change_check.py --home ~/.keynes-perf history` showed no saved record for either commit. I inspected `metrics[].metric` in the latest archived `report.json`. `csv.tail_overlay_refresh_count.mean` was zero in all six rounds. Issue 66 counts full builds and texture uploads while each overlay is **open**, so I selected `--unmeasured`.
+
+2. **Run the comparison.** I initially chose an isolated build and home directory to honor the original write restriction. I ran the following command. The script records the exact `perf_change_check.py` invocation and environment.
+
+   ```sh
+   /bin/bash '/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2/compare.sh'
+   ```
+
+   It exited 1 during the base build. The isolated home hid the installed SCons package. After your clarification, `scons --version` confirmed that SCons 4.11.1 loads in the normal environment.
+
+3. **Read the verdict.** This is the complete line from the isolated attempt.
+
+   ```text
+   PERF_CHECK_RESULT={"status": "fail", "reasons": ["scons platform=macos target=template_debug arch=arm64 dev_build=no -j8 exited 1\nTraceback (most recent call last):\n  File \"/Users/herh/.local/bin/scons\", line 3, in <module>\n    from SCons.Script.Main import main\nModuleNotFoundError: No module named 'SCons'\n"]}
+   ```
+
+4. **Targeted tests.** The skill calls for stopping on a base build failure. The overlay test, daily result comparison, and performance rounds were unrun. Overlay counts, windowed frame time, and GPU work remain unverified.
+
+5. **Report.** The failed build produced no `report.md` or `report.json`. The saved [comparison log](/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2/comparison.log) contains the verdict. The [preflight notes](/private/tmp/claude-501/-Users-herh--claude-spares-spare-NE9wOt/14c5315e-8201-4bb1-a2ca-50a3f3b05ee0/scratchpad/d13/run2/preflight.md) contain the exact setup, input, and archive inspection commands.
+
+## 3. What I need to continue
+
+The default-archive run is pending your approval for automatic cache cleanup. `rg -n '^MAX_WORKTREES' tools/perf/perf_change_check.py` returned `71:MAX_WORKTREES = 3`. `ls -1tr ~/.keynes-perf/worktrees` showed three cached worktrees. Adding the two PR commits would make the script remove `7ebdf9d20ac6` and `6ce469e952a2`. Their saved measurements and reports would stay in the archive.
+
+The checkout is clean and detached at `b05f8fc9e336bf055b02b870e2c75917cc9bc875`. The archive is intact.
+
+============================================================
+[use-ai] call_id=20261124-210442-ecfb cli=codex status=ok model=gpt-6.2-sol effort=high duration=256.1s out_tokens=8079 commands=54 edits=0
+[use-ai] 审阅完结果后必须评分：ai_stats.py rate 20261124-210442-ecfb --outcome good|partial|bad [--rework none|minor|major] --note '...'
+
+[exited with code 0]

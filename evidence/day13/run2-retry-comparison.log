@@ -1,0 +1,14 @@
+estimated work 690s; may wait up to 0s for a quiet machine
+measuring 9ddb12734262 (no record)
+imported 9ddb12734262 in 15s (cache from 5b69be27c267)
+built 9ddb12734262: compile 45s, total 74s
+machine busy, waiting: cpu 39% idle, below 50%
+measuring ec9a22ce2ec3 (no record)
+machine busy, waiting: cpu 47% idle, below 50%
+imported ec9a22ce2ec3 in 16s (cache from 9ddb12734262)
+built ec9a22ce2ec3: compile 295s, total 325s
+round 1/3 9ddb12734262
+round 1/3 ec9a22ce2ec3
+round 2/3 9ddb12734262
+round 2/3 ec9a22ce2ec3
+PERF_CHECK_RESULT={"status": "deferred", "reasons": ["the 10-minute run budget expired"]}

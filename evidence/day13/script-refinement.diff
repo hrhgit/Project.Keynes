@@ -1,0 +1,189 @@
+diff --git a/.github/workflows/runtime-checks.yml b/.github/workflows/runtime-checks.yml
+index 964612c39..2d52fb9d0 100644
+--- a/.github/workflows/runtime-checks.yml
++++ b/.github/workflows/runtime-checks.yml
+@@ -22,6 +22,7 @@ jobs:
+           sparse-checkout: |
+             /tools/ci/
+             /tools/factory/
++            /tools/perf/
+             /gdext/src/
+             /gdext/tests/
+             /Project/project-keynes/**/*.gd
+diff --git a/tools/perf/perf_change_check.py b/tools/perf/perf_change_check.py
+index e89e8c8ca..9f0c2b708 100644
+--- a/tools/perf/perf_change_check.py
++++ b/tools/perf/perf_change_check.py
+@@ -384,8 +384,12 @@ def cpu_idle() -> float | None:
+ 
+ 
+ def judge(correctness: list[str], invalid_runs: list[str], rows: list[dict],
+-          claims: list[str]) -> tuple[str, list[str]]:
+-    """Overall status from facts: fail, needs_human or pass."""
++          claims: list[str], unmeasured: str | None = None) -> tuple[str, list[str]]:
++    """Overall status from facts: fail, needs_human or pass.
++
++    `unmeasured` says why the claimed gain cannot be measured headlessly. The results check and
++    the headline metrics are still judged, but such a run never passes: the claim needs a person.
++    """
+     reasons = list(correctness) + list(invalid_runs)
+     if reasons:
+         return "fail", reasons
+@@ -394,7 +398,10 @@ def judge(correctness: list[str], invalid_runs: list[str], rows: list[dict],
+                if row["status"] in incomplete]
+     if missing:
+         return "fail", missing
+-    human = [] if claims else ["no improvement claim supplied"]
++    if unmeasured is not None:
++        human = [f"claim not measured headlessly: {unmeasured}"]
++    else:
++        human = [] if claims else ["no improvement claim supplied"]
+     regressions = ("regressed", "more_work")
+     for pattern in claims:
+         matched = [row for row in rows if re.search(pattern, row["metric"])]
+@@ -962,6 +969,7 @@ def render_markdown(report: dict) -> str:
+     lines += ["", "## Coverage", "",
+               f"- {len(rows)} metrics compared: " + ", ".join(f"{v} {k}" for k, v in sorted(counts.items())),
+               *(f"- Excluded from the statistics: {item}" for item in report.get("excluded_rounds", [])),
++              *([f"- Claim not measured headlessly: {report['unmeasured']}"] if report.get("unmeasured") else []),
+               "- Not measured: windowed frame time and GPU work (needs an unlocked screen).",
+               f"- Raw data: base `{base['path']}`, head `{head['path']}`"]
+     if report["busy_samples"]:
+@@ -972,7 +980,8 @@ def render_markdown(report: dict) -> str:
+     return "\n".join(lines) + "\n"
+ 
+ 
+-def assess(base: dict, head: dict, claims: list[str], noise: float) -> dict:
++def assess(base: dict, head: dict, claims: list[str], noise: float,
++           unmeasured: str | None = None) -> dict:
+     """Correctness is always checked; invalid rounds fail the check and never enter the statistics."""
+     invalid = [f"{side} round {i}: {'; '.join(r['errors'])}"
+                for side, record in (("base", base), ("head", head))
+@@ -989,7 +998,7 @@ def assess(base: dict, head: dict, claims: list[str], noise: float) -> dict:
+ 
+     rows = compare_rounds(valid_metrics(base), valid_metrics(head), noise)
+     correctness = correctness_facts(base, head)
+-    status, reasons = judge(correctness, invalid, rows, claims)
++    status, reasons = judge(correctness, invalid, rows, claims, unmeasured)
+     return {"status": status, "reasons": reasons, "correctness": correctness, "rows": rows,
+             "excluded_rounds": invalid}
+ 
+@@ -997,7 +1006,7 @@ def assess(base: dict, head: dict, claims: list[str], noise: float) -> dict:
+ def command_compare(args, repo: Path, archive: Archive) -> int:
+     busy = []
+     base, head = ensure_records(repo, archive, [args.base, args.head], args, busy)
+-    verdict = assess(base, head, args.claim, args.noise)
++    verdict = assess(base, head, args.claim, args.noise, args.unmeasured)
+     status, reasons, correctness, rows = (verdict[key] for key in ("status", "reasons", "correctness", "rows"))
+     def side(record):
+         return {"commit": record["identity"]["commit"], "subject": record.get("subject"),
+@@ -1006,7 +1015,7 @@ def command_compare(args, repo: Path, archive: Archive) -> int:
+                 "path": record.get("path"), "load_consistency": record.get("load_consistency")}
+     report = {"status": status, "reasons": reasons, "base": side(base), "head": side(head),
+               "scenario": args.scenario, "tier": args.tier, "requested_rounds": args.rounds, "noise": args.noise,
+-              "claims": args.claim, "machine": head["identity"]["machine_label"],
++              "claims": args.claim, "unmeasured": args.unmeasured, "machine": head["identity"]["machine_label"],
+               "toolchain": head["identity"]["toolchain_label"], "correctness": correctness,
+               "busy_samples": busy, "metrics": rows, "excluded_rounds": verdict["excluded_rounds"],
+               "elapsed_s": round(time.monotonic() - args.started), "budget_min": args.budget,
+@@ -1061,8 +1070,12 @@ def parse_args(argv: list[str]):
+         else:
+             p.add_argument("base")
+             p.add_argument("head")
+-            p.add_argument("--claim", action="append", required=True,
++            p.add_argument("--claim", action="append", default=[],
+                            help="regex of a metric the change claims to improve (repeatable)")
++            p.add_argument("--unmeasured", metavar="REASON",
++                           help="part of the claimed gain has no headless metric (say why); the daily "
++                                "results, headline metrics and any --claim are still judged, and the "
++                                "run never passes")
+             p.add_argument("--noise", type=float, default=NOISE)
+             p.add_argument("--out", help="report directory (default: inside the archive)")
+         p.add_argument("--tier", choices=TIERS, default="quick")
+@@ -1079,6 +1092,10 @@ def parse_args(argv: list[str]):
+     h.add_argument("--commit")
+     args = parser.parse_args(argv)
+     if args.command == "compare":
++        if args.unmeasured is not None and not args.unmeasured.strip():
++            parser.error("--unmeasured needs a reason")
++        if not args.claim and args.unmeasured is None:
++            parser.error("compare needs --claim, --unmeasured or both")
+         for pattern in args.claim:
+             if not pattern.strip():
+                 parser.error("--claim must be a nonempty regex")
+diff --git a/tools/perf/tests/test_perf_change_check.py b/tools/perf/tests/test_perf_change_check.py
+index 888a0d957..512cf17ce 100644
+--- a/tools/perf/tests/test_perf_change_check.py
++++ b/tools/perf/tests/test_perf_change_check.py
+@@ -425,6 +425,28 @@ class Judgement(unittest.TestCase):
+         self.assertEqual(pc.judge([], [], self.ROWS, [r"no_such_metric"])[0], "needs_human")
+         self.assertEqual(pc.judge([], [], self.ROWS, [r"run_ms"])[0], "needs_human")
+ 
++    def test_refuses_pass_when_the_claim_is_unmeasured(self):
++        """Found by the first fresh-session run: a claim needing an open overlay has no headless metric."""
++        status, reasons = pc.judge([], [], self.ROWS, [], "needs an open overlay")
++        self.assertEqual(status, "needs_human")
++        self.assertEqual(reasons, ["claim not measured headlessly: needs an open overlay"])
++        self.assertEqual(pc.judge(["hash differs"], [], self.ROWS, [], "overlay")[0], "fail")
++        self.assertEqual(pc.judge([], ["round 1: fatal"], self.ROWS, [], "overlay")[0], "fail")
++        # Found by Qodo on b05f8fc: a measurable claim given next to --unmeasured is still judged.
++        status, reasons = pc.judge([], [], self.ROWS, [r"t_sus_ms"], "overlay")
++        self.assertEqual((status, reasons), ("needs_human", ["claim not measured headlessly: overlay"]))
++        args = pc.parse_args(["compare", "a", "b", "--claim", "t_sus_ms", "--unmeasured", "overlay"])
++        self.assertEqual((args.claim, args.unmeasured), (["t_sus_ms"], "overlay"))
++        for pattern in (r"no_such_metric", r"run_ms"):
++            with self.subTest(pattern=pattern):
++                status, reasons = pc.judge([], [], self.ROWS, [pattern], "overlay")
++                self.assertEqual(status, "needs_human")
++                self.assertTrue(any(pattern in reason for reason in reasons))
++        regressed = [self.ROWS[0], pc.compare_metric("result.run_ms", [10, 10], [14, 14])]
++        status, reasons = pc.judge([], [], regressed, [], "overlay")
++        self.assertEqual(status, "needs_human")
++        self.assertTrue(any("result.run_ms" in reason for reason in reasons))
++
+     def test_refuses_pass_when_headline_regressed(self):
+         for metric, base, head in (("result.run_ms", [10, 10], [14, 14]),
+                                    ("rusage.maxrss_mb", [600, 600], [601, 601])):
+@@ -525,6 +547,29 @@ class Assessment(unittest.TestCase):
+             self.assertEqual(report["head"]["rounds"], 3)
+             self.assertIn("base 4 rounds, head 3 rounds", (repo / "report.md").read_text())
+ 
++    def test_unmeasured_claim_still_checks_results_and_is_reported(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            repo = Path(tmp)
++            base = self.side(tmp, "a", {"ECONOMY": "1"}, [[], [], []])
++            head = self.side(tmp, "b", {"ECONOMY": "1"}, [[], [], []])
++            for saved in (base, head):
++                saved["identity"] = IDENTITY | saved["identity"]
++            args = pc.parse_args(["compare", "a", "b", "--unmeasured", "needs an open overlay", "--out", tmp])
++            args.started = pc.time.monotonic()
++            with mock.patch.object(pc, "ensure_records", return_value=[base, head]), \
++                 contextlib.redirect_stdout(io.StringIO()):
++                self.assertEqual(pc.command_compare(args, repo, pc.Archive(repo)), pc.EXIT_HUMAN)
++            report = json.loads((repo / "report.json").read_text())
++            self.assertEqual(report["claims"], [])
++            self.assertEqual(report["unmeasured"], "needs an open overlay")
++            markdown = (repo / "report.md").read_text()
++            self.assertIn("daily per-domain hashes of base and head are identical", markdown)
++            self.assertIn("Claim not measured headlessly: needs an open overlay", markdown)
++            head["golden"]["candidate"] = self.side(tmp, "c", {"ECONOMY": "2"}, [])["golden"]["candidate"]
++            with mock.patch.object(pc, "ensure_records", return_value=[base, head]), \
++                 contextlib.redirect_stdout(io.StringIO()):
++                self.assertEqual(pc.command_compare(args, repo, pc.Archive(repo)), pc.EXIT_FAIL)
++
+ 
+ class BuildRecipe(unittest.TestCase):
+     def test_builds_only_the_debug_target_the_headless_editor_loads(self):
+@@ -591,6 +636,12 @@ class ArgumentChecks(unittest.TestCase):
+                 self.assertEqual(pc.main(["compare", "a", "b", *flags]), pc.EXIT_USAGE)
+                 self.assertIn("--claim", stderr.getvalue())
+ 
++    def test_unmeasured_needs_a_reason(self):
++        for flags in (["--unmeasured", ""], ["--unmeasured", "  "]):
++            with self.subTest(flags=flags), contextlib.redirect_stderr(io.StringIO()) as stderr:
++                self.assertEqual(pc.main(["compare", "a", "b", *flags]), pc.EXIT_USAGE)
++                self.assertIn("--unmeasured", stderr.getvalue())
++
+     def test_history_starts_without_unix_fcntl(self):
+         with mock.patch.dict(sys.modules, {"fcntl": None}), \
+              mock.patch.object(pc.platform, "system", return_value="Windows"), \
