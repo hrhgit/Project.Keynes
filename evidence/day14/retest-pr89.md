@@ -46,4 +46,6 @@ GitHub issue events:
 2026-11-25T22:30:50Z  labeled  qodo-code-review[bot] (Bot)  Qodo approved
 ```
 
+Later the same evening (see `retest-pr87.md`): at 23:03:40 Qodo removed the label when a reopen started a new review (`reconciliation`, `incomplete_review`). While the guard held a repository entry, PR 89 was not evaluated again. With the guard set back to the path-only form it was re-evaluated at 23:44:59 and labelled at 23:45:02 by `qodo-code-review[bot]`.
+
 The label covers head `96e7e8e01` only; Qodo removes it on a new push. It means the PR met the workflow's conditions, not that every check passed: CI, tests and the factory's merge gate remain separate requirements.
