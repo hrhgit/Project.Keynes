@@ -42,7 +42,7 @@ import sys
 import time
 from pathlib import Path
 
-METHOD_VERSION = 2
+METHOD_VERSION = 3
 DEFAULT_SCENARIO = {"days": 50, "speed": 50, "seed": 20260718, "width": 60, "height": 40,
                     "foreign_count": 3}
 TIERS = ("quick", "full")
@@ -65,6 +65,9 @@ AUTH_PREFIX = "[headless-perf/auth]"
 HARNESS_PREFIX = "[headless-perf/harness]"
 PERF_SCRIPT = "res://tests/game/headless_perf_record.gd"
 REQUIRED_CSV_COLUMNS = ("tick_idx", "speed_multiplier", "t_sus_ms")
+DAY_RECORDER_METHODS = {False: "day_records_worker_v1", True: "day_records_main_v1"}
+DAY_CSV_COLUMNS = {*REQUIRED_CSV_COLUMNS, "row_idx", "runtime_graph_simulation_committed_day",
+                   "runtime_graph_simulation_generation", "commit_produced_at_us", "commit_interval_ms"}
 PROJECT = "Project/project-keynes"
 GODOT_CPP = "gdext/godot-cpp"
 LIBRARY_DIR = "addons/dots_ext/bin"
@@ -105,6 +108,39 @@ def to_number(value) -> float | None:
     return number if number == number and abs(number) != float("inf") else None
 
 
+def validate_day_csv(rows: list[dict], result: dict[str, str]) -> list[str]:
+    """The daily format requires a real commit stamp for every measured day."""
+    warmup = to_number(result.get("warmup_days"))
+    if warmup is None or warmup < 0 or not warmup.is_integer():
+        return ["invalid warmup_days for day recorder"]
+    if result.get("recorder_method") != DAY_RECORDER_METHODS[warmup == 0]:
+        return ["recorder method does not match the warmup clock"]
+    previous = None
+    for index, row in enumerate(rows):
+        day = int(warmup) + index + 1
+        if set(row) != DAY_CSV_COLUMNS:
+            return ["daily perf csv columns do not match the recorder method"]
+        if row["tick_idx"] != str(day) or row["runtime_graph_simulation_committed_day"] != str(day):
+            return [f"daily perf csv expected ordered day {day}"]
+        if row["t_sus_ms"] != "":
+            return [f"day {day}: t_sus_ms must be empty in the daily CSV"]
+        stamp = to_number(row["commit_produced_at_us"])
+        if stamp is None or stamp <= 0 or not stamp.is_integer() or (previous is not None and stamp < previous):
+            return [f"day {day}: invalid commit_produced_at_us"]
+        interval = to_number(row["commit_interval_ms"])
+        if day == 1:
+            if row["commit_interval_ms"] != "":
+                return ["day 1: commit_interval_ms has no preceding commit"]
+        elif interval is None or interval < 0 or (
+                previous is not None and interval != (stamp - previous) / 1000.0):
+            return [f"day {day}: invalid commit_interval_ms"]
+        previous = stamp
+        for column in ("row_idx", "speed_multiplier", "runtime_graph_simulation_generation"):
+            if to_number(row[column]) is None:
+                return [f"day {day}: {column} is missing or nonnumeric"]
+    return []
+
+
 def validate_perf_run(exit_code: int, result: dict[str, str] | None, csv_rows: list[dict] | None,
                       scenario: dict) -> list[str]:
     """Errors that make a headless perf run unusable as evidence (empty list = valid)."""
@@ -127,7 +163,12 @@ def validate_perf_run(exit_code: int, result: dict[str, str] | None, csv_rows: l
     csv_count = len(csv_rows) if csv_rows is not None else None
     if csv_count != days:
         errors.append(f"perf csv has {csv_count} data rows, expected {days}")
-    if csv_rows:
+    method = result.get("recorder_method")
+    if method is not None and method not in DAY_RECORDER_METHODS.values():
+        errors.append(f"unknown recorder method {method!r}")
+    elif csv_rows and method is not None:
+        errors.extend(validate_day_csv(csv_rows, result))
+    elif csv_rows:
         for column in REQUIRED_CSV_COLUMNS:
             if column not in csv_rows[0]:
                 errors.append(f"perf csv missing required column {column}")
@@ -185,6 +226,8 @@ def csv_metrics(rows: list[dict[str, str]]) -> dict[str, float]:
         return {}
     out = {}
     for column in rows[0]:
+        if column == "commit_produced_at_us":
+            continue  # Absolute timestamps identify samples. Only their intervals are measurements.
         samples = []
         populated = 0
         for day, row in enumerate(rows):
@@ -794,8 +837,17 @@ def perf_round(worktree: Path, out: Path, scenario: dict, tier: str, godot: str,
                     "rusage.user_s": usage.ru_utime, "rusage.sys_s": usage.ru_stime,
                     "rusage.maxrss_mb": usage.ru_maxrss * scale / 2**20})
     errors += validate_perf_run(exit_code, result, rows, scenario)
+    method = (result or {}).get("recorder_method")
+    if result is not None and method is None:
+        # Old scripts had no version marker. Only identical unversioned
+        # scripts can be assumed to give the old metric names the same meaning.
+        script = worktree / PROJECT / PERF_SCRIPT.removeprefix("res://")
+        try:
+            method = "unversioned:" + hashlib.sha256(script.read_bytes()).hexdigest()[:12]
+        except OSError as error:
+            errors.append(f"could not identify unversioned recorder: {error}")
     return {"label": label, "command": command, "exit": exit_code, "errors": errors,
-            "metrics": metrics, "dir": str(out)}
+            "recorder_method": method, "metrics": metrics, "dir": str(out)}
 
 
 def golden_check(worktree: Path, out: Path, godot: str, runs: int) -> dict:
@@ -996,9 +1048,25 @@ def assess(base: dict, head: dict, claims: list[str], noise: float,
         return [{key: value for key, value in sample.items() if not key.startswith("waterfall.")}
                 for sample in samples]
 
-    rows = compare_rounds(valid_metrics(base), valid_metrics(head), noise)
     correctness = correctness_facts(base, head)
-    status, reasons = judge(correctness, invalid, rows, claims, unmeasured)
+    methods = [{run.get("recorder_method") for run in record["rounds"] if not run["errors"]}
+               for record in (base, head)]
+    method_errors = [f"{side} has missing or inconsistent recorder methods"
+                     for side, method in zip(("base", "head"), methods)
+                     if len(method) > 1 or None in method]
+    invalid.extend(method_errors)
+    if method_errors:
+        rows = []
+        status, reasons = judge(correctness, invalid, rows, claims, unmeasured)
+    elif all(methods) and methods[0] != methods[1]:
+        base_method, head_method = (next(iter(method)) for method in methods)
+        reasons = correctness + invalid
+        status = "fail" if reasons else "needs_human"
+        reasons.append(f"incompatible recorder methods: {base_method} vs {head_method}")
+        rows = []
+    else:
+        rows = compare_rounds(valid_metrics(base), valid_metrics(head), noise)
+        status, reasons = judge(correctness, invalid, rows, claims, unmeasured)
     return {"status": status, "reasons": reasons, "correctness": correctness, "rows": rows,
             "excluded_rounds": invalid}
 

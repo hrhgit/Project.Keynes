@@ -6,8 +6,8 @@ extends SceneTree
 #   godot --headless --path . --script res://tests/game/headless_perf_record.gd -- \
 #     days=50 speed=50 seed=20260718 label=baseline
 #
-# This reuses WorldRuntimeHost and PerfRecorder, so the exported CSV has the
-# same perf_record_YYYYMMDD_HHMMSS.csv schema as the GM performance panel.
+# The daily CSV follows the committed day records. A companion CSV keeps the
+# foreground and runtime snapshot diagnostics from the GM recorder.
 
 const CountryAiCsvRecorderScript = preload("res://scripts/country/country_ai_csv_recorder.gd")
 const CountryAiCatalogScript = preload("res://scripts/country/country_ai_catalog.gd")
@@ -35,65 +35,10 @@ const MAX_PIPELINE_DEPTH := 3
 const AUTHORITATIVE_THROUGHPUT_CHECKPOINT_DAYS_PER_SEC := 50.0
 
 
-class CommittedDayRecorder extends PerfRecorder:
-	var observed_days := 0
-	var warmup_finished_us := 0
-	var last_measured_us := 0
-	var last_measurement_received_us := 0
-	var _first_day: int
-	var _last_day: int
-	var _speed: float
-	var _last_published_day := -1
-	var _batch_sample: Dictionary = {}
-
-	func _init(first_day: int, last_day: int, speed: float) -> void:
-		_first_day = first_day
-		_last_day = last_day
-		_speed = speed
-
+class PublicationRecorder extends PerfRecorder:
 	func on_fast_tick(sample: Dictionary) -> void:
-		# The host samples the batch immediately before emitting its day records.
 		if is_recording():
-			_batch_sample = sample
-
-	func on_day_records(records: Array) -> void:
-		var sample := _batch_sample
-		_batch_sample = {}
-		for index in records.size():
-			var record: Dictionary = records[index]
-			var day := int(record["day"])
-			if day > _last_day or not is_recording():
-				break
-			if day <= _last_published_day:
-				continue
-			_last_published_day = day
-			if day > 0:
-				observed_days += 1
-			if day == _first_day - 1:
-				warmup_finished_us = int(record["produced_at_us"])
-			if day < _first_day:
-				continue
-
-			var generation := int(record["generation"])
-			var row: Dictionary = {}
-			# One batch has one foreground timing sample. Native metrics are
-			# available only when the snapshot belongs to the same commit.
-			if index == records.size() - 1 and int(sample.get("tick_idx", -1)) == day:
-				var graph: Dictionary = sample.get("runtime_graph", {})
-				if int(graph.get("simulation_committed_day", -1)) != day \
-						or int(graph.get("simulation_generation", -1)) != generation:
-					sample = sample.duplicate()
-					sample.erase("runtime_graph")
-				row = _build_row(sample, null)
-			row["tick_idx"] = day
-			row["speed_multiplier"] = _speed
-			# Whole-graph execution does not run SUS on the foreground.
-			row["t_sus_ms"] = row.get("t_sus_ms", 0.0)
-			row["runtime_graph_simulation_committed_day"] = day
-			row["runtime_graph_simulation_generation"] = generation
-			_append_row(row)
-			last_measured_us = int(record["produced_at_us"])
-			last_measurement_received_us = Time.get_ticks_usec()
+			_append_row(_build_row(sample, null))
 
 
 func _init() -> void:
@@ -367,15 +312,18 @@ func _run() -> int:
 		return 4
 	var first_measured_day := warmup_days + 1
 	var last_measured_day := warmup_days + days
-	var recorder := CommittedDayRecorder.new(first_measured_day, last_measured_day, speed)
+	var recorder := PerfRecorder.new()
+	recorder.configure_authoritative_sampling(warmup_days, last_measured_day, speed)
 	recorder.bind_main(host)
 	if not output_dir.is_empty():
 		recorder.configure_export(output_dir, "perf.csv")
-	host.set_perf_recorder(recorder)
-	host.simulation_day_records.connect(recorder.on_day_records)
+	recorder.start()
+	var publications := PublicationRecorder.new()
+	publications.bind_main(host)
+	host.set_perf_recorder(publications)
 	# Production throughput uses compact snapshots. Full diagnostics are an
 	# explicit separate measurement, not hidden inside every measured day.
-	recorder.start(detail_mode, 1)
+	publications.start(detail_mode, 1)
 	var country_ai = generator.get_country_ai_facade() \
 		if generator.has_method("get_country_ai_facade") else null
 	var country_ai_recorder: RefCounted = null
@@ -575,6 +523,7 @@ func _run() -> int:
 			break
 
 	var authoritative_measured := recorder.row_count()
+	var measurement := recorder.authoritative_measurement()
 	var output_path := recorder.stop_and_export()
 	var csv_check := {"rows": 0, "exit_code": 6} if authoritative_measured == 0 \
 		else _check_csv(output_path, first_measured_day, days)
@@ -587,6 +536,10 @@ func _run() -> int:
 	if tech_every > 0:
 		_print_country_technology(-1, country, country_handles, generator)
 	var run_ms := float(Time.get_ticks_usec() - run_started) / 1000.0
+	var publication_path := ""
+	if not output_path.is_empty():
+		publications.configure_export(output_path.get_base_dir(), "publications_" + output_path.get_file())
+		publication_path = publications.stop_and_export()
 	var rows := int(csv_check.rows)
 	var tariff_totals := _tariff_totals(country, country_handles)
 	var trade_totals := _trade_totals(economy, country_handles)
@@ -600,13 +553,15 @@ func _run() -> int:
 	var lower_bound_run_ms := maxf(0.0, run_ms - writeback_window_ms)
 	var expected_rows := days
 	var effective_days := float(authoritative_measured)
-	var auth_measure_start_us := recorder.warmup_finished_us
-	var auth_measure_end_us := recorder.last_measured_us
-	if warmup_days == 0 and auth_measure_start_us == 0:
-		# Day zero may already be installed at setup. Use the local clock for
-		# both ends of this interval when there is no bootstrap timestamp.
+	var recorder_method := "day_records_worker_v1"
+	var auth_measure_start_us := int(measurement.warmup_commit_us)
+	var auth_measure_end_us := int(measurement.last_commit_us)
+	if warmup_days == 0:
+		# Day zero is installed at setup. Use the main thread clock for both
+		# ends of the zero-warmup run, which starts before the first day.
+		recorder_method = "day_records_main_v1"
 		auth_measure_start_us = run_started
-		auth_measure_end_us = recorder.last_measurement_received_us
+		auth_measure_end_us = int(measurement.last_observed_us)
 	var auth_elapsed_ms := 0.0
 	if auth_measure_end_us > auth_measure_start_us and auth_measure_start_us > 0:
 		auth_elapsed_ms = float(auth_measure_end_us - auth_measure_start_us) / 1000.0
@@ -623,11 +578,11 @@ func _run() -> int:
 		and authoritative_days_per_second >= AUTHORITATIVE_THROUGHPUT_CHECKPOINT_DAYS_PER_SEC
 	print("[headless-perf/auth] warmup_days=%d pipeline_depth=%d measured_days=%d committed_days=%d observed=%d commit_us=%d..%d authoritative_days_per_second=%.6f main_wait_on_sim_us=%d checkpoint_ok=%s" % [
 		warmup_days, pipeline_depth, authoritative_measured, authoritative_committed_days,
-		recorder.observed_days,
+		int(measurement.observed_days),
 		auth_measure_start_us, auth_measure_end_us, authoritative_days_per_second,
 		main_wait_on_sim_us, str(throughput_checkpoint_ok),
 	])
-	print("[headless-perf/result] label=%s days=%d speed=%.3f seed=%d map=%dx%d formal_start=%s trade_scenario=%s foreign_count=%d import_tariff_rate=%d export_tariff_rate=%d population_scale=%d saved_setup=%s economy_configured=%s country_count=%d population=%d generation_ms=%.1f run_ms=%.1f barrier_pulses=%d ledger_failures=%d fatal=%s population_error=%d money_error=%d goods_error=%d family_count=%d family_branch_count=%d family_trait_roll_count=%d effect_instances=%d family_effect_stack_groups=%d family_effect_group_members=%d effect_metric_slab_bytes=%d effect_instance_storage_bytes=%d city_good_output_shared_count=%d city_good_output_non_neutral_shared_count=%d city_good_output_override_count=%d city_good_output_override_cell_count=%d city_good_output_cache_bytes=%d trade_orders_dispatched=%d trade_orders_arrived=%d trade_orders_cumulative=%d trade_base_cumulative=%d trade_route_expansions=%d trade_tariff_lanes=%d trade_country_goods=%d trade_country_partners=%d tariff_collected=%d tariff_subsidy_paid=%d economy_memory_bytes=%d rows=%d expected_rows=%d path=%s" % [
+	print("[headless-perf/result] label=%s days=%d speed=%.3f seed=%d map=%dx%d formal_start=%s trade_scenario=%s foreign_count=%d import_tariff_rate=%d export_tariff_rate=%d population_scale=%d saved_setup=%s economy_configured=%s country_count=%d population=%d generation_ms=%.1f run_ms=%.1f barrier_pulses=%d ledger_failures=%d fatal=%s population_error=%d money_error=%d goods_error=%d family_count=%d family_branch_count=%d family_trait_roll_count=%d effect_instances=%d family_effect_stack_groups=%d family_effect_group_members=%d effect_metric_slab_bytes=%d effect_instance_storage_bytes=%d city_good_output_shared_count=%d city_good_output_non_neutral_shared_count=%d city_good_output_override_count=%d city_good_output_override_cell_count=%d city_good_output_cache_bytes=%d trade_orders_dispatched=%d trade_orders_arrived=%d trade_orders_cumulative=%d trade_base_cumulative=%d trade_route_expansions=%d trade_tariff_lanes=%d trade_country_goods=%d trade_country_partners=%d tariff_collected=%d tariff_subsidy_paid=%d economy_memory_bytes=%d rows=%d expected_rows=%d warmup_days=%d recorder_method=%s path=%s" % [
 		label, days, speed, actual_seed, actual_width, actual_height,
 		str(not synthetic_test_economy), str(trade_scenario), foreign_count, import_tariff_rate,
 		export_tariff_rate, population_scale, str(use_saved_setup),
@@ -659,8 +614,10 @@ func _run() -> int:
 		int(economy_report.get("trade_country_partner_aggregate_count", 0)),
 		int(tariff_totals.get("collected", 0)),
 		int(tariff_totals.get("subsidy_paid", 0)),
-		int(economy_report.get("memory_bytes", 0)), rows, expected_rows, output_path,
+		int(economy_report.get("memory_bytes", 0)), rows, expected_rows, warmup_days, recorder_method, output_path,
 	])
+	if not publication_path.is_empty():
+		print("[headless-perf/publications] path=%s" % publication_path)
 	var climate_authority_on := host._native_environment_active
 	# Final report only: these are the last tag snapshot's work and cumulative
 	# cache activity, not fabricated per-day CSV samples. Older builds omit them.
@@ -709,7 +666,8 @@ func _run() -> int:
 			"pipeline_depth": pipeline_depth,
 			"authoritative_measured_days": authoritative_measured,
 			"authoritative_committed_days": authoritative_committed_days,
-			"authoritative_observed_days": recorder.observed_days,
+			"authoritative_observed_days": int(measurement.observed_days),
+			"recorder_method": recorder_method,
 			"authoritative_days_per_second": authoritative_days_per_second,
 			"auth_measure_start_us": auth_measure_start_us,
 			"auth_measure_end_us": auth_measure_end_us,
@@ -735,13 +693,14 @@ func _run() -> int:
 			"fallback_count": int(runtime_report_end.get("pod_fallback_count",
 				runtime_report_end.get("fallback_count", 0))),
 			"perf_csv": output_path,
+			"publication_csv": publication_path,
 			"runtime_report_start": runtime_report_start,
 			"runtime_report_end": runtime_report_end,
 			"climate_authority_start": climate_diag_start,
 			"climate_authority_end": climate_diag,
 		})
-	host.simulation_day_records.disconnect(recorder.on_day_records)
 	host.set_perf_recorder(null)
+	publications.bind_main(null)
 	recorder.bind_main(null)
 	# Stop producing inputs, then use the production lifecycle wait before
 	# releasing the scene. The native stop request preserves Economy and its

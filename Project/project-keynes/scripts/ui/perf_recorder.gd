@@ -25,6 +25,13 @@ class_name PerfRecorder
 extends RefCounted
 
 const SCHEMA_VERSION: int = 1
+const RuntimeGraphColumns = preload("res://scripts/ui/perf_recorder_graph.gd")
+
+const AUTHORITATIVE_COLUMNS := [
+	"row_idx", "tick_idx", "speed_multiplier", "t_sus_ms",
+	"runtime_graph_simulation_committed_day", "runtime_graph_simulation_generation",
+	"commit_produced_at_us", "commit_interval_ms",
+]
 
 # 固定列（出现在 CSV 最左侧，写死保证跨录制 diff 友好）
 # 注意：GDScript 的 const 不允许调构造函数，因此用 Array 字面量。
@@ -414,10 +421,42 @@ var _detail_mode: String = "CORE"
 var _detail_period_days: int = 30
 var _export_dir_override: String = ""
 var _export_name_override: String = ""
+var _authoritative_after_day := -1
+var _authoritative_through_day := -1
+var _authoritative_speed := 1.0
+var _last_published_day := -1
+var _last_commit_us := 0
+var _warmup_commit_us := 0
+var _last_observed_us := 0
+var _observed_days := 0
 
 
 func bind_main(m) -> void:
+	if _authoritative_after_day >= 0 and _main != null:
+		_main.simulation_day_records.disconnect(_on_day_records)
 	_main = m
+	if _authoritative_after_day >= 0 and _main != null:
+		_main.simulation_day_records.connect(_on_day_records)
+
+
+## Headless day capture uses the ordered publication records from the bound host.
+func configure_authoritative_sampling(after_day: int, through_day: int = -1,
+		speed: float = 1.0) -> void:
+	var main = _main
+	bind_main(null)
+	_authoritative_after_day = after_day
+	_authoritative_through_day = through_day
+	_authoritative_speed = speed
+	bind_main(main)
+
+
+func authoritative_measurement() -> Dictionary:
+	return {
+		"observed_days": _observed_days,
+		"warmup_commit_us": _warmup_commit_us,
+		"last_commit_us": _last_commit_us,
+		"last_observed_us": _last_observed_us,
+	}
 
 
 func is_recording() -> bool:
@@ -450,6 +489,11 @@ func start(detail_mode: String = "CORE", detail_period_days: int = 30) -> void:
 	_rows.clear()
 	_recording = true
 	_hit_limit = false
+	_last_published_day = -1
+	_last_commit_us = 0
+	_warmup_commit_us = 0
+	_last_observed_us = 0
+	_observed_days = 0
 	_detail_mode = "DETAIL" if detail_mode.to_upper() == "DETAIL" else "CORE"
 	_detail_period_days = maxi(1, detail_period_days)
 	if _main != null and _main.has_method("get_fast_tick_count"):
@@ -489,7 +533,8 @@ func stop_and_export() -> String:
 		push_error("[perf-record] open failed path=%s err=%d" % [fname, err])
 		return ""
 
-	var columns: PackedStringArray = _collect_columns(_rows)
+	var columns := PackedStringArray(AUTHORITATIVE_COLUMNS) if _authoritative_after_day >= 0 \
+		else _collect_columns(_rows)
 
 	# UTF-8 BOM（Excel 友好，能正确识别中文/Emoji；其他工具会忽略）
 	f.store_8(0xEF)
@@ -525,90 +570,46 @@ static func _export_dir_absolute() -> String:
 # main.gd._run_fast_tick() 末尾调用。recorder 自己拉 SUS 数据，sample 只承载
 # 那些只有 main 局部知道的字段。
 func on_fast_tick(sample: Dictionary) -> void:
-	if _recording:
+	if _recording and _authoritative_after_day < 0:
 		_append_row(_build_row(sample))
+
+
+func _on_day_records(records: Array) -> void:
+	var observed_us := Time.get_ticks_usec()
+	for record: Dictionary in records:
+		var day := int(record["day"])
+		if not _recording or (_authoritative_through_day >= 0 and day > _authoritative_through_day):
+			break
+		if day <= _last_published_day:
+			continue
+		var commit_us := int(record["produced_at_us"])
+		var interval_ms: Variant = null
+		if day > 1 and day == _last_published_day + 1 and _last_commit_us > 0 and commit_us >= _last_commit_us:
+			interval_ms = float(commit_us - _last_commit_us) / 1000.0
+		_last_published_day = day
+		_last_commit_us = commit_us
+		if day > 0:
+			_observed_days += 1
+		if day == _authoritative_after_day:
+			_warmup_commit_us = commit_us
+		if day <= _authoritative_after_day:
+			continue
+		# Publication timings and foreground SUS samples describe a whole batch.
+		# The day row has only data from this commit and its predecessor.
+		_append_row({
+			"tick_idx": day,
+			"speed_multiplier": _authoritative_speed,
+			"runtime_graph_simulation_committed_day": day,
+			"runtime_graph_simulation_generation": int(record["generation"]),
+			"commit_produced_at_us": commit_us,
+			"commit_interval_ms": interval_ms,
+		})
+		_last_observed_us = observed_us
 
 
 func _build_row(sample: Dictionary, missing_graph_value: Variant = 0) -> Dictionary:
 	var row := sample.duplicate()
-	var runtime_graph = sample.get("runtime_graph", {})
-	if runtime_graph is Dictionary:
-		for key in ["pulse_count", "abi_calls", "gdscript_callbacks", "work_done",
-				"budget_yields", "economy_slices", "economy_commits",
-				"last_elapsed_us", "last_status", "dirty_mask",
-				"post_pulse_flush_ms", "flush_slot_count",
-				"visual_diff_cell_count", "country_territory_sync_ms",
-				"event_dispatch_ms", "full_flush_count",
-				"simulation_thread_mode", "graph_coverage_state",
-				"requested_simulation_thread_mode", "required_domain_mask",
-				"implemented_domain_mask", "missing_domain_mask",
-				"coverage_blocker",
-				"simulation_worker_ready",
-				"native_executor_workers", "native_executor_interactive",
-				"native_executor_fault_count", "simulation_host_state",
-				"country_pod_active_index_count",
-				"climate_pod_ready", "climate_pod_plan_ms",
-				"climate_pod_replay_ms", "climate_pod_work_units",
-				"climate_pod_changed_cells", "climate_pod_state_hash",
-				"climate_pod_fallback_reason",
-				"simulation_committed_day", "simulation_generation",
-				"simulation_time_debt_days",
-
-				"ui_input_to_feedback_ms", "visual_apply_ms", "gpu_upload_ms",
-				"main_wait_on_sim_us", "simulation_environment_generation",
-				"simulation_environment_day", "simulation_environment_cell_count",
-				"simulation_environment_topology_validated",
-				"stale_environment_rejected",
-				"command_queue_depth",
-				"receipt_queue_depth",
-				"worker_fault_count", "day_stage_count",
-				"day_completed_stage_count", "day_work_units",
-				"completed_days", "pod_completed_domain_mask",
-				"pod_completed_stage_count", "pod_work_units", "pod_intent_count",
-				"pod_fallback_count", "domain_authority_planned_mask",
-				"domain_authority_committed_mask", "domain_authority_ack_count",
-				"domain_authority_input_hash", "domain_authority_state_hash",
-				"domain_authority_plan_ms", "domain_authority_replay_ms",
-				"domain_authority_fallback_reason", "domain_stage_fallback_count",
-				"domain_stage_fallback_reason", "climate_production_stage_mask",
-				"climate_worker_stage_mask", "climate_pod_parity_compared",
-				"climate_pod_parity_matched", "climate_pod_parity_mismatch_count",
-				"climate_pod_parity_reason", "climate_pod_reference_hash",
-				"climate_parity_day", "climate_parity_stage", "climate_parity_cell",
-				"climate_parity_field", "climate_parity_reference_bits",
-				"climate_parity_worker_bits", "climate_trace_captured",
-				"climate_trace_reference_ready", "climate_trace_consumable",
-				"climate_trace_capacity_exceeded", "climate_trace_reference_rejected",
-				"climate_trace_reference_pending", "fault_code",
-				"simulation_invalid_environment_rejected",
-				"country_pod_snapshot_generation", "country_pod_state_hash",
-				"country_pod_work_units", "country_pod_active_country_count",
-				"country_pod_pending_checks", "country_pod_ack_pending",
-				"country_pod_blocker",
-				"worker_time_execute_us", "worker_time_input_wait_us",
-				"worker_time_environment_wait_us", "worker_time_input_retry_wait_us",
-				"worker_time_clock_wait_us", "worker_time_boundary_wait_us",
-				"worker_time_save_build_us", "worker_time_save_pause_us",
-				"worker_time_paused_us",
-				"worker_time_overhead_us", "worker_time_total_us",
-				"input_capture_count", "input_capture_reused",
-				"economy_input_requested_day",
-				"country_worker_waiting_for_peer",
-				"country_worker_pending_intents",
-				"country_worker_queued_intents",
-				"country_worker_last_reason",
-				"country_worker_day",
-				"country_worker_continuation_index",
-				"economy_yield_reason", "economy_stage_name",
-				"economy_substage_name",
-				"economy_epoch_fiscal_ms", "economy_fiscal_settlement_ms",
-				"economy_income_subsidy_ms",
-				"economy_negative_tax_mask", "economy_active_tax_mask",
-				"economy_attempt_slices",
-				"economy_read_view_subscriptions", "economy_read_view_serve_count",
-				"economy_read_view_eval_count", "economy_read_view_serve_us_total",
-				"economy_read_view_serve_us_max", "economy_read_view_evicted_count"]:
-			row["runtime_graph_%s" % key] = runtime_graph.get(key, missing_graph_value)
+	RuntimeGraphColumns.merge(row, sample.get("runtime_graph", {}), missing_graph_value)
 
 	# CORE 只保留固定帧/预算/守恒字段。完整 job/breakdown 展开属于 DETAIL，
 	# 默认不进入每帧热路径；DETAIL 也按日周期采样，避免重复序列化。

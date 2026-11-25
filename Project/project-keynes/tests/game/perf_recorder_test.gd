@@ -52,6 +52,7 @@ func _run() -> void:
 	_test_schema_and_custom_export()
 	_test_committed_day_export()
 	_test_missing_committed_day()
+	_test_zero_warmup()
 	print("=== perf_recorder test summary: %d checks, %d failures ===" % [_checks, _failures])
 
 
@@ -288,60 +289,88 @@ class _MockMain:
 
 
 func _day_record(day: int) -> Dictionary:
-	return {"day": day, "generation": 100 + day, "produced_at_us": 50000 + day * 100}
+	return {"day": day, "generation": 100 + day, "produced_at_us": 50000 + day * day * 100}
 
 
 func _test_committed_day_export() -> void:
-	var rec := HeadlessPerf.CommittedDayRecorder.new(6, 8, 50.0)
+	var rec := PerfRecorder.new()
 	var mock := _MockMain.new()
 	rec.bind_main(mock)
+	rec.configure_authoritative_sampling(5, 8, 50.0)
 	rec.configure_export("user://stage_c_tests/perf", "committed_days.csv")
-	mock.simulation_day_records.connect(rec.on_day_records)
 	rec.start()
+	var publications := HeadlessPerf.PublicationRecorder.new()
+	publications.configure_export("user://stage_c_tests/perf", "publication_samples.csv")
+	publications.start()
 	var batch := [_day_record(5), _day_record(6), _day_record(7)]
-	mock.publish_batch(rec, batch, 7)
-	mock.publish_batch(rec, batch, 7)
-	mock.publish_batch(rec, [], 8)
+	mock.publish_batch(publications, batch, 7)
+	mock.simulation_day_records.emit(batch)
+	mock.publish_batch(publications, [], 8)
 	_expect(rec.row_count() == 2, "one batch supplies both measured days exactly once")
-	_expect(rec.warmup_finished_us == 50500, "batch includes the exact warmup boundary")
-	mock.publish_batch(rec, [_day_record(8)], 9)
-	mock.publish_batch(rec, [_day_record(9)], 9)
+	_expect(rec.authoritative_measurement().warmup_commit_us == 52500,
+		"batch includes the exact warmup boundary")
+	mock.publish_batch(publications, [_day_record(8)], 9)
+	mock.simulation_day_records.emit([_day_record(9)])
 	var path := rec.stop_and_export()
+	var publication_path := publications.stop_and_export()
 	var check := HeadlessPerf._check_csv(path, 6, 3)
 	_expect(check == {"rows": 3, "exit_code": 0}, "CSV contains days 6, 7 and the late day 8 in order")
-	_expect(rec.last_measured_us == 50800, "measurement ends at the last measured commit")
-	mock.simulation_day_records.disconnect(rec.on_day_records)
+	_expect(rec.authoritative_measurement().last_commit_us == 56400,
+		"measurement ends at the last measured commit")
+	rec.bind_main(null)
 	if check.exit_code != 0:
 		return
+	var split := PerfRecorder.new()
+	split.configure_authoritative_sampling(5, 8, 50.0)
+	split.bind_main(mock)
+	split.configure_export("user://stage_c_tests/perf", "committed_days_split.csv")
+	split.start()
+	for day in [5, 6, 7, 8]:
+		mock.publish_batch(split, [_day_record(day)], day)
+	var split_path := split.stop_and_export()
+	split.bind_main(null)
+	_expect(FileAccess.get_file_as_bytes(split_path) == FileAccess.get_file_as_bytes(path),
+		"daily CSV is identical for split and grouped publications")
+
+	var publication_file := FileAccess.open(publication_path, FileAccess.READ)
+	var publication_columns := publication_file.get_csv_line()
+	var host_timing := publication_columns.find("fast_ms")
+	var worker_timing := publication_columns.find("runtime_graph_worker_time_execute_us")
+	var first_sample := publication_file.get_csv_line()
+	var next_sample := publication_file.get_csv_line()
+	_expect(first_sample[host_timing] == "1.25" and next_sample[host_timing] == "1.25",
+		"foreground timings are preserved in the publication CSV")
+	_expect(first_sample[worker_timing] == "250" and next_sample[worker_timing] == "250",
+		"worker snapshots are preserved with the publication samples")
 	var file := FileAccess.open(path, FileAccess.READ)
 	var columns := file.get_csv_line()
 	var first := file.get_csv_line()
 	var second := file.get_csv_line()
 	var third := file.get_csv_line()
-	var host_timing := columns.find("fast_ms")
-	var worker_timing := columns.find("runtime_graph_worker_time_execute_us")
+	_expect(not columns.has("fast_ms") and not columns.has("runtime_graph_worker_time_execute_us"),
+		"batch metrics cannot enter the per-day statistics")
 	var generation := columns.find("runtime_graph_simulation_generation")
-	_expect(first[host_timing].is_empty() and second[host_timing] == "1.25",
-		"foreground timings appear once for the batch")
-	_expect(first[worker_timing].is_empty() and second[worker_timing] == "250" \
-		and third[worker_timing].is_empty(), "worker timing is blank when unavailable or ahead")
 	_expect(first[generation] == "106" and second[generation] == "107" and third[generation] == "108",
 		"every row uses its own published generation")
+	var interval := columns.find("commit_interval_ms")
+	_expect(first[interval] == "1.1" and second[interval] == "1.3" and third[interval] == "1.5",
+		"each interval is measured from consecutive commit timestamps")
 	var tick := columns.find("tick_idx")
 	var speed := columns.find("speed_multiplier")
 	var sus := columns.find("t_sus_ms")
 	var expected_tick := 6
 	for cells in [first, second, third]:
-		_expect(cells[tick] == str(expected_tick) and cells[speed] == "50" and cells[sus] == "0",
-			"day %d includes the required numeric columns" % expected_tick)
+		_expect(cells[tick] == str(expected_tick) and cells[speed] == "50" and cells[sus].is_empty(),
+			"day %d identifies the commit and leaves unmeasured SUS time empty" % expected_tick)
 		expected_tick += 1
 
 
 func _test_missing_committed_day() -> void:
-	var rec := HeadlessPerf.CommittedDayRecorder.new(6, 8, 50.0)
+	var rec := PerfRecorder.new()
 	var mock := _MockMain.new()
+	rec.configure_authoritative_sampling(5, 8, 50.0)
+	rec.bind_main(mock)
 	rec.configure_export("user://stage_c_tests/perf", "missing_day.csv")
-	mock.simulation_day_records.connect(rec.on_day_records)
 	rec.start()
 	mock.publish_batch(rec, [_day_record(6), _day_record(8)], 8)
 	mock.publish_batch(rec, [_day_record(9)], 9)
@@ -350,7 +379,23 @@ func _test_missing_committed_day() -> void:
 		"a later commit cannot replace the missing middle day")
 	_expect(HeadlessPerf._check_csv(path, 6, 2) == {"rows": 2, "exit_code": 6},
 		"matching row count still fails when the dates have a gap")
-	mock.simulation_day_records.disconnect(rec.on_day_records)
+	rec.bind_main(null)
+
+
+func _test_zero_warmup() -> void:
+	var rec := PerfRecorder.new()
+	var mock := _MockMain.new()
+	rec.configure_authoritative_sampling(0, 2, 50.0)
+	rec.bind_main(mock)
+	rec.configure_export("user://stage_c_tests/perf", "no_warmup.csv")
+	rec.start()
+	mock.publish_batch(rec, [_day_record(1), _day_record(2)], 2)
+	var path := rec.stop_and_export()
+	rec.bind_main(null)
+	var file := FileAccess.open(path, FileAccess.READ)
+	var interval := file.get_csv_line().find("commit_interval_ms")
+	_expect(file.get_csv_line()[interval].is_empty(), "no duration is invented before the first commit")
+	_expect(file.get_csv_line()[interval] == "0.3", "the second day has a measured interval")
 
 
 func _test_recorder_default_core_sampling() -> void:
