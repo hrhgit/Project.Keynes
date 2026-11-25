@@ -26,6 +26,7 @@ import qodo  # noqa: E402
 import work  # noqa: E402
 from common import Events, lane_lock, legacy_lane_gate, load_config, must  # noqa: E402
 from github import PR_MERGE_FIELDS, ChangedFile, GitHub  # noqa: E402
+from ticket import touching  # noqa: E402
 from verdict import CIFacts, NativeFacts, unknown_findings  # noqa: E402
 
 TRAILER = "Fixed-By: keynes-factory"
@@ -218,7 +219,7 @@ class Watcher:
     def prs(self, only: int | None) -> list[dict]:
         items = json.loads(must(["gh", "pr", "list", "-R", self.cfg["repo"], "--state", "open",
                                  "--base", self.cfg["base"], "--limit", "50", "--json",
-                                 f"number,title,body,url,headRefName,createdAt,{PR_MERGE_FIELDS}"]))
+                                 f"number,title,url,headRefName,createdAt,{PR_MERGE_FIELDS}"]))
         for it in items:
             it["labels"] = [l["name"] for l in it["labels"]]
         items.sort(key=lambda it: it["createdAt"])
@@ -255,7 +256,8 @@ class Watcher:
                 paths = [path for f in changed_files or [] for path in (f.filename, f.previous_filename)
                          if path is not None]
                 native = work.scope(self.cfg, paths)[2]
-                result = self.apply_merge_decision(pr, st, d, review["review_session"], ci, native=bool(native))
+                result = self.apply_merge_decision(pr, st, d, review["review_session"], ci, native=bool(native),
+                                                   paths=paths)
                 if result is not None:
                     return result
                 continue
@@ -307,10 +309,13 @@ class Watcher:
             return "the PR labels changed before merge"
         if fresh["changedFiles"] != pr["changedFiles"]:
             return "the PR changed-file count changed before merge"
+        # The performance claim is read from the body, so an edited body is read again next poll.
+        if (fresh["body"] or "") != (pr.get("body") or ""):
+            return "the PR body changed before merge"
         return None
 
     def apply_merge_decision(self, pr: dict, st: PrState, decision: Decision, session: dict, ci: CIFacts,
-                             *, native: bool) -> int | None:
+                             *, native: bool, paths: list[str] | None = None) -> int | None:
         """Record this merge decision. A preflight skip lets the tick continue to the next PR."""
         n, sha = pr["number"], pr["headRefOid"]
         record = {"pr": n, "url": pr["url"], "head": sha, "started": self.stamp,
@@ -347,7 +352,13 @@ class Watcher:
                     error = f"the native checks could not run: {e}"
                     self.stop(pr, st, error)
             if skipped is None and error is None and claim:
-                skipped, error = self.perf_check(pr, st, record, claim)
+                harness = touching(paths or [], self.cfg["paths"]["perfHarness"])
+                if harness:
+                    error = ("the PR claims a performance change and also changes the tool that measures it ("
+                             + ", ".join(f"`{h}`" for h in harness) + "); a person must review and merge it")
+                    self.stop(pr, st, error)
+                else:
+                    skipped, error = self.perf_check(pr, st, record, claim)
             if skipped is None and error is None:
                 try:
                     result = self.gh.merge_pr(n, sha)
@@ -405,18 +416,25 @@ class Watcher:
         claims, tier = claim
         logdir = self.home / "logs" / f"merge-pr-{n}-{self.stamp}"
         logdir.mkdir(parents=True, exist_ok=True)
-        try:
-            if not self.prepare_head(pr, Events()):
-                return "the PR head changed before the performance check", None
-            base = work.git(self.workdir, "merge-base", pr["baseRefOid"], head)
-            runner_dir = str(Path(__file__).resolve().parents[2])
-            result = perf.run(self.cfg, runner_dir, self.workdir, base, head, claims, tier,
-                              str(logdir / "perf-check.log"))
-        except (RuntimeError, OSError, ValueError) as e:
-            error = f"the performance check could not run: {e}"
-            self.stop(pr, st, error)
-            return None, error
-        record["perfCheck"] = {"base": base, "head": head, "claims": claims, "tier": tier, **result}
+        log = str(logdir / "perf-check.log")
+        checked = record["perfCheck"] = {"base": None, "head": head, "claims": claims, "tier": tier, "log": log}
+        # The Issue lane builds and runs tests on this machine; holding its lock keeps it from starting
+        # while the rounds are measured. A running Issue job is a skip, retried on the next poll.
+        with lane_lock(self.home, "issue") as acquired:
+            if not acquired:
+                checked["status"] = "deferred"
+                return "the performance check waits for the running Issue job to finish", None
+            try:
+                if not self.prepare_head(pr, Events()):
+                    return "the PR head changed before the performance check", None
+                checked["base"] = base = work.git(self.workdir, "merge-base", pr["baseRefOid"], head)
+                runner_dir = str(Path(__file__).resolve().parents[2])
+                result = perf.run(self.cfg, runner_dir, self.workdir, base, head, claims, tier, log)
+            except (RuntimeError, OSError, ValueError) as e:
+                error = checked["error"] = f"the performance check could not run: {e}"
+                self.stop(pr, st, error, f"Log on the factory machine: `{log}`")
+                return None, error
+        checked.update(result)
         reasons = "; ".join(result["reasons"])
         if result["status"] == "deferred":
             return f"the performance check was deferred: {reasons}", None

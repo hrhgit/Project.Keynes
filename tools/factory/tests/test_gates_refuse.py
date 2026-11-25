@@ -23,7 +23,7 @@ import ticket
 import verdict
 import work
 import watch_prs
-from common import Result, legacy_lane_gate, load_config
+from common import Result, lane_lock, legacy_lane_gate, load_config
 
 CFG = load_config()
 NATIVE = CFG["checks"]["nativeRuntimeCheck"]
@@ -142,6 +142,23 @@ def judge_refused(**facts):
     return verdict.judge(verdict.Facts(**{**base, **facts})).verdict != "READY"
 
 
+def refuses_perf_check(status="pass", error=None, issue_job_running=False):
+    """True when perf_check returns a skip or a stop instead of letting the merge go on."""
+    with TemporaryDirectory() as tmp:
+        cfg = dict(CFG, home=tmp)
+        watcher = watch_prs.Watcher(cfg, dry=False)
+        result = {"status": status, "reasons": ["r"], "report": "/archive/report.md", "command": [], "log": "l"}
+        pr = {"number": 7, "headRefOid": "h" * 40, "baseRefOid": "c" * 40}
+        with patch.object(watcher, "prepare_head", return_value=True), patch("work.git", return_value="b" * 40), \
+                patch("perf.run", return_value=result, side_effect=error), patch.object(watcher, "stop"), \
+                patch.object(watcher, "merge_preflight", return_value=None):
+            check = lambda: watcher.perf_check(pr, watch_prs.PrState(), {}, (["result.run_ms"], "quick"))
+            if not issue_job_running:
+                return check() != (None, None)
+            with lane_lock(Path(tmp), "issue"):
+                return check() != (None, None)
+
+
 # name -> list of (description, callable returning True when the gate refused the input)
 GATES = {
     "legacy_lane_gate": [
@@ -235,6 +252,17 @@ GATES = {
         ("an unknown tier", lambda: refuses_claim("- `result.run_ms`\nTier: windowed")),
         ("two tiers", lambda: refuses_claim("- `result.run_ms`\nTier: quick\nTier: full")),
         ("a tier and no metric", lambda: refuses_claim("Tier: full")),
+        ("a second claim section later in the body",
+         lambda: refuses_claim("- `result.run_ms`\n\n## Notes\nx\n\n## Performance claim\n- `result.economy_memory_bytes`")),
+        ("a second section under the Chinese heading", lambda: refuses_claim("- `result.run_ms`\n## 性能声明\n- `x`")),
+    ],
+    "perf_check": [
+        ("a failed comparison", lambda: refuses_perf_check("fail")),
+        ("a comparison that needs a person", lambda: refuses_perf_check("needs_human")),
+        ("a deferred comparison", lambda: refuses_perf_check("deferred")),
+        ("a check that could not run", lambda: refuses_perf_check(error=ValueError("timed out after 3600s"))),
+        ("an Issue job running on the same machine", lambda: refuses_perf_check(issue_job_running=True)),
+        ("the passing case goes on (so the cases above test the refusals)", lambda: not refuses_perf_check("pass")),
     ],
     "parse_perf_result": [
         ("no result line", lambda: refuses_result("built\nimported", 0)),
@@ -246,6 +274,8 @@ GATES = {
         ("deferred with exit 0", lambda: refuses_result(result_line("deferred", report=None), 0)),
         ("reasons that are not strings", lambda: refuses_result(result_line(reasons=(1,)), 0)),
         ("pass without a report", lambda: refuses_result(result_line(report=None), 0)),
+        ("fail with neither a report nor a reason", lambda: refuses_result(result_line("fail", reasons=(), report=None), 1)),
+        ("a report path that is not a string", lambda: refuses_result(result_line(report=5), 0)),
         ("an earlier pass overridden by a later failure line",
          lambda: refuses_result(result_line("pass") + "\n" + result_line("fail"), 0)),
     ],
@@ -281,7 +311,7 @@ GATES = {
     ],
 }
 
-NAME_PARTS = ("matches", "touching", "scope", "gate", "parse", "classify", "validate", "allowed", "native_line", "extra_checks", "unknown_findings", "preflight", "decide", "judge")
+NAME_PARTS = ("perf_check", "matches", "touching", "scope", "gate", "parse", "classify", "validate", "allowed", "native_line", "extra_checks", "unknown_findings", "preflight", "decide", "judge")
 EXEMPT = {"gate": "registered as ticket.gate"}
 
 

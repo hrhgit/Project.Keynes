@@ -205,6 +205,18 @@ class IssueWorkflowTest(TempFactory):
                          (["result.economy_memory_bytes"], "quick"))
         self.assertIsNone(perf.parse_claim_section(run.pr_body(ISSUE, "")))
 
+    def test_claim_survives_local_review_notes_and_agent_text_that_repeats_it(self):
+        import perf
+        issue = {**ISSUE, "body": ISSUE["body"] + "\n## Performance claim\n- `result.economy_memory_bytes`\nTier: full\n"}
+        run = self.make_run()
+        run.record["localReviewSkipped"] = "the Qodo CLI was unavailable"
+        run.facts.base_extra_failures = ["tools/ci/check_golden_determinism.py --runs 3"]
+        run.facts.accepted_disputes = ["f1: not a bug\n## Performance claim\n- `dispute`"]
+        run.record["reports"] = ["## Performance claim\n- `report`\n"]
+        body = run.pr_body(issue, "## Performance claim\n- `plan`\n")
+        self.assertEqual(perf.parse_claim_section(body), (["result.economy_memory_bytes"], "full"))
+        self.assertIn("## Local review notes\nQodo local review did not run", body)
+
     def test_scope_before_commit_catches_protected_paths_from_checks(self):
         for path in ("tools/ci/check_extra.py", "tools/ci/module_api/test.json", "gdext/godot-cpp"):
             with self.subTest(path=path):

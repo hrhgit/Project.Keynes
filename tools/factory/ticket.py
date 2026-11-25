@@ -25,6 +25,12 @@ def section(body: str, titles: tuple[str, ...]) -> list[str] | None:
     return None
 
 
+def heading_count(body: str, titles: tuple[str, ...]) -> int:
+    """How many `## <title>` headings with one of these titles the body has."""
+    return sum(1 for line in (body or "").splitlines()
+               if (m := HEADING.match(line)) and m.group(1).strip().lower() in titles)
+
+
 def criteria(body: str) -> list[str]:
     """Checkbox (`- [ ] x`) or numbered (`1. x`) items under the acceptance-criteria heading."""
     lines = section(body, CRITERIA_TITLES) or []

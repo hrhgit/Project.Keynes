@@ -60,6 +60,7 @@
   "paths": {
     "forbidden": [".github/", "tools/factory/", ".qodo/", "tools/ci/", "tools/perf/"],
     "needsHuman": ["tools/ci/*baseline*.json", "tools/ci/module_api/", "tools/ci/module_api_shared.json", "tools/ci/cross_domain_inventory.json", "gdext/godot-cpp/", "gdext/rebuild.sh"],
+    "perfHarness": ["Project/project-keynes/tests/game/headless_perf_record.gd", "Project/project-keynes/scripts/ui/perf_recorder.gd"],
     "trackedBinaries": [
       "Project/project-keynes/addons/dots_ext/bin/"
     ]

@@ -10,7 +10,7 @@ from urllib.parse import quote
 from common import must, sh
 from verdict import CIFacts, CIRun
 
-PR_MERGE_FIELDS = "headRefOid,baseRefName,baseRefOid,changedFiles,state,isDraft,isCrossRepository,labels,mergeable"
+PR_MERGE_FIELDS = "body,headRefOid,baseRefName,baseRefOid,changedFiles,state,isDraft,isCrossRepository,labels,mergeable"
 
 
 @dataclass(frozen=True)

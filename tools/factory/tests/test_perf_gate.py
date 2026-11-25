@@ -4,10 +4,12 @@ Refusals are registered in test_gates_refuse.py; this file covers what must be a
 subprocess path, with a stand-in script in place of the measuring one."""
 
 import json
+import os
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -50,6 +52,12 @@ class ResultLine(unittest.TestCase):
                                  {"status": status, "reasons": ["r"], "report": report})
 
 
+    def test_a_failure_with_a_reason_and_no_report_is_read(self):
+        # The script prints this when a build or worktree step fails before any report exists.
+        line = "PERF_CHECK_RESULT=" + json.dumps({"status": "fail", "reasons": ["scons exited 2"]})
+        self.assertEqual(perf.parse_perf_result(line, 1), {"status": "fail", "reasons": ["scons exited 2"], "report": None})
+
+
 STAND_IN = """import json, sys
 print("argv=" + json.dumps(sys.argv[1:]))
 print("PERF_CHECK_RESULT=" + json.dumps({"status": STATUS, "reasons": ["claimed metric improved"],
@@ -86,6 +94,30 @@ class RunScript(unittest.TestCase):
     def test_a_status_that_disagrees_with_the_exit_code_is_refused(self):
         with self.assertRaises(ValueError):
             self.run_with("pass", 1)
+
+    def stand_in(self, text):
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        script = tmp / "runner" / perf.SCRIPT
+        script.parent.mkdir(parents=True)
+        script.write_text(text)
+        cfg = load_config()
+        cfg["tools"]["python"] = sys.executable
+        return cfg, lambda: perf.run(cfg, str(tmp / "runner"), str(tmp), "b", "h", ["x"], "quick", str(tmp / "log"))
+
+    def test_the_factory_environment_is_not_passed_to_the_measured_code(self):
+        cfg, run = self.stand_in(
+            "import json, os, sys\n"
+            "seen = sorted(k for k in ('GH_TOKEN', 'OPENAI_API_KEY', 'PATH', 'HOME') if k in os.environ)\n"
+            "print('PERF_CHECK_RESULT=' + json.dumps({'status': 'fail', 'reasons': seen}))\n"
+            "sys.exit(1)\n")
+        with patch.dict(os.environ, {"GH_TOKEN": "not-a-real-token", "OPENAI_API_KEY": "not-a-real-key"}):
+            self.assertEqual(run()["reasons"], ["HOME", "PATH"])
+
+    def test_a_timeout_keeps_its_reason(self):
+        cfg, run = self.stand_in("import time\ntime.sleep(30)\n")
+        cfg["limits"]["perfCheckTimeoutMinutes"] = 0.02
+        with self.assertRaisesRegex(ValueError, "timed out after"):
+            run()
 
     def test_missing_script_is_refused(self):
         with tempfile.TemporaryDirectory() as tmp, self.assertRaises(ValueError):

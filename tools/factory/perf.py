@@ -15,11 +15,12 @@ not the PR's), and the outcome is read only from the script's `PERF_CHECK_RESULT
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
 from common import sh
-from ticket import section
+from ticket import heading_count, section
 
 TITLES = ("performance claim", "性能声明")
 CLAIM = re.compile(r"^\s*[-*]\s+`([^`]+)`\s*$")
@@ -29,6 +30,9 @@ SCRIPT = "tools/perf/perf_change_check.py"
 RESULT = "PERF_CHECK_RESULT="
 # The script's exit code for each status; a line whose status and exit disagree is not trusted.
 EXITS = {"pass": 0, "fail": 1, "needs_human": 2, "deferred": 75}
+# The only variables the check's subprocess sees. It builds and runs the PR's code, so the factory's
+# tokens and keys (GH_TOKEN, OPENAI_API_KEY, ...) are not passed on.
+ENV_KEEP = ("PATH", "HOME", "USER", "LOGNAME", "SHELL", "TMPDIR", "LANG", "LC_ALL", "LC_CTYPE", "TERM")
 
 
 def parse_claim_section(body: str) -> tuple[list[str], str] | None:
@@ -39,6 +43,8 @@ def parse_claim_section(body: str) -> tuple[list[str], str] | None:
     lines = section(body, TITLES)
     if lines is None:
         return None
+    if heading_count(body, TITLES) > 1:
+        raise ValueError("the body has more than one performance claim section; merge them into one")
     claims: list[str] = []
     tier = None
     for line in lines:
@@ -91,9 +97,14 @@ def parse_perf_result(output: str, code: int) -> dict:
         raise ValueError(f"the performance check reported {status!r} but exited {code}")
     if not isinstance(reasons, list) or not all(isinstance(r, str) for r in reasons):
         raise ValueError("the performance check reasons are not a list of strings")
-    if status != "deferred" and not isinstance(result.get("report"), str):
-        raise ValueError(f"the performance check reported {status!r} without a report path")
-    return {"status": status, "reasons": reasons, "report": result.get("report")}
+    report = result.get("report")
+    if report is not None and not isinstance(report, str):
+        raise ValueError("the performance check report path is not a string")
+    if status == "pass" and report is None:
+        raise ValueError("the performance check reported 'pass' without a report path")
+    if status != "pass" and report is None and not reasons:
+        raise ValueError(f"the performance check reported {status!r} with neither a report nor a reason")
+    return {"status": status, "reasons": reasons, "report": report}
 
 
 def report_excerpt(result: dict, limit: int = 6000) -> str:
@@ -121,9 +132,17 @@ def run(cfg: dict, runner_dir: str, repo: str, base: str, head: str, claims: lis
             "--scons", str(Path(tools["scons"]).expanduser()), "compare", base, head, "--tier", tier]
     for claim in claims:
         args += ["--claim", claim]
-    r = sh(args, cwd=repo, timeout=cfg["limits"].get("perfCheckTimeoutMinutes", 60) * 60, log=log)
+    env = {k: os.environ[k] for k in ENV_KEEP if k in os.environ}
+    r = sh(args, cwd=repo, timeout=cfg["limits"].get("perfCheckTimeoutMinutes", 60) * 60, log=log,
+           env=env, inherit_env=False)
     try:
         output = Path(log).read_text(encoding="utf-8", errors="replace")
     except OSError:
         output = ""
-    return {**parse_perf_result(output, r.code), "command": args, "log": log}
+    try:
+        verdict = parse_perf_result(output, r.code)
+    except ValueError as e:
+        # A timeout or a missing interpreter leaves no result line; say so instead of only "no line".
+        cause = f"{r.err.strip()}; " if r.err.strip() else ""
+        raise ValueError(f"{cause}{e}") from e
+    return {**verdict, "command": args, "log": log}

@@ -65,11 +65,14 @@
 Tier: full
 ```
 
-- 小节由 `tools/factory/perf.py` 的 `parse_claim_section()` 读。只接受反引号包住的正则和一行 `Tier: quick|full`，别的写法（散文、没有指标、正则编译不过、未知或重复的档位）一律拒绝：Issue 模式在 G0 停下，PR 模式停下打 `agent-needs-help`，不会把声称的性能改动当成没声称而直接合并。
-- Issue 模式把工单里的小节原样写进 PR 正文，PR 轮询据此检查。
+- 小节由 `tools/factory/perf.py` 的 `parse_claim_section()` 读。只接受反引号包住的正则和一行 `Tier: quick|full`，别的写法（散文、没有指标、正则编译不过、未知或重复的档位、正文里有第二个性能声明小节）一律拒绝：Issue 模式在 G0 停下，PR 模式停下打 `agent-needs-help`，不会把声称的性能改动当成没声称而直接合并。
+- Issue 模式把工单里的小节原样写进 PR 正文，PR 轮询据此检查。本地评审的说明放在它下面单独的 `## Local review notes` 标题里；正文引用的计划、代理报告和异议里的 `## ` 标题降为 `### `，所以它们不会截断或重复这个小节。
+- 合并前重读 PR 时也比对正文；正文改过就跳过，下一轮按新正文判断，不会漏掉合并前才加上的声明。
+- 声明了性能改动、又改了测量工具本身（`paths.perfHarness`：`tests/game/headless_perf_record.gd`、`scripts/ui/perf_recorder.gd`）的 PR 不跑检查，停下由人评审合并。没有声明的 PR（例如修记录器的 bug）不受影响。
 - PR 轮询只在其余合并条件（评审、CI、范围、标签、可合并）都满足后才跑，用的是程序目录里工厂自己的 `tools/perf/perf_change_check.py`，不是 PR 里的；`tools/perf/` 也列入受保护路径。比较的是 PR 头与 `git merge-base <目标分支提交> <头部提交>`。
-- 结论只读脚本最后一行 `PERF_CHECK_RESULT=` 和退出码，二者不一致、缺行或格式不对都算检查跑不起来，停下交给人。
-- 脚本自己在每步前检查机器：最近一秒 CPU 空闲不足一半，或有别的 Godot、scons、编译器在跑时等待，10 分钟预算用完就返回 `deferred`。所以它不会和 Issue 任务的 `run_regression_checks.py --jobs 4` 同时测量；`deferred` 不写停止状态，下一轮（600 秒后）对同一头部提交再试，已测完的提交记录直接复用。
+- 结论只读脚本最后一行 `PERF_CHECK_RESULT=` 和退出码，二者不一致、缺行或格式不对都算检查跑不起来，停下交给人。`pass` 必须带报告路径；构建等步骤失败时脚本只给 `fail` 和原因，没有报告，原因照样写进停止评论。超时等跑不起来的原因写进停止评论和运行记录的 `perfCheck.error`。
+- 脚本会构建并运行 PR 的代码，所以只带 `PATH`、`HOME`、`USER`、`LOGNAME`、`SHELL`、`TMPDIR`、`LANG`、`LC_*`、`TERM` 这几个环境变量运行（`perf.ENV_KEEP`），工厂进程里的令牌和密钥不传下去。`HOME` 下的文件它仍然读得到，这和原生检查运行 PR 代码时一样；只有 fork 内分支的 PR 才会走到这一步。
+- 脚本自己在每步前检查机器：最近一秒 CPU 空闲不足一半，或有别的 Godot、scons、编译器在跑时等待，10 分钟预算用完就返回 `deferred`。工厂测量期间还拿着 Issue 通道的锁，Issue 任务在跑时检查直接跳过、下一轮再试，测量开始后 Issue 任务也启动不了，所以它不会和 `run_regression_checks.py --jobs 4` 同时测量；`deferred` 不写停止状态，下一轮（600 秒后）对同一头部提交再试，已测完的提交记录直接复用。
 - 合并评论列出结论、比较的提交、声称的指标和报告路径；停下时评论附 `report.md`。整次检查写入合并运行记录的 `perfCheck`，测量档案在 `~/.keynes-perf/`。
 
 两种模式都从仓库根目录的 `.factory-disagree.md` 读取异议，每行严格按 `- <评审项 ID>: <证据>` 写一项。ID 必须和交给 Codex 时给出的一致，可以直接写，也可以用一对反引号包住。证据写明相关文件和行号。空行可跳过。格式有误或 ID 不认识时保存补丁，列出问题行交给人处理。
@@ -167,4 +170,4 @@ Issue 开发和 PR 检查独立运行。Issue 任务领最早的一张可领工�
 - Qodo 本地评审目前跑不起来：评审服务在 120 秒内检出不了这个仓库的 base（2026-11-19 两次都超时）。所以 `localReviewRequired` 设为 `false`，本地评审失败时只记录，不拦；把关的是 PR 上对头部提交的 Qodo 评审，`verdict.py` 没有它就不会给 READY。
 - 工作树的 `origin` 是上游，Qodo 里没有连上游，所以本地评审显式传 `--repo hrhgit/Project.Keynes`。
 - 计划里要求的额外检查只接受 `tools/ci/<脚本>.py [--参数]` 这种格式。被拒绝的命令会写进运行记录和结论。
-- 性能检查只测无界面运行，不测窗口帧时间和 GPU。它在 PR 任务里跑，等安静机器时最多占住 PR 锁 10 分钟；某个提交第一次在本机构建时要编译 godot-cpp 和全部源码（10 分钟以上），超出预算会一直 `deferred`，要先手动 `measure <提交> --budget 0` 一次。
+- 性能检查只测无界面运行，不测窗口帧时间和 GPU。它在 PR 任务里跑，等安静机器时最多占住 PR 锁和 Issue 锁 10 分钟；Issue 任务从领单到交出 PR 一直拿着锁（含等 PR 评审），这段时间性能检查一直跳过；某个提交第一次在本机构建时要编译 godot-cpp 和全部源码（10 分钟以上），超出预算会一直 `deferred`，要先手动 `measure <提交> --budget 0` 一次。
