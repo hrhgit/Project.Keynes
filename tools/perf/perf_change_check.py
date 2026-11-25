@@ -518,22 +518,39 @@ def toolchain_identity(godot: str) -> dict:
 
 def competing_processes(ps_output: str, mine: int, min_cpu: float = COMPETING_CPU) -> list[str]:
     """Busy Godot, build or link processes that are not ours (an idle editor does not count)."""
-    return [f"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu"
-            for pid, cpu, executable in busy_processes(ps_output, mine, min_cpu)
-            if COMPETING.search(executable + " ")]
+    found = []
+    for pid, cpu, command in busy_processes(ps_output, mine, min_cpu):
+        executable = command.split()[0]
+        if COMPETING.search(executable + " "):
+            found.append(f"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu")
+    return found
+
+
+# Lower than COMPETING_CPU on purpose: a low idle figure can come from several processes that
+# each use only a little CPU, and they are what the hint has to name.
+BUSIEST_MIN_CPU = 1.0
+APP_BUNDLE = re.compile(r"/([^/]+)\.app/")
+
+
+def process_name(command: str) -> str:
+    """A readable name for a `ps` command line. A macOS app is named by its bundle, because its
+    path holds spaces ("/Applications/Google Chrome.app/..."); otherwise the executable's basename."""
+    bundle = APP_BUNDLE.search(command)
+    if bundle:
+        return bundle.group(1)
+    return command.split()[0].rsplit("/", 1)[-1]
 
 
 def busiest_processes(ps_output: str, mine: int, limit: int = 3,
-                      min_cpu: float = COMPETING_CPU) -> list[str]:
+                      min_cpu: float = BUSIEST_MIN_CPU) -> list[str]:
     """The busiest processes that are not ours, of any kind, busiest first. They name what is
     using the CPU when the idle figure is low but no known competitor is running."""
     found = sorted(busy_processes(ps_output, mine, min_cpu), key=lambda p: (-p[1], p[0]))
-    return [f"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu"
-            for pid, cpu, executable in found[:limit]]
+    return [f"{pid} {process_name(command)} {cpu:.0f}% cpu" for pid, cpu, command in found[:limit]]
 
 
 def busy_processes(ps_output: str, mine: int, min_cpu: float) -> list[tuple[int, float, str]]:
-    """(pid, %cpu, executable) for `ps -axo pid=,ppid=,%cpu=,command=` rows at or above min_cpu,
+    """(pid, %cpu, command) for `ps -axo pid=,ppid=,%cpu=,command=` rows at or above min_cpu,
     leaving out this process and its children. Malformed rows are skipped."""
     rows = []
     for line in ps_output.splitlines():
@@ -543,7 +560,7 @@ def busy_processes(ps_output: str, mine: int, min_cpu: float) -> list[tuple[int,
         pid, ppid, cpu, command = int(parts[0]), int(parts[1]), to_number(parts[2]), parts[3]
         if pid == mine or ppid == mine or cpu is None or cpu < min_cpu:
             continue
-        rows.append((pid, cpu, command.split()[0]))
+        rows.append((pid, cpu, command))
     return rows
 
 

@@ -380,6 +380,18 @@ class MachineLoadGate(unittest.TestCase):
                          ["21 Xcode 95% cpu", "24 swift-frontend 60% cpu"])
         self.assertEqual(pc.busiest_processes("", mine=500), [])
 
+    def test_busiest_names_load_spread_over_small_processes(self):
+        table = "\n".join(f"  {pid}     1  12.0 /usr/libexec/mdworker_shared" for pid in (30, 31, 32))
+        self.assertEqual(pc.competing_processes(table, mine=500), [])
+        self.assertEqual(len(pc.busiest_processes(table, mine=500)), 3)
+        self.assertEqual(pc.busiest_processes("  33     1   0.5 /usr/sbin/quiet", mine=500), [])
+
+    def test_busiest_names_macos_apps_by_bundle_not_by_first_word(self):
+        table = "  40     1  70.0 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --type=gpu"
+        self.assertEqual(pc.busiest_processes(table, mine=500), ["40 Google Chrome 70% cpu"])
+        self.assertEqual(pc.process_name("/usr/bin/swift-frontend -c a.swift"), "swift-frontend")
+        self.assertEqual(pc.process_name("kernel_task"), "kernel_task")
+
     def test_busiest_explains_low_idle_only_when_no_competitor_does(self):
         busiest = ["21 Xcode 95% cpu"]
         self.assertEqual(pc.load_gate(0.0, [], 0.5, busiest),
