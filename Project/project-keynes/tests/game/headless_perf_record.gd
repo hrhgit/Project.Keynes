@@ -9,7 +9,6 @@ extends SceneTree
 # This reuses WorldRuntimeHost and PerfRecorder, so the exported CSV has the
 # same perf_record_YYYYMMDD_HHMMSS.csv schema as the GM performance panel.
 
-const PerfRecorderScript = preload("res://scripts/ui/perf_recorder.gd")
 const CountryAiCsvRecorderScript = preload("res://scripts/country/country_ai_csv_recorder.gd")
 const CountryAiCatalogScript = preload("res://scripts/country/country_ai_catalog.gd")
 const TechnologyCatalogScript = preload("res://scripts/economy/technology_catalog.gd")
@@ -26,15 +25,75 @@ const DEFAULT_MAP_HEIGHT := 40
 const DEFAULT_POPULATION_SCALE := 0
 const DEFAULT_FOREIGN_COUNT := 3
 const MAX_BARRIER_PULSES_PER_DAY := 4096
-# Days the driver may run ahead of the worker commit, like WorldClock does in
-# the player scene. The environment FIFO holds 4 slots: `depth` in flight plus
-# the day being submitted, so 3 is the deepest lead that never fills it.
+# Days the driver may run ahead of the published day, like WorldClock does
+# in the player scene.
 # pipeline_depth=0 reproduces the old one-day lockstep, where the worker idles
 # while the driver notices each commit and captures the next input.
 const DEFAULT_PIPELINE_DEPTH := 3
 const MAX_PIPELINE_DEPTH := 3
 # M7 PERFORMANCE checkpoint: authoritative simulation throughput >= 50 days/s.
 const AUTHORITATIVE_THROUGHPUT_CHECKPOINT_DAYS_PER_SEC := 50.0
+
+
+class CommittedDayRecorder extends PerfRecorder:
+	var observed_days := 0
+	var warmup_finished_us := 0
+	var last_measured_us := 0
+	var last_measurement_received_us := 0
+	var _first_day: int
+	var _last_day: int
+	var _speed: float
+	var _last_published_day := -1
+	var _batch_sample: Dictionary = {}
+
+	func _init(first_day: int, last_day: int, speed: float) -> void:
+		_first_day = first_day
+		_last_day = last_day
+		_speed = speed
+
+	func on_fast_tick(sample: Dictionary) -> void:
+		# The host samples the batch immediately before emitting its day records.
+		if is_recording():
+			_batch_sample = sample
+
+	func on_day_records(records: Array) -> void:
+		var sample := _batch_sample
+		_batch_sample = {}
+		for index in records.size():
+			var record: Dictionary = records[index]
+			var day := int(record["day"])
+			if day > _last_day or not is_recording():
+				break
+			if day <= _last_published_day:
+				continue
+			_last_published_day = day
+			if day > 0:
+				observed_days += 1
+			if day == _first_day - 1:
+				warmup_finished_us = int(record["produced_at_us"])
+			if day < _first_day:
+				continue
+
+			var generation := int(record["generation"])
+			var row: Dictionary = {}
+			# One batch has one foreground timing sample. Native metrics are
+			# available only when the snapshot belongs to the same commit.
+			if index == records.size() - 1 and int(sample.get("tick_idx", -1)) == day:
+				var graph: Dictionary = sample.get("runtime_graph", {})
+				if int(graph.get("simulation_committed_day", -1)) != day \
+						or int(graph.get("simulation_generation", -1)) != generation:
+					sample = sample.duplicate()
+					sample.erase("runtime_graph")
+				row = _build_row(sample, null)
+			row["tick_idx"] = day
+			row["speed_multiplier"] = _speed
+			# Whole-graph execution does not run SUS on the foreground.
+			row["t_sus_ms"] = row.get("t_sus_ms", 0.0)
+			row["runtime_graph_simulation_committed_day"] = day
+			row["runtime_graph_simulation_generation"] = generation
+			_append_row(row)
+			last_measured_us = int(record["produced_at_us"])
+			last_measurement_received_us = Time.get_ticks_usec()
 
 
 func _init() -> void:
@@ -303,22 +362,20 @@ func _run() -> int:
 	var actual_height := actual_map.height
 	var actual_seed := host.last_seed()
 	var generation_ms := float(Time.get_ticks_usec() - generation_started) / 1000.0
-	# SceneTree -s does not pump WorldRuntimeHost._process, so ACTIVE write-back
-	# has to be driven here. The worker also starts paused with the clock.
-	var runtime_ext = generator.get_data_core_world_ext() \
-		if generator.has_method("get_data_core_world_ext") else null
-	if host._native_environment_active and runtime_ext != null \
-			and runtime_ext.has_method("set_runtime_clock"):
-		runtime_ext.set_runtime_clock(false, speed)
-
-	var recorder: RefCounted = PerfRecorderScript.new()
-	recorder.call("bind_main", host)
+	if not host._native_environment_active:
+		push_error("[headless-perf] world has no active day publisher")
+		return 4
+	var first_measured_day := warmup_days + 1
+	var last_measured_day := warmup_days + days
+	var recorder := CommittedDayRecorder.new(first_measured_day, last_measured_day, speed)
+	recorder.bind_main(host)
 	if not output_dir.is_empty():
-		recorder.call("configure_export", output_dir, "perf.csv")
+		recorder.configure_export(output_dir, "perf.csv")
 	host.set_perf_recorder(recorder)
+	host.simulation_day_records.connect(recorder.on_day_records)
 	# Production throughput uses compact snapshots. Full diagnostics are an
 	# explicit separate measurement, not hidden inside every measured day.
-	recorder.call("start", detail_mode, 1)
+	recorder.start(detail_mode, 1)
 	var country_ai = generator.get_country_ai_facade() \
 		if generator.has_method("get_country_ai_facade") else null
 	var country_ai_recorder: RefCounted = null
@@ -334,13 +391,14 @@ func _run() -> int:
 			country_ai_recorder = null
 
 	var runtime_report_start := _runtime_report_snapshot(generator)
-	if host._native_environment_active:
-		# The first input is day zero. Gate by observed commits below rather
-		# than assuming a particular bootstrap watermark.
-		recorder.configure_authoritative_sampling(0)
+	# Startup installs day zero without queuing a day record.
+	var published_day := int(runtime_report_start.get("simulation_committed_day",
+		runtime_report_start.get("committed_day", -1)))
 	var climate_diag_start: Dictionary = host.climate_authority_diagnostics() \
 		if host.has_method("climate_authority_diagnostics") else {}
 	var run_started := Time.get_ticks_usec()
+	# The executor starts paused. Open the calendar after attaching the recorder.
+	generator.get_data_core_world_ext().set_runtime_clock(false, speed)
 	var barrier_pulses := 0
 	var ledger_failures := 0
 	var fatal := false
@@ -350,25 +408,10 @@ func _run() -> int:
 	var harness_capacity_wait_count := 0
 	var country_perf_samples: Array[Dictionary] = []
 	var last_country_perf_day := -1
-	# The first worker input is semantic day zero.  It is a bootstrap/seed
-	# commit, not one of the requested measured days, and the recorder is already
-	# configured to ignore it.  Keep the accounting watermark aligned with that
-	# filter or the harness reports one extra measured day and one missing CSV
-	# row.
-	var sampling_after_day := 0 if host._native_environment_active else -1
-	var last_authoritative_committed_day := maxi(
-		int(runtime_report_start.get("committed_day", -1)), sampling_after_day)
-	var authoritative_observed := 0
-	var authoritative_measured := 0
-	var auth_measure_start_us := 0
-	var auth_measure_end_us := 0
-	var auth_measure_start_day := -1
-	var auth_measure_end_day := -1
-	# sus_tick_daily captures driver_day - 1. With a pipeline one observation
-	# can cover several commits, so the loop ends on measured observations and
-	# this bound only stops a run whose worker no longer commits.
-	var total_driver_days := warmup_days + days + 2 if pipeline_depth == 0 \
-		else 2 * (warmup_days + days + pipeline_depth) + 16
+	# A calendar request for day N admits simulation through day N - 1.
+	# Day zero is bootstrap. At 1x or slower the native calendar admits one day ahead.
+	var final_calendar_day := last_measured_day + 1
+	var driver_depth := pipeline_depth if speed > 1.0 else 0
 	var watch_cells := PackedInt32Array()
 	for token in OS.get_environment("PK_HEADLESS_WATCH_CELLS").split(",", false):
 		if token.strip_edges().is_valid_int():
@@ -381,7 +424,7 @@ func _run() -> int:
 	var active_watch_cells := PackedInt32Array()
 	var famine_owned := {}
 	var watch_pending_since := 0
-	for day in range(1, total_driver_days + 1):
+	for day in range(1, final_calendar_day + 1):
 		if country_daily_workload:
 			if country == null or country_handles.is_empty():
 				push_error("[headless-perf] country_daily_workload requires a formal country")
@@ -427,25 +470,28 @@ func _run() -> int:
 				"last_committed_day", day))
 		clock.current_day = float(day)
 		host._admit_runtime_calendar(day)
-		host.finish_daily_tick(0.0, {})
-		if host._native_environment_active:
-			# The requested calendar date labels the display. The committed day is
-			# one smaller. Stop polling when it is within the measured pipeline depth.
-			var writeback_window_started := Time.get_ticks_usec()
-			var writeback_deadline := writeback_window_started + 60000000
-			while Time.get_ticks_usec() < writeback_deadline:
-				var consume_started := Time.get_ticks_usec()
-				host._consume_runtime_commit_if_ready()
-				harness_writeback_consume_us += Time.get_ticks_usec() - consume_started
-				harness_writeback_poll_count += 1
-				var progress := _runtime_report_snapshot(generator)
-				if int(progress.get("simulation_committed_day",
-						progress.get("committed_day", -1))) >= day - 1 - pipeline_depth:
-					break
-				if Time.get_ticks_usec() >= writeback_deadline:
-					break
-				await process_frame
-			harness_writeback_window_us += Time.get_ticks_usec() - writeback_window_started
+		# At the last request, drain the full pipeline through the final publication.
+		var publication_target := last_measured_day if day == final_calendar_day \
+			else day - 1 - driver_depth
+		var writeback_window_started := Time.get_ticks_usec()
+		var writeback_deadline := writeback_window_started + 60000000
+		while Time.get_ticks_usec() < writeback_deadline:
+			var consume_started := Time.get_ticks_usec()
+			host._consume_runtime_commit_if_ready()
+			harness_writeback_consume_us += Time.get_ticks_usec() - consume_started
+			harness_writeback_poll_count += 1
+			# The poll emits the ordered records before returning. The worker's
+			# committed date can advance before those records are available.
+			published_day = maxi(published_day, host._runtime_commit_day)
+			if published_day >= publication_target or host.is_runtime_fault_paused():
+				break
+			await process_frame
+		harness_writeback_window_us += Time.get_ticks_usec() - writeback_window_started
+		if published_day < publication_target or host.is_runtime_fault_paused():
+			push_error("[headless-perf] publication stopped at day %d, waiting for day %d" % [
+				published_day, publication_target])
+			fatal = true
+			break
 
 		var drained := await _drain_hard_barrier(clock, day)
 		barrier_pulses += int(drained.get("pulses", 0))
@@ -528,63 +574,10 @@ func _run() -> int:
 			])
 			break
 
-		# Count real committed days. The elapsed window below uses main-thread
-		# observations consistently, so it includes the harness frame waits.
-		var day_report := _runtime_report_snapshot(generator)
-		# ACTIVE reports use the explicit simulation_* namespace.  Keep the
-		# unprefixed fallback for older extensions, but do not silently turn a
-		# valid worker commit into "no observed days".
-		var committed_day := int(day_report.get("simulation_committed_day",
-			day_report.get("committed_day", -1)))
-		if committed_day > last_authoritative_committed_day:
-			# The native report timestamp uses the worker's std::chrono clock,
-			# while Time.get_ticks_usec() uses Godot's process-relative clock.  They
-			# have different zero points, so only use a local observation timestamp
-			# for this elapsed-time calculation.
-			var observed_commit_us := Time.get_ticks_usec()
-			# Under a pipeline one observation can cover several commits; warmup
-			# counts committed days so the measured window starts at warmup_days.
-			var warmed_before := authoritative_observed
-			authoritative_observed += 1 if pipeline_depth == 0 \
-				else committed_day - maxi(last_authoritative_committed_day, 0)
-			last_authoritative_committed_day = committed_day
-			if warmed_before < warmup_days:
-				recorder.configure_authoritative_sampling(committed_day)
-				if authoritative_observed >= warmup_days:
-					# Clear warmup rows; the next commit starts the measured window.
-					recorder.start(detail_mode, 1)
-					auth_measure_start_us = observed_commit_us
-					auth_measure_start_day = committed_day
-				continue
-			authoritative_measured += 1
-			if auth_measure_start_us == 0:
-				auth_measure_start_us = observed_commit_us
-				auth_measure_start_day = committed_day - 1
-			auth_measure_end_us = observed_commit_us
-			auth_measure_end_day = committed_day
-			# Commit consumption can precede its recorder callback by one frame.
-			host._consume_runtime_commit_if_ready()
-			if pipeline_depth == 0 and authoritative_measured >= days:
-				break
-		# Under a pipeline the recorder samples at finish_daily_tick and this loop
-		# after the poll, so each can group several commits differently. The
-		# recorder rows are the measured samples.
-		if pipeline_depth > 0 and authoritative_observed > warmup_days \
-				and int(recorder.call("row_count")) >= days:
-			break
-
-	# Only publish a late callback if a requested sample is still missing.
-	# A pipeline may commit another day during this frame; publishing after the
-	# requested row count was reached used to append a spurious 51st sample.
-	if host._native_environment_active and int(recorder.call("row_count")) < days:
-		await process_frame
-		host._consume_runtime_commit_if_ready()
-		if host.has_method("_publish_fast_tick_perf_sample"):
-			host._publish_fast_tick_perf_sample(0.0, 0.0, 0.0, 0.0, false)
-
-	var recorded_rows := int(recorder.call("row_count"))
-	var measured_samples := recorded_rows if pipeline_depth > 0 else authoritative_measured
-	var output_path := String(recorder.call("stop_and_export"))
+	var authoritative_measured := recorder.row_count()
+	var output_path := recorder.stop_and_export()
+	var csv_check := {"rows": 0, "exit_code": 6} if authoritative_measured == 0 \
+		else _check_csv(output_path, first_measured_day, days)
 	var country_perf_path := _write_country_perf_samples(
 		output_dir, country_perf_samples)
 	if country_ai_recorder != null:
@@ -594,8 +587,7 @@ func _run() -> int:
 	if tech_every > 0:
 		_print_country_technology(-1, country, country_handles, generator)
 	var run_ms := float(Time.get_ticks_usec() - run_started) / 1000.0
-	var rows := _csv_data_row_count(output_path)
-	var output_ok := output_path != "" and FileAccess.file_exists(output_path)
+	var rows := int(csv_check.rows)
 	var tariff_totals := _tariff_totals(country, country_handles)
 	var trade_totals := _trade_totals(economy, country_handles)
 	var runtime_report_end := _runtime_report_snapshot(generator)
@@ -606,21 +598,19 @@ func _run() -> int:
 	var idle_wait_ms := 0.0
 	var adjusted_run_ms := run_ms
 	var lower_bound_run_ms := maxf(0.0, run_ms - writeback_window_ms)
-	var expected_rows := measured_samples if measured_samples > 0 else host.get_fast_tick_count()
-	if fatal:
-		expected_rows = host.get_fast_tick_count()
-	if host._native_environment_active:
-		expected_rows = days
-	var rows_ok := rows == expected_rows
-	var effective_days := float(maxi(authoritative_measured, 0))
+	var expected_rows := days
+	var effective_days := float(authoritative_measured)
+	var auth_measure_start_us := recorder.warmup_finished_us
+	var auth_measure_end_us := recorder.last_measured_us
+	if warmup_days == 0 and auth_measure_start_us == 0:
+		# Day zero may already be installed at setup. Use the local clock for
+		# both ends of this interval when there is no bootstrap timestamp.
+		auth_measure_start_us = run_started
+		auth_measure_end_us = recorder.last_measurement_received_us
 	var auth_elapsed_ms := 0.0
 	if auth_measure_end_us > auth_measure_start_us and auth_measure_start_us > 0:
 		auth_elapsed_ms = float(auth_measure_end_us - auth_measure_start_us) / 1000.0
-	# One observation can cover several commits once the driver runs ahead, so
-	# throughput counts committed days, not observations.
 	var authoritative_committed_days := authoritative_measured
-	if auth_measure_start_day >= 0 and auth_measure_end_day > auth_measure_start_day:
-		authoritative_committed_days = auth_measure_end_day - auth_measure_start_day
 	var authoritative_days_per_second := _days_per_second(
 		float(authoritative_committed_days), auth_elapsed_ms)
 	var raw_days_per_second := _days_per_second(effective_days, run_ms)
@@ -629,11 +619,11 @@ func _run() -> int:
 	var main_wait_on_sim_us := int(runtime_report_end.get("main_wait_on_sim_us", 0))
 	# Checkpoint (assert when measuring): authoritative throughput >= 50 days/s.
 	# M7 PERFORMANCE reads authoritative_days_per_second from the session JSON.
-	var throughput_checkpoint_ok := measured_samples >= days \
+	var throughput_checkpoint_ok := authoritative_measured >= days \
 		and authoritative_days_per_second >= AUTHORITATIVE_THROUGHPUT_CHECKPOINT_DAYS_PER_SEC
 	print("[headless-perf/auth] warmup_days=%d pipeline_depth=%d measured_days=%d committed_days=%d observed=%d commit_us=%d..%d authoritative_days_per_second=%.6f main_wait_on_sim_us=%d checkpoint_ok=%s" % [
 		warmup_days, pipeline_depth, authoritative_measured, authoritative_committed_days,
-		authoritative_observed,
+		recorder.observed_days,
 		auth_measure_start_us, auth_measure_end_us, authoritative_days_per_second,
 		main_wait_on_sim_us, str(throughput_checkpoint_ok),
 	])
@@ -719,7 +709,7 @@ func _run() -> int:
 			"pipeline_depth": pipeline_depth,
 			"authoritative_measured_days": authoritative_measured,
 			"authoritative_committed_days": authoritative_committed_days,
-			"authoritative_observed_days": authoritative_observed,
+			"authoritative_observed_days": recorder.observed_days,
 			"authoritative_days_per_second": authoritative_days_per_second,
 			"auth_measure_start_us": auth_measure_start_us,
 			"auth_measure_end_us": auth_measure_end_us,
@@ -750,8 +740,9 @@ func _run() -> int:
 			"climate_authority_start": climate_diag_start,
 			"climate_authority_end": climate_diag,
 		})
+	host.simulation_day_records.disconnect(recorder.on_day_records)
 	host.set_perf_recorder(null)
-	recorder.call("bind_main", null)
+	recorder.bind_main(null)
 	# Stop producing inputs, then use the production lifecycle wait before
 	# releasing the scene. The native stop request preserves Economy and its
 	# command executor until the current worker slice has finished.
@@ -765,12 +756,16 @@ func _run() -> int:
 		for k in ns_prev_values:
 			climate_profile_res.set(k, ns_prev_values[k])
 	await process_frame
-	if not output_ok:
+	if csv_check.exit_code == 5:
 		push_error("[headless-perf] performance CSV export failed")
 		return 5
-	if not rows_ok:
-		push_error("[headless-perf] CSV row count mismatch: got %d expected %d" % [
-			rows, expected_rows])
+	if csv_check.exit_code == 6:
+		if rows != expected_rows:
+			push_error("[headless-perf] CSV row count mismatch: got %d expected %d" % [
+				rows, expected_rows])
+		else:
+			push_error("[headless-perf] CSV days must be ordered from %d through %d" % [
+				first_measured_day, last_measured_day])
 		return 6
 	if fatal or ledger_failures > 0:
 		return 7
@@ -780,7 +775,7 @@ func _run() -> int:
 	# assert: authoritative throughput >= 50 days/s after warm-up
 	if not throughput_checkpoint_ok:
 		push_error("[headless-perf] authoritative throughput checkpoint failed: measured=%d need>=%d days/s=%.3f threshold=%.3f main_wait_on_sim_us=%d" % [
-			measured_samples, days, authoritative_days_per_second,
+			authoritative_measured, days, authoritative_days_per_second,
 			AUTHORITATIVE_THROUGHPUT_CHECKPOINT_DAYS_PER_SEC, main_wait_on_sim_us])
 		return 9
 	return 0
@@ -807,18 +802,20 @@ func _has_hard_barrier(clock: WorldClock) -> bool:
 		or clock._simulation_backpressure_sources.has(&"economy_day_barrier")
 
 
-func _csv_data_row_count(path: String) -> int:
-	if path == "" or not FileAccess.file_exists(path):
-		return -1
-	var file := FileAccess.open(path, FileAccess.READ)
+static func _check_csv(path: String, first_day: int, expected_rows: int) -> Dictionary:
+	var file := FileAccess.open(path, FileAccess.READ) if not path.is_empty() else null
 	if file == null:
-		return -1
-	var line_count := 0
+		return {"rows": -1, "exit_code": 5}
+	var day_column := file.get_csv_line().find("runtime_graph_simulation_committed_day")
+	var ordered := day_column >= 0
+	var rows := 0
 	while not file.eof_reached():
-		var line := file.get_line()
-		if not line.is_empty():
-			line_count += 1
-	return maxi(0, line_count - 1)
+		var cells := file.get_csv_line()
+		if cells.size() == 1 and cells[0].is_empty():
+			continue
+		ordered = ordered and day_column < cells.size() and cells[day_column] == str(first_day + rows)
+		rows += 1
+	return {"rows": rows, "exit_code": 0 if ordered and rows == expected_rows else 6}
 
 
 func _arguments() -> Dictionary:

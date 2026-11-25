@@ -9,6 +9,8 @@
 
 extends SceneTree
 
+const HeadlessPerf = preload("res://tests/game/headless_perf_record.gd")
+
 # 通过 class_name PerfRecorder 引用：Godot 4.6 GDScript 在解析期不允许从
 # preload 的脚本对象访问 const / static 成员（"Could not resolve external class member"），
 # 必须走 class_name。
@@ -48,22 +50,12 @@ func _run() -> void:
 	_test_recorder_skipped_day_no_job_columns()
 	_test_recorder_state_machine()
 	_test_schema_and_custom_export()
-	_test_authoritative_sampling()
+	_test_committed_day_export()
+	_test_missing_committed_day()
 	print("=== perf_recorder test summary: %d checks, %d failures ===" % [_checks, _failures])
 
 
 # ─── CSV 转义 ─────────────────────────────────────────────────────
-
-func _test_authoritative_sampling() -> void:
-	var rec := PerfRecorder.new()
-	rec.configure_authoritative_sampling(5)
-	rec.start()
-	for day in [4, 5, 6, 6, 6, 7]:
-		rec.on_fast_tick({"tick_idx": day,
-			"runtime_graph": {"simulation_committed_day": day}})
-	_expect(rec.get("_rows").size() == 2, "warmup and repeated callbacks do not duplicate authority rows")
-	_expect(rec.get("_rows")[0]["runtime_graph_simulation_committed_day"] == 6,
-		"first measured row is a real committed day")
 
 func _test_csv_escape_basic() -> void:
 	_expect(PerfRecorder._csv_escape("hello") == "hello", "plain string passthrough")
@@ -262,6 +254,8 @@ func _test_format_csv_missing_cell_blank() -> void:
 
 class _MockMain:
 	extends RefCounted
+	signal simulation_day_records(records: Array)
+
 	var fast_tick: int = 0
 	var sus_summary: Dictionary = {}
 	var sus_report: Dictionary = {}
@@ -275,6 +269,88 @@ class _MockMain:
 		return sus_report
 	func get_sim_breakdowns() -> Dictionary:
 		return breakdowns
+
+	func publish_batch(recorder: PerfRecorder, records: Array, snapshot_day: int) -> void:
+		if records.is_empty():
+			return
+		var last_record: Dictionary = records.back()
+		recorder.on_fast_tick({
+			"tick_idx": last_record["day"],
+			"fast_ms": 1.25,
+			"t_sus_ms": 0.0,
+			"runtime_graph": {
+				"simulation_committed_day": snapshot_day,
+				"simulation_generation": 100 + snapshot_day,
+				"worker_time_execute_us": 250,
+			},
+		})
+		simulation_day_records.emit(records)
+
+
+func _day_record(day: int) -> Dictionary:
+	return {"day": day, "generation": 100 + day, "produced_at_us": 50000 + day * 100}
+
+
+func _test_committed_day_export() -> void:
+	var rec := HeadlessPerf.CommittedDayRecorder.new(6, 8, 50.0)
+	var mock := _MockMain.new()
+	rec.bind_main(mock)
+	rec.configure_export("user://stage_c_tests/perf", "committed_days.csv")
+	mock.simulation_day_records.connect(rec.on_day_records)
+	rec.start()
+	var batch := [_day_record(5), _day_record(6), _day_record(7)]
+	mock.publish_batch(rec, batch, 7)
+	mock.publish_batch(rec, batch, 7)
+	mock.publish_batch(rec, [], 8)
+	_expect(rec.row_count() == 2, "one batch supplies both measured days exactly once")
+	_expect(rec.warmup_finished_us == 50500, "batch includes the exact warmup boundary")
+	mock.publish_batch(rec, [_day_record(8)], 9)
+	mock.publish_batch(rec, [_day_record(9)], 9)
+	var path := rec.stop_and_export()
+	var check := HeadlessPerf._check_csv(path, 6, 3)
+	_expect(check == {"rows": 3, "exit_code": 0}, "CSV contains days 6, 7 and the late day 8 in order")
+	_expect(rec.last_measured_us == 50800, "measurement ends at the last measured commit")
+	mock.simulation_day_records.disconnect(rec.on_day_records)
+	if check.exit_code != 0:
+		return
+	var file := FileAccess.open(path, FileAccess.READ)
+	var columns := file.get_csv_line()
+	var first := file.get_csv_line()
+	var second := file.get_csv_line()
+	var third := file.get_csv_line()
+	var host_timing := columns.find("fast_ms")
+	var worker_timing := columns.find("runtime_graph_worker_time_execute_us")
+	var generation := columns.find("runtime_graph_simulation_generation")
+	_expect(first[host_timing].is_empty() and second[host_timing] == "1.25",
+		"foreground timings appear once for the batch")
+	_expect(first[worker_timing].is_empty() and second[worker_timing] == "250" \
+		and third[worker_timing].is_empty(), "worker timing is blank when unavailable or ahead")
+	_expect(first[generation] == "106" and second[generation] == "107" and third[generation] == "108",
+		"every row uses its own published generation")
+	var tick := columns.find("tick_idx")
+	var speed := columns.find("speed_multiplier")
+	var sus := columns.find("t_sus_ms")
+	var expected_tick := 6
+	for cells in [first, second, third]:
+		_expect(cells[tick] == str(expected_tick) and cells[speed] == "50" and cells[sus] == "0",
+			"day %d includes the required numeric columns" % expected_tick)
+		expected_tick += 1
+
+
+func _test_missing_committed_day() -> void:
+	var rec := HeadlessPerf.CommittedDayRecorder.new(6, 8, 50.0)
+	var mock := _MockMain.new()
+	rec.configure_export("user://stage_c_tests/perf", "missing_day.csv")
+	mock.simulation_day_records.connect(rec.on_day_records)
+	rec.start()
+	mock.publish_batch(rec, [_day_record(6), _day_record(8)], 8)
+	mock.publish_batch(rec, [_day_record(9)], 9)
+	var path := rec.stop_and_export()
+	_expect(HeadlessPerf._check_csv(path, 6, 3) == {"rows": 2, "exit_code": 6},
+		"a later commit cannot replace the missing middle day")
+	_expect(HeadlessPerf._check_csv(path, 6, 2) == {"rows": 2, "exit_code": 6},
+		"matching row count still fails when the dates have a gap")
+	mock.simulation_day_records.disconnect(rec.on_day_records)
 
 
 func _test_recorder_default_core_sampling() -> void:
@@ -371,7 +447,7 @@ func _test_schema_and_custom_export() -> void:
 	var rec = PerfRecorder.new()
 	var mock = _MockMain.new()
 	rec.bind_main(mock)
-	var output_dir := ProjectSettings.globalize_path("user://stage_c_tests/perf")
+	var output_dir := ProjectSettings.globalize_path("user://stage_c_tests/perf").simplify_path()
 	rec.configure_export(output_dir, "stage_c_perf.csv")
 	rec.start()
 	rec.on_fast_tick({

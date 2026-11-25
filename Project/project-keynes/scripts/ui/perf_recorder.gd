@@ -407,13 +407,6 @@ const MOBILE_EXPORT_DIR: String = "user://perf"
 var _main = null  # 鸭子类型（运行时只 has_method/call 调用）；
                   # 留 untyped 是为了单测可注入 RefCounted Mock 而不必 extends Node。
 var _recording: bool = false
-var _authoritative_after_day: int = -1
-
-
-## Optional headless gate: driver ticks and continuation callbacks cannot
-## duplicate a committed day. Player recording keeps its normal tick contract.
-func configure_authoritative_sampling(after_day: int) -> void:
-	_authoritative_after_day = after_day
 var _rows: Array = []
 var _start_tick: int = 0
 var _hit_limit: bool = false
@@ -532,20 +525,12 @@ static func _export_dir_absolute() -> String:
 # main.gd._run_fast_tick() 末尾调用。recorder 自己拉 SUS 数据，sample 只承载
 # 那些只有 main 局部知道的字段。
 func on_fast_tick(sample: Dictionary) -> void:
-	if not _recording:
-		return
-	if _hit_limit:
-		return
-	if _authoritative_after_day >= 0:
-		var graph: Dictionary = sample.get("runtime_graph", {})
-		var committed := int(graph.get("simulation_committed_day", -1))
-		if committed <= _authoritative_after_day:
-			return
-		_authoritative_after_day = committed
-	var row: Dictionary = sample.duplicate()
+	if _recording:
+		_append_row(_build_row(sample))
 
-	# 计算 row_idx（录制内序号，从 0 开始；区别于 tick_idx 的全局序号）
-	row["row_idx"] = _rows.size()
+
+func _build_row(sample: Dictionary, missing_graph_value: Variant = 0) -> Dictionary:
+	var row := sample.duplicate()
 	var runtime_graph = sample.get("runtime_graph", {})
 	if runtime_graph is Dictionary:
 		for key in ["pulse_count", "abi_calls", "gdscript_callbacks", "work_done",
@@ -623,7 +608,7 @@ func on_fast_tick(sample: Dictionary) -> void:
 				"economy_read_view_subscriptions", "economy_read_view_serve_count",
 				"economy_read_view_eval_count", "economy_read_view_serve_us_total",
 				"economy_read_view_serve_us_max", "economy_read_view_evicted_count"]:
-			row["runtime_graph_%s" % key] = runtime_graph.get(key, 0)
+			row["runtime_graph_%s" % key] = runtime_graph.get(key, missing_graph_value)
 
 	# CORE 只保留固定帧/预算/守恒字段。完整 job/breakdown 展开属于 DETAIL，
 	# 默认不进入每帧热路径；DETAIL 也按日周期采样，避免重复序列化。
@@ -641,7 +626,11 @@ func on_fast_tick(sample: Dictionary) -> void:
 		if detail_due and _main.has_method("get_sim_breakdowns"):
 			var bds: Dictionary = _main.get_sim_breakdowns()
 			_merge_breakdowns(row, bds)
+	return row
 
+
+func _append_row(row: Dictionary) -> void:
+	row["row_idx"] = _rows.size()
 	_rows.append(row)
 	if _rows.size() >= HARD_ROW_LIMIT:
 		_hit_limit = true
