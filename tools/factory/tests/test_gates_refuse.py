@@ -101,6 +101,26 @@ def refuses_legacy_owner(lane, entry):
             return legacy_lane_gate(root, lane)
 
 
+HEAD = "a" * 40
+CLEAN_CI = verdict.CIFacts(HEAD, [verdict.CIRun("completed", "success")], [verdict.CIRun("completed", "success")])
+
+
+def merge_refused(**session):
+    """decide() on a mergeable PR with successful CI and no findings; True when it did not merge."""
+    review = {"review_session": {"status": "completed", "commit_sha": HEAD, "review_complete": True, **session},
+              "findings": []}
+    p = pr(number=7, headRefOid=HEAD, mergeable="MERGEABLE")
+    cfg = {**CFG, "autoMerge": True}
+    return watch_prs.decide(p, review, watch_prs.PrState(), cfg, changed_files=[], ci=CLEAN_CI).action != "merge"
+
+
+def judge_refused(**facts):
+    """judge() on facts that are otherwise READY; True when it did not return READY."""
+    base = dict(head="abc", checks_sha="abc", review_status="completed", review_complete=True, review_sha="abc",
+                ci_state="success", findings=[])
+    return verdict.judge(verdict.Facts(**{**base, **facts})).verdict != "READY"
+
+
 # name -> list of (description, callable returning True when the gate refused the input)
 GATES = {
     "legacy_lane_gate": [
@@ -190,6 +210,20 @@ GATES = {
     "merge_preflight": [
         ("a head that changed before merge", lambda: preflight_refuses("merge")),
     ],
+    "decide": [
+        ("a completed review that Qodo skipped as trivial", lambda: merge_refused(review_complete=False)),
+        ("a review with no review_complete field", lambda: merge_refused(review_complete=None)),
+        ("review_complete given as a string", lambda: merge_refused(review_complete="true")),
+        ("a review of an older commit", lambda: merge_refused(commit_sha="b" * 40)),
+        ("a review that ended with another status", lambda: merge_refused(status="failed")),
+    ],
+    "judge": [
+        ("a completed review that Qodo skipped as trivial", lambda: judge_refused(review_complete=False)),
+        ("review completeness unknown", lambda: judge_refused(review_complete=None)),
+        ("a review of an older commit", lambda: judge_refused(review_sha="old")),
+        ("local checks on another commit", lambda: judge_refused(checks_sha="old")),
+        ("CI still pending", lambda: judge_refused(ci_state="pending")),
+    ],
     "skip_before_review": [
         ("a draft PR", lambda: skipped(isDraft=True)),
         ("a PR from another repository", lambda: skipped(isCrossRepository=True)),
@@ -199,7 +233,7 @@ GATES = {
     ],
 }
 
-NAME_PARTS = ("matches", "touching", "scope", "gate", "parse", "classify", "validate", "allowed", "native_line", "extra_checks", "unknown_findings", "preflight")
+NAME_PARTS = ("matches", "touching", "scope", "gate", "parse", "classify", "validate", "allowed", "native_line", "extra_checks", "unknown_findings", "preflight", "decide", "judge")
 EXEMPT = {"gate": "registered as ticket.gate"}
 
 
@@ -220,6 +254,11 @@ class GatesRefuse(unittest.TestCase):
             for description, refused in cases:
                 with self.subTest(gate=name, case=description):
                     self.assertTrue(refused())
+
+    def test_merge_and_ready_gates_accept_a_clean_case(self):
+        # Without this, every refusal above would pass for a gate that refuses everything.
+        self.assertFalse(merge_refused())
+        self.assertFalse(judge_refused())
 
     def test_every_gate_function_is_registered(self):
         missing = sorted(gate_functions() - set(GATES) - set(KNOWN_UNLISTED))
