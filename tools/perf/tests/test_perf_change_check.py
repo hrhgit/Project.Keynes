@@ -388,9 +388,19 @@ class MachineLoadGate(unittest.TestCase):
 
     def test_busiest_names_macos_apps_by_bundle_not_by_first_word(self):
         table = "  40     1  70.0 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --type=gpu"
-        self.assertEqual(pc.busiest_processes(table, mine=500), ["40 Google Chrome 70% cpu"])
-        self.assertEqual(pc.process_name("/usr/bin/swift-frontend -c a.swift"), "swift-frontend")
+        names = pc.parse_executables(
+            "   40 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome\ngarbage\n")
+        self.assertEqual(pc.busiest_processes(table, mine=500, executables=names),
+                         ["40 Google Chrome 70% cpu"])
+        self.assertEqual(pc.process_name("/usr/bin/swift-frontend"), "swift-frontend")
         self.assertEqual(pc.process_name("kernel_task"), "kernel_task")
+
+    def test_busiest_never_names_a_process_after_its_arguments(self):
+        table = "  41     1  80.0 /usr/bin/find /Applications/Xcode.app/Contents/MacOS/Xcode -newer x"
+        names = pc.parse_executables("41 /usr/bin/find")
+        self.assertEqual(pc.busiest_processes(table, mine=500, executables=names), ["41 find 80% cpu"])
+        self.assertEqual(pc.busiest_processes(table, mine=500), ["41 find 80% cpu"])
+        self.assertEqual(pc.process_name("/Applications/Xcode.app/Contents/Resources/helper"), "helper")
 
     def test_busiest_explains_low_idle_only_when_no_competitor_does(self):
         busiest = ["21 Xcode 95% cpu"]

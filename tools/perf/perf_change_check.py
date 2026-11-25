@@ -529,24 +529,36 @@ def competing_processes(ps_output: str, mine: int, min_cpu: float = COMPETING_CP
 # Lower than COMPETING_CPU on purpose: a low idle figure can come from several processes that
 # each use only a little CPU, and they are what the hint has to name.
 BUSIEST_MIN_CPU = 1.0
-APP_BUNDLE = re.compile(r"/([^/]+)\.app/")
+APP_BUNDLE = re.compile(r"/([^/]+)\.app/Contents/MacOS/[^/]+$")
 
 
-def process_name(command: str) -> str:
-    """A readable name for a `ps` command line. A macOS app is named by its bundle, because its
-    path holds spaces ("/Applications/Google Chrome.app/..."); otherwise the executable's basename."""
-    bundle = APP_BUNDLE.search(command)
-    if bundle:
-        return bundle.group(1)
-    return command.split()[0].rsplit("/", 1)[-1]
+def process_name(executable: str) -> str:
+    """A readable name for an executable path, as `ps -o comm=` prints it (no arguments, spaces
+    kept). A macOS app's own executable is named by its bundle; anything else by its basename."""
+    bundle = APP_BUNDLE.search(executable)
+    return bundle.group(1) if bundle else executable.rsplit("/", 1)[-1]
 
 
-def busiest_processes(ps_output: str, mine: int, limit: int = 3,
-                      min_cpu: float = BUSIEST_MIN_CPU) -> list[str]:
+def parse_executables(ps_output: str) -> dict[int, str]:
+    """pid -> executable path from `ps -axo pid=,comm=`. comm holds no arguments, so a path with
+    spaces stays whole and an argument can never be taken for the program."""
+    found = {}
+    for line in ps_output.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) == 2 and parts[0].isdigit():
+            found[int(parts[0])] = parts[1]
+    return found
+
+
+def busiest_processes(ps_output: str, mine: int, executables: dict[int, str] | None = None,
+                      limit: int = 3, min_cpu: float = BUSIEST_MIN_CPU) -> list[str]:
     """The busiest processes that are not ours, of any kind, busiest first. They name what is
-    using the CPU when the idle figure is low but no known competitor is running."""
+    using the CPU when the idle figure is low but no known competitor is running. A process
+    missing from `executables` is named by the first word of its command line."""
+    executables = executables or {}
     found = sorted(busy_processes(ps_output, mine, min_cpu), key=lambda p: (-p[1], p[0]))
-    return [f"{pid} {process_name(command)} {cpu:.0f}% cpu" for pid, cpu, command in found[:limit]]
+    return [f"{pid} {process_name(executables.get(pid) or command.split()[0])} {cpu:.0f}% cpu"
+            for pid, cpu, command in found[:limit]]
 
 
 def busy_processes(ps_output: str, mine: int, min_cpu: float) -> list[tuple[int, float, str]]:
@@ -566,6 +578,11 @@ def busy_processes(ps_output: str, mine: int, min_cpu: float) -> list[tuple[int,
 
 def process_table() -> str:
     return subprocess.run(["ps", "-axo", "pid=,ppid=,%cpu=,command="], text=True,
+                          capture_output=True, check=False).stdout
+
+
+def executable_table() -> str:
+    return subprocess.run(["ps", "-axo", "pid=,comm="], text=True,
                           capture_output=True, check=False).stdout
 
 
@@ -603,8 +620,9 @@ def wait_for_quiet_machine(args, log: list) -> dict:
         idle = cpu_idle()
         cpus = os.cpu_count() or 0
         table, mine = process_table(), os.getpid()
-        reasons = load_gate(idle, competing_processes(table, mine), args.min_idle,
-                            busiest_processes(table, mine))
+        competing = competing_processes(table, mine)
+        busiest = [] if competing else busiest_processes(table, mine, parse_executables(executable_table()))
+        reasons = load_gate(idle, competing, args.min_idle, busiest)
         sample = {"at": now(), "cpu_idle": None if idle is None else round(idle, 3),
                   "load1": round(load1, 2), "cpus": cpus, "busy": reasons}
         check_budget(args)
