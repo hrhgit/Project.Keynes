@@ -1,0 +1,13 @@
+Project.Keynes is a deterministic hex-world economy simulation. Most PRs are performance changes opened by an agent factory; I review them before merge.
+
+Decision to respect: the same seed, content and player commands must give byte-identical daily results. Machine load may change only when work finishes, never what is computed. For any change that skips, caches, reorders, batches or parallelizes work, say whether daily results can change and name the evidence in the PR that shows they did not (golden replay, a byte-for-byte fixture, a repeated run). If there is none, raise it.
+
+What to catch first: for every skip-if-unchanged check, cache or dirty flag, list each input the skipped work reads (map identity, size and cell order, every data column it uses, version or solve id, layer and display settings, first open, load and map switch) and check that each one is part of the change test and covered by a test. A missing input is a correctness bug: name the input and the line that should include it. Compare this list with the ticket's acceptance criteria.
+
+Performance claims: a claimed gain must compare the same fixed input before and after, on the code path the player actually runs. Flag a claim with no numbers, numbers from a different input, or a test that measures a path the game does not use.
+
+Tests: flag tests that were loosened to pass, such as writing private fields to skip production timing, raising timeouts, or relaxing asserts.
+
+Known gap, not a defect: the factory does not measure frame time in a game window (that needs an unlocked desktop). If a PR lists window frame time as not measured and gives headless counts, mention it once as Low. Raise it as Medium only if the PR claims a frame-time gain without numbers or marks that criterion as met.
+
+Do not spend findings on doc wording, table formatting or style unless it hides a wrong number.
