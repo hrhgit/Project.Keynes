@@ -355,15 +355,98 @@ class MachineLoadGate(unittest.TestCase):
 
     def test_busy_godot_and_compilers_count_but_idle_editor_and_children_do_not(self):
         table = "\n".join([
-            "  10     1  95.0 /opt/homebrew/bin/godot --headless --path x",
+            "  10     1  95.0 godot",
             "  11     1   0.3 /Applications/Godot.app/Contents/MacOS/Godot",
-            "  12     1  80.0 /usr/bin/clang++ -c a.cpp",
-            "  13   500  99.0 /opt/homebrew/bin/godot --headless",
-            "  14     1  99.0 /usr/bin/python3 tools/x.py",
+            "  12     1  80.0 /usr/bin/clang++",
+            "  13   500  99.0 /opt/homebrew/bin/godot",
+            "  14     1  99.0 /usr/bin/python3",
             "garbage line",
         ])
         found = pc.competing_processes(table, mine=500)
         self.assertEqual([entry.split()[0] for entry in found], ["10", "12"])
+
+    def test_competing_build_is_found_when_its_path_has_a_space(self):
+        table = "\n".join([
+            "  15     1  90.0 /Users/me/My Tools/scons",
+            "  16     1  85.0 /Applications/Godot Engine.app/Contents/MacOS/Godot",
+            "  17     1  99.0 /Users/me/godot Tools/python3",
+        ])
+        self.assertEqual(pc.competing_processes(table, mine=500), ["15 scons 90% cpu", "16 Godot 85% cpu"])
+
+    def test_quiet_sample_uses_one_process_listing_with_executable_names(self):
+        args = argparse.Namespace(wait_left=0, budget=0, min_idle=0.5)
+        listing = pc.subprocess.CompletedProcess("ps", 0, stdout="  15     1  90.0 /usr/bin/python3\n",
+                                                 stderr="")
+        failed = pc.subprocess.CompletedProcess("ps", 1, stdout="", stderr="ps: permission denied\n")
+        with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
+             mock.patch.object(pc.subprocess, "run", side_effect=[listing, failed]) as ps:
+            self.assertEqual(pc.wait_for_quiet_machine(args, [])["busy"], [])
+        ps.assert_called_once()
+        self.assertEqual(ps.call_args.args[0],
+                         ["ps", "-Aww", "-o", "pid=", "-o", "ppid=", "-o", "%cpu=", "-o", "comm="])
+
+    def test_refuses_quiet_sample_when_process_listing_fails(self):
+        args = argparse.Namespace(wait_left=0, budget=0, min_idle=0.5)
+        failed = pc.subprocess.CompletedProcess("ps", 1, stdout="", stderr="ps: permission denied\n")
+        with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
+             mock.patch.object(pc.subprocess, "run", return_value=failed) as ps, \
+             self.assertRaisesRegex(pc.StepFailed, r"ps .*%cpu= .*comm= exited 1\nps: permission denied"):
+            pc.wait_for_quiet_machine(args, [])
+        ps.assert_called_once()
+
+    def test_busiest_names_any_busy_process_busiest_first_but_not_ours(self):
+        table = "\n".join([
+            "  20     1  40.0 /usr/bin/python3",
+            "  21     1  95.0 /Applications/Xcode.app/Contents/MacOS/Xcode",
+            "  22   500  99.0 /opt/homebrew/bin/godot",
+            "  500    1  99.0 /usr/bin/python3",
+            "  23     1   5.0 /usr/sbin/idle_daemon",
+            "  24     1  60.0 /usr/bin/swift-frontend",
+            "  25     x  90.0 /bin/broken",
+            "garbage line",
+        ])
+        self.assertEqual(pc.busiest_processes(table, mine=500, limit=2),
+                         ["21 Xcode 95% cpu", "24 swift-frontend 60% cpu"])
+        self.assertEqual(pc.busiest_processes("", mine=500), [])
+
+    def test_busiest_names_load_spread_over_small_processes(self):
+        table = "\n".join(f"  {pid}     1  12.0 /usr/libexec/mdworker_shared" for pid in (30, 31, 32))
+        self.assertEqual(pc.competing_processes(table, mine=500), [])
+        self.assertEqual(len(pc.busiest_processes(table, mine=500)), 3)
+        self.assertEqual(pc.busiest_processes("  33     1   0.5 /usr/sbin/quiet", mine=500), [])
+
+    def test_busiest_names_macos_apps_by_bundle_not_by_first_word(self):
+        table = "  40     1  70.0 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        self.assertEqual(pc.busiest_processes(table, mine=500), ["40 Google Chrome 70% cpu"])
+        self.assertEqual(pc.process_name("/usr/bin/swift-frontend"), "swift-frontend")
+        self.assertEqual(pc.process_name("kernel_task"), "kernel_task")
+        self.assertEqual(pc.process_name("/Applications/Xcode.app/Contents/Resources/helper"), "helper")
+
+    def test_busy_sample_reports_executable_names(self):
+        args = argparse.Namespace(wait_left=0, budget=0, min_idle=0.5, poll_seconds=15)
+        table = ("  40     1  70.0 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome\n"
+                 "  41     1  80.0 /usr/bin/find\n")
+        listing = pc.subprocess.CompletedProcess("ps", 0, stdout=table, stderr="")
+        log = []
+        with mock.patch.object(pc, "cpu_idle", return_value=0.1), \
+             mock.patch.object(pc.os, "getpid", return_value=500), \
+             mock.patch.object(pc.subprocess, "run", return_value=listing) as ps, \
+             self.assertRaisesRegex(pc.Deferred, "busiest processes: 41 find 80% cpu, 40 Google Chrome 70% cpu"):
+            pc.wait_for_quiet_machine(args, log)
+        ps.assert_called_once()
+        self.assertEqual(log[0]["busy"], ["cpu 10% idle, below 50%",
+                                         "busiest processes: 41 find 80% cpu, 40 Google Chrome 70% cpu"])
+
+    def test_busiest_explains_low_idle_only_when_no_competitor_does(self):
+        busiest = ["21 Xcode 95% cpu"]
+        self.assertEqual(pc.load_gate(0.0, [], 0.5, busiest),
+                         ["cpu 0% idle, below 50%", "busiest processes: 21 Xcode 95% cpu"])
+        with_competitor = pc.load_gate(0.0, ["10 godot 95% cpu"], 0.5, busiest)
+        self.assertNotIn("busiest processes: 21 Xcode 95% cpu", with_competitor)
+
+    def test_busiest_never_makes_a_quiet_machine_busy(self):
+        self.assertEqual(pc.load_gate(0.7, [], 0.5, ["21 Xcode 95% cpu"]), [])
+        self.assertEqual(pc.load_gate(None, [], 0.5, ["21 Xcode 95% cpu"]), ["cpu idle unknown"])
 
 
 class TimeBudget(unittest.TestCase):
