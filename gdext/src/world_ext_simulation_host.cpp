@@ -1409,22 +1409,31 @@ void DCWorldExt::finish_runtime_display_frame() {
 
 Dictionary DCWorldExt::read_runtime_map_lut_frame(Object *map, int64_t day, int64_t generation,
                                                   int cell_count, bool measure_copy) const {
-    Dictionary frame;
+    const auto fail = [](const char *reason) {
+        Dictionary failure;
+        failure["reason"] = reason;
+        return failure;
+    };
     const auto &commit = _runtime_map_display_commit;
-    if (!map || map != _map_data || !commit || !commit->day_tail ||
-        day != commit->header.committed_day || generation <= 0 ||
-        static_cast<uint64_t>(generation) != commit->header.generation ||
-        cell_count <= 0 || cell_count != _native_world_cell_count) return frame;
+    if (!commit || !commit->day_tail) return fail("map_lut_publication_unavailable");
+    if (!map || map != _map_data) return fail("map_lut_map_mismatch");
+    if (day != commit->header.committed_day) return fail("map_lut_day_mismatch");
+    if (generation <= 0 || static_cast<uint64_t>(generation) != commit->header.generation)
+        return fail("map_lut_generation_mismatch");
+    if (cell_count <= 0 || cell_count != _native_world_cell_count)
+        return fail("map_lut_cell_count_mismatch");
 
     const auto &model = commit->day_tail->cell_luts;
     const auto count = static_cast<size_t>(cell_count);
     if (model.transition_age.size() != count || model.previous_vitality.size() != count)
-        return frame;
+        return fail("map_lut_column_size_mismatch");
 
+    Dictionary frame;
     using Clock = std::chrono::steady_clock;
     const auto started = measure_copy ? Clock::now() : Clock::time_point{};
     PackedByteArray ages, vitalities;
-    if (ages.resize(cell_count) != OK || vitalities.resize(cell_count) != OK) return frame;
+    if (ages.resize(cell_count) != OK || vitalities.resize(cell_count) != OK)
+        return fail("map_lut_allocation_failed");
     std::memcpy(ages.ptrw(), model.transition_age.data(), count);
     std::memcpy(vitalities.ptrw(), model.previous_vitality.data(), count);
     if (measure_copy)

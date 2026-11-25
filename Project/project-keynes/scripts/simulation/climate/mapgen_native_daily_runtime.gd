@@ -66,8 +66,8 @@ func publish_worker_climate_visuals(defer_upload: bool, commit: Dictionary = {})
 		# the same publication that installed climate, vision and classes.
 		frame = _generator._get_map_runtime_bridge().read_runtime_map_lut_frame(
 			_generator._sus_map, int(commit.map_lut_day), int(commit.map_lut_generation))
-		if frame.is_empty():
-			return {"lut_encode_path": "none", "reason": "map_lut_publication_unavailable"}
+		if frame.has("reason"):
+			return {"lut_encode_path": "none", "map_lut_read_failed": true, "reason": frame.reason}
 		commit["cell_lut_frame"] = frame
 	var dirty: PackedInt32Array = commit.get("display_dirty_cells", PackedInt32Array())
 	var result := DCCellLutBaker.refresh_cell_luts_daily(_generator._baker,

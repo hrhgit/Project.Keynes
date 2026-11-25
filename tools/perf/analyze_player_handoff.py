@@ -81,9 +81,13 @@ def display_stats(sample, draw_intervals):
     }
 
 
-def map_read_stats(sample):
+def map_read_stats(sample, *, recording_frames=None):
     copies = [copy for row in sample for copy in row["map_copies"]]
-    if any(copy["ns"] < 0 or copy["bytes"] <= 0 for copy in copies):
+    # A held window can have zero copies. A timed copy elsewhere in the same
+    # recording proves that the instrument was enabled for that run.
+    recorded = copies if recording_frames is None else [
+        copy for row in recording_frames for copy in row["map_copies"]]
+    if not recorded or any(copy["ns"] < 0 or copy["bytes"] <= 0 for copy in recorded):
         raise ValueError("map copy timing requires an instrumented baseline and candidate")
     draws = [usec for row in sample for usec in row["map_draw_times"]]
     lags = sorted(lag for row in sample for lag in row["map_draw_lag_days"])
@@ -145,7 +149,7 @@ def summarize(frames, daily, first_day, last_day, *, require_rendered=False):
     if "view_updates" in sample[0]:
         result.update(display_stats(sample, draw_intervals))
     if require_rendered and any(row.get("panel_feedback") for row in sample[1:]):
-        result.update(map_read_stats(sample[1:]))
+        result.update(map_read_stats(sample[1:], recording_frames=frames))
     return result
 
 

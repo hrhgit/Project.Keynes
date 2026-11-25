@@ -159,9 +159,13 @@ func poll_runtime_commit(after_generation: int = 0, take_days: bool = false) -> 
 
 func read_runtime_map_lut_frame(map: MapData, day: int, generation: int) -> Dictionary:
 	var ext = _generator._data_core_world_ext
-	if ext == null or map == null:
-		return {}
-	return ext.read_runtime_map_lut_frame(map, day, generation, map.cell_count(), measure_map_lut_copies)
+	if ext == null:
+		return {"reason": "map_lut_extension_unavailable"}
+	if map == null:
+		return {"reason": "map_lut_map_unavailable"}
+	var frame: Dictionary = ext.read_runtime_map_lut_frame(
+		map, day, generation, map.cell_count(), measure_map_lut_copies)
+	return {"reason": "map_lut_publication_unavailable"} if frame.is_empty() else frame
 
 
 func clear_runtime_map_lut_frame() -> void:

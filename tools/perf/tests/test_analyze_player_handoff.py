@@ -190,6 +190,28 @@ class RenderedHandoffComparisonTest(unittest.TestCase):
         self.assertEqual(window["baseline"]["observed_waits"]["calendar_wait"], {"count": 1, "max_ms": 1.0})
         self.assertEqual(window["candidate"]["observed_waits"]["calendar_wait"], {"count": 0, "max_ms": 0.0})
 
+    def test_map_read_comparison_rejects_a_recording_with_no_samples(self):
+        baseline = self.sample([4, 5, 6, 7, 8, 9, 10])
+        candidate = self.sample([4, 5, 6, 7, 8, 9, 10])
+        for sample in (baseline, candidate):
+            for frame in sample.frames:
+                frame.update(map_copies=[], map_draw_times=frame.get("draw_times", []),
+                             map_draw_lag_days=[0] * len(frame.get("draw_times", [])), panel_feedback=[])
+            sample.frames[2]["panel_feedback"] = [{"usec": 900}]
+        candidate.frames[2]["map_copies"] = [{"bytes": 4800, "ns": 750}]
+
+        with self.assertRaisesRegex(ValueError, "requires an instrumented baseline"):
+            compare_recordings(baseline, candidate, [(5, 9)])
+
+        # The candidate recorded a copy after the held window. Zero in the
+        # measured window is now evidence of a hold, not missing instrumentation.
+        baseline.frames[2]["map_copies"] = candidate.frames[2]["map_copies"]
+        candidate.frames[-1]["map_copies"] = candidate.frames[2]["map_copies"]
+        candidate.frames[2]["map_copies"] = []
+        window, = compare_recordings(baseline, candidate, [(5, 9)])
+        self.assertEqual(window["baseline"]["map_reads"], 1)
+        self.assertEqual(window["candidate"]["map_reads"], 0)
+
 
 class RenderedHandoffLaunchTest(unittest.TestCase):
     def test_macos_launch_failure_preserves_system_error(self):
@@ -268,6 +290,9 @@ class MapReadStatsTest(unittest.TestCase):
         self.assertEqual(result["map_draw"]["median_ms"], 2.0)
         self.assertEqual(result["map_draw_lag"], {"samples": 2, "median": 2, "p95": 4, "range": [0, 4]})
         frames[0]["map_copies"][0]["ns"] = -1
+        with self.assertRaisesRegex(ValueError, "requires an instrumented baseline"):
+            map_read_stats(frames)
+        frames[0]["map_copies"] = []
         with self.assertRaisesRegex(ValueError, "requires an instrumented baseline"):
             map_read_stats(frames)
 
