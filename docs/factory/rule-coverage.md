@@ -36,6 +36,7 @@
 | 工厂结论只来自事实 | 本目录 | 测试：`tools/factory/tests/test_factory.py`；变异检查见 [verdict-mutations.txt](verdict-mutations.txt) |
 | PR 在当前头部提交评审通过、CI 全部成功且 GitHub 确认可合并时才自动合并 | 仓库所有者 2026-11-19 | 工厂：`watch_prs.py` 的 `decide()` 和 `--match-head-commit`；测试：`tools/factory/tests/test_watch.py` |
 | 工厂把有冲突的 PR 分支更新到 master，遇到受保护路径、子模块或二进制冲突时交给人 | 仓库所有者 2026-11-19 | 工厂：`watch_prs.py` 的 `decide()` 和更新流程；测试：`test_watch.py`、`test_workflow.py` |
+| 声称性能改进的 PR 合并前要证明逐日结果不变、声称的指标确实变好 | 仓库所有者 2026-11-24 | 工厂：`watch_prs.py` 的 `perf_check()` 跑 `tools/perf/perf_change_check.py`，结论取自 `PERF_CHECK_RESULT=` 和退出码；测试：`test_watch.py`、`test_perf_gate.py`，拒绝用例在 `test_gates_refuse.py` |
 | 关口、解析器、白名单和校验器要用它们必须拒绝的输入来测 | AGENTS.md 规则 6 | 测试：`tools/factory/tests/test_gates_refuse.py`（名字像关口的函数没登记拒绝用例就失败）；Qodo 规则“gates are tested with inputs they must refuse” |
 
-合计 33 条规则：至少有一项护栏或测试的 19 条（其中“前台只读”一条，护栏只管到原生绑定访问）；只靠 Qodo 规则的 7 条；靠工厂关卡或提示词的 5 条（“找根因”一条另有 Qodo 规则）；只有文字说明的 2 条。
+合计 34 条规则：至少有一项护栏或测试的 20 条（其中“前台只读”一条，护栏只管到原生绑定访问）；只靠 Qodo 规则的 7 条；靠工厂关卡或提示词的 5 条（“找根因”一条另有 Qodo 规则）；只有文字说明的 2 条。

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 import traceback
@@ -21,12 +22,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import agent  # noqa: E402
 import checks  # noqa: E402
+import perf  # noqa: E402
 import qodo  # noqa: E402
 import work  # noqa: E402
 from common import Events, lane_lock, legacy_lane_gate, load_config  # noqa: E402
 from github import GitHub  # noqa: E402
 from ticket import criteria, gate  # noqa: E402
 from verdict import Facts, judge, unknown_findings  # noqa: E402
+
+
+def demote(text: str) -> str:
+    """Agent text quoted in the PR body, with `## ` headings turned into `### `, so a plan that repeats
+    `## Performance claim` cannot end or duplicate a section the factory reads back."""
+    return re.sub(r"(?m)^##(?=\s)", "###", text)
 
 
 class Run:
@@ -292,18 +300,23 @@ class Run:
         local = (f"Qodo local review did not run: {skipped[:400]}\n\n" if skipped else "")
         if self.facts.accepted_disputes:
             local += ("Findings the agent disputed, settled its way (its judgement takes precedence):\n"
-                      + "\n".join(f"- {d[:800]}" for d in self.facts.accepted_disputes) + "\n\n")
+                      + "\n".join(f"- {demote(d[:800])}" for d in self.facts.accepted_disputes) + "\n\n")
         if self.facts.base_extra_failures:
             local += ("Plan-requested checks that already fail on the base and were not held against this change:\n"
                       + "\n".join(f"- `{n}`" for n in self.facts.base_extra_failures) + "\n\n")
         if self.facts.local_review_incomplete:
             local += "Qodo local review coverage was incomplete. See the factory run record for details.\n\n"
-        return (f"Closes #{self.number}\n\n## Acceptance criteria\n{crit}\n\n{local}"
+        # The PR poller runs the performance check before merging a PR that carries this section.
+        claim = perf.parse_claim_section(issue["body"] or "")
+        claimed = perf.claim_text(*claim) + "\n" if claim else ""
+        # The notes get their own heading so the claim section above ends where it should.
+        local = f"## Local review notes\n{local}" if local else ""
+        return (f"Closes #{self.number}\n\n## Acceptance criteria\n{crit}\n\n{claimed}{local}"
                 f"## Factory\nPlan, checks and reviews are in the run record `{self.stamp}` "
                 f"and the issue comments. The verdict is computed from facts, not from this report.\n\n"
                 f"{self.facts.report()}\n\n"
-                f"<details><summary>Plan</summary>\n\n{plan[:20000]}\n\n</details>\n\n"
-                f"<details><summary>Agent report</summary>\n\n{reports[-1][:12000]}\n\n</details>\n\n"
+                f"<details><summary>Plan</summary>\n\n{demote(plan[:20000])}\n\n</details>\n\n"
+                f"<details><summary>Agent report</summary>\n\n{demote(reports[-1][:12000])}\n\n</details>\n\n"
                 f"Implemented-By: Codex ({self.cfg['agent']['model']})\n")
 
     def pr_loop(self, issue: dict, extra: list[str], base_failed: list[str]) -> None:

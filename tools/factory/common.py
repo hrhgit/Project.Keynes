@@ -69,9 +69,11 @@ class Result:
 
 
 def sh(args: list[str], cwd: str | None = None, timeout: float | None = None,
-       stdin: str | None = None, env: dict | None = None, log: str | None = None) -> Result:
-    """Run a command without a shell. With `log`, stdout+stderr go to that file instead of memory."""
-    full_env = {**os.environ, **(env or {})}
+       stdin: str | None = None, env: dict | None = None, log: str | None = None,
+       inherit_env: bool = True) -> Result:
+    """Run a command without a shell. With `log`, stdout+stderr go to that file instead of memory.
+    With inherit_env=False the command sees only `env`, not the factory's own environment."""
+    full_env = {**(os.environ if inherit_env else {}), **(env or {})}
     try:
         if log:
             Path(log).parent.mkdir(parents=True, exist_ok=True)

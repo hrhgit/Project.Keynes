@@ -21,10 +21,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import agent  # noqa: E402
 import checks  # noqa: E402
+import perf  # noqa: E402
 import qodo  # noqa: E402
 import work  # noqa: E402
 from common import Events, lane_lock, legacy_lane_gate, load_config, must  # noqa: E402
 from github import PR_MERGE_FIELDS, ChangedFile, GitHub  # noqa: E402
+from ticket import touching  # noqa: E402
 from verdict import CIFacts, NativeFacts, unknown_findings  # noqa: E402
 
 TRAILER = "Fixed-By: keynes-factory"
@@ -254,7 +256,8 @@ class Watcher:
                 paths = [path for f in changed_files or [] for path in (f.filename, f.previous_filename)
                          if path is not None]
                 native = work.scope(self.cfg, paths)[2]
-                result = self.apply_merge_decision(pr, st, d, review["review_session"], ci, native=bool(native))
+                result = self.apply_merge_decision(pr, st, d, review["review_session"], ci, native=bool(native),
+                                                   paths=paths)
                 if result is not None:
                     return result
                 continue
@@ -306,10 +309,13 @@ class Watcher:
             return "the PR labels changed before merge"
         if fresh["changedFiles"] != pr["changedFiles"]:
             return "the PR changed-file count changed before merge"
+        # The performance claim is read from the body, so an edited body is read again next poll.
+        if (fresh["body"] or "") != (pr.get("body") or ""):
+            return "the PR body changed before merge"
         return None
 
     def apply_merge_decision(self, pr: dict, st: PrState, decision: Decision, session: dict, ci: CIFacts,
-                             *, native: bool) -> int | None:
+                             *, native: bool, paths: list[str] | None = None) -> int | None:
         """Record this merge decision. A preflight skip lets the tick continue to the next PR."""
         n, sha = pr["number"], pr["headRefOid"]
         record = {"pr": n, "url": pr["url"], "head": sha, "started": self.stamp,
@@ -321,7 +327,14 @@ class Watcher:
             self.stop(pr, st, error, "\n".join(self.gh.errors))
         else:
             skipped = self.merge_preflight(pr)
-            if skipped is None and native:
+            claim = None
+            if skipped is None:
+                try:
+                    claim = perf.parse_claim_section(pr.get("body") or "")
+                except ValueError as e:
+                    error = f"the performance claim cannot be checked: {e}"
+                    self.stop(pr, st, error)
+            if skipped is None and error is None and native:
                 try:
                     if not self.prepare_head(pr, Events()):
                         skipped = "the PR head changed before the native checks"
@@ -338,6 +351,14 @@ class Watcher:
                 except (RuntimeError, OSError) as e:
                     error = f"the native checks could not run: {e}"
                     self.stop(pr, st, error)
+            if skipped is None and error is None and claim:
+                harness = touching(paths or [], self.cfg["paths"]["perfHarness"])
+                if harness:
+                    error = ("the PR claims a performance change and also changes the tool that measures it ("
+                             + ", ".join(f"`{h}`" for h in harness) + "); a person must review and merge it")
+                    self.stop(pr, st, error)
+                else:
+                    skipped, error = self.perf_check(pr, st, record, claim)
             if skipped is None and error is None:
                 try:
                     result = self.gh.merge_pr(n, sha)
@@ -365,6 +386,14 @@ class Watcher:
                     source = f" ([run #{run.id}]({run.url}))" if run.url else f" (run #{run.id})"
                     lines.append(f"- {name} — {run.conclusion}{source}")
                 lines.append("")
+            checked = record.get("perfCheck")
+            if checked:
+                lines += ["Performance check", "",
+                          f"- `pass` for `{checked['base'][:12]}..{checked['head'][:12]}` (tier {checked['tier']}), "
+                          "claims " + ", ".join(f"`{c}`" for c in checked["claims"]),
+                          *[f"- {r}" for r in checked["reasons"]],
+                          f"- Report on the factory machine: `{checked['report']}`", "",
+                          f"<details><summary>report.md</summary>\n\n{perf.report_excerpt(checked)}\n\n</details>", ""]
             if decision.findings:
                 lines += ["Informational findings", ""] + [
                     f"- `{f.get('id')}` {f.get('title') or '(untitled)'}" for f in decision.findings]
@@ -377,6 +406,45 @@ class Watcher:
         if skipped:
             return None
         return 1 if error or record["outcome"] == "not_merged" else 0
+
+    def perf_check(self, pr: dict, st: PrState, record: dict, claim: tuple[list[str], str]) -> tuple[str | None, str | None]:
+        """Run the performance check on merge-base..head. Returns (skip reason, stop error).
+
+        Deferred (the machine stayed busy) is a skip: nothing is saved, so the next poll tries the
+        same head again and reuses every record already measured."""
+        n, head = pr["number"], pr["headRefOid"]
+        claims, tier = claim
+        logdir = self.home / "logs" / f"merge-pr-{n}-{self.stamp}"
+        logdir.mkdir(parents=True, exist_ok=True)
+        log = str(logdir / "perf-check.log")
+        checked = record["perfCheck"] = {"base": None, "head": head, "claims": claims, "tier": tier, "log": log}
+        # The Issue lane builds and runs tests on this machine; holding its lock keeps it from starting
+        # while the rounds are measured. A running Issue job is a skip, retried on the next poll.
+        with lane_lock(self.home, "issue") as acquired:
+            if not acquired:
+                checked["status"] = "deferred"
+                return "the performance check waits for the running Issue job to finish", None
+            try:
+                if not self.prepare_head(pr, Events()):
+                    return "the PR head changed before the performance check", None
+                checked["base"] = base = work.git(self.workdir, "merge-base", pr["baseRefOid"], head)
+                runner_dir = str(Path(__file__).resolve().parents[2])
+                result = perf.run(self.cfg, runner_dir, self.workdir, base, head, claims, tier, log)
+            except (RuntimeError, OSError, ValueError) as e:
+                error = checked["error"] = f"the performance check could not run: {e}"
+                self.stop(pr, st, error, f"Log on the factory machine: `{log}`")
+                return None, error
+        checked.update(result)
+        reasons = "; ".join(result["reasons"])
+        if result["status"] == "deferred":
+            return f"the performance check was deferred: {reasons}", None
+        if result["status"] != "pass":
+            error = f"the performance check returned {result['status']}: {reasons}"
+            excerpt = perf.report_excerpt(result)
+            details = f"<details><summary>report.md</summary>\n\n{excerpt}\n\n</details>" if excerpt else ""
+            self.stop(pr, st, error, details)
+            return None, error
+        return self.merge_preflight(pr), None
 
     # ---- the fix ---------------------------------------------------------------------
     def stop_with_patch(self, pr: dict, st: PrState, logs: Path, reason: str, details: str = "") -> None:

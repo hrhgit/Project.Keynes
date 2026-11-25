@@ -17,6 +17,7 @@
 | 评审以 failed 等非 completed 状态结束，或评审项的状态或未关闭项的处理级别无法识别 | 停下，打 `agent-needs-help` |
 | 头部提交上没有未关闭的阻塞项，且 CI、文件范围、标签和 GitHub 可合并状态均满足下方条件 | 请求 GitHub 合并到 fork，按下方规则评论并写运行记录 |
 | PR 改到受保护路径（含正式项目的 dots_ext 库目录），或无法读取完整的改动文件列表 | 跳过自动合并，记录原因 |
+| PR 正文有 `## Performance claim` 小节，其余合并条件都满足 | 合并前跑性能检查（见下方"性能检查"）。`pass` 才合并；`deferred` 跳过，下一轮再试；`fail`、`needs_human`、检查跑不起来或小节写法不对时停下，打 `agent-needs-help` |
 | 无法读取 CI | 停下，打 `agent-needs-help`，写运行记录 |
 | CI 未完成、有非成功结论，或 GitHub 尚未确认可合并 | 跳过，下一轮再看 |
 | 合并命令失败 | 停下，打 `agent-needs-help`，把错误写入运行记录 |
@@ -30,7 +31,7 @@
 | 异议格式有误，或 ID 不在本次交给 Codex 的评审项中 | 停下，打 `agent-needs-help`，列出有问题的行，保存本地补丁并列出路径 |
 | 检出时发现头部提交已变 | 停掉本次修复，记入运行记录，下一轮查看新提交 |
 | 修复改到 C++ | 工厂在本地重编两种 macOS 库，导入项目并逐库验证。通过后提交、推送源码，生成的库留在本地 |
-| 修复改到 `gdext/godot-cpp/`、`gdext/rebuild.sh`、基线或契约文件、`.github/`、`tools/factory/`、`tools/ci/` 或 `.qodo/` | 停下交给人，保存本地补丁并列出路径。跑检查前和提交前各查一次范围 |
+| 修复改到 `gdext/godot-cpp/`、`gdext/rebuild.sh`、基线或契约文件、`.github/`、`tools/factory/`、`tools/ci/`、`tools/perf/` 或 `.qodo/` | 停下交给人，保存本地补丁并列出路径。跑检查前和提交前各查一次范围 |
 
 人往分支上推了新提交，轮数重新计算。同一个由人推送的头部提交最多交给 Codex 修复一次。每次修复或更新结束都移除 `agent-working`。每个 PR 的状态存在 `~/.keynes-factory/prs/<编号>.json`，每次修复或更新的记录存在 `~/.keynes-factory/runs/pr-<编号>-<时间>.json`。工厂的提交带 `Fixed-By: keynes-factory`，用到 Codex 的提交另带 `Implemented-By: Codex`。**工厂推送后，正在这个分支上工作的人必须先执行 `git pull`，再继续修改。**
 
@@ -48,9 +49,31 @@
 - PR 必须来自 fork 内的分支，已退出草稿且没有跳过标签、`agent-needs-help`、`agent-working` 或 `no-auto-merge`。GitHub 必须报告 `MERGEABLE`，尚无法判断时等下一轮。
 - Qodo 必须已完成对当前头部提交的评审。所有评审项的状态和处理级别都要能识别，所有阻塞项都要关闭。Codex 提出异议的评审项按它的判断处理（见下），关闭失败的才交给人；仅供参考的评审项会列在评论中。
 - 当前头部提交至少有一条 GitHub Actions 工作流。每个工作流和每项检查只看最新一次运行，均须完成且结论为 `success`。重跑成功后，旧的失败结果不再阻止合并。读取失败时停下交给人。
-- 读取 PR 相对目标分支的完整改动文件列表。触及 `paths.forbidden` 或 `paths.needsHuman`（如 `.github/`、`tools/factory/`、`tools/ci/`、`.qodo/`、基线、`gdext/godot-cpp/` 和 `gdext/rebuild.sh`）的 PR 由人合并。`Project/project-keynes/addons/dots_ext/bin/` 目录的文件改动也由人处理。文件列表读取失败时跳过。触及 `checks.nativePaths` 时，工厂在当前头部提交上本地重编、导入并逐库验证，随后重新核对 PR 状态。
+- 读取 PR 相对目标分支的完整改动文件列表。触及 `paths.forbidden` 或 `paths.needsHuman`（如 `.github/`、`tools/factory/`、`tools/ci/`、`tools/perf/`、`.qodo/`、基线、`gdext/godot-cpp/` 和 `gdext/rebuild.sh`）的 PR 由人合并。`Project/project-keynes/addons/dots_ext/bin/` 目录的文件改动也由人处理。文件列表读取失败时跳过。触及 `checks.nativePaths` 时，工厂在当前头部提交上本地重编、导入并逐库验证，随后重新核对 PR 状态。
+- PR 正文有 `## Performance claim` 小节时，原生检查之后再跑性能检查，通过后重新核对 PR 状态（见下节）。
 - 合并前重读 PR。标签、头部提交、目标分支或可合并状态有变化时，跳过并记录原因。合并命令仍绑定评审过的头部提交。
 - 合并命令成功后，工厂再次读取 PR。确认预期的头部提交已合并时，记录合并提交，评论列出评审提交、CI 运行和仅供参考的评审项。若查询失败，仍记录合并成功，合并提交留空并记下查询错误。若 GitHub 返回其他状态或头部提交，则记录 `not_merged`，评论说明 GitHub 返回的状态，并打 `agent-needs-help`。打标签成功后，移除标签即可重试。若打标签失败，工厂在本地记录当前提交已停止，等分支收到新提交后再检查。合并记录存在 `~/.keynes-factory/runs/merge-pr-<编号>-<时间>.json`。
+
+### 性能检查
+
+声称性能改进的工单或 PR 写一个小节，每行一个指标名正则（取自以前的 `report.json`，见 `project-keynes-perf-change-check` skill），`Tier:` 可省略，默认 `quick`：
+
+```markdown
+## Performance claim
+- `result.economy_memory_bytes`
+- `household_market.*_ms`
+Tier: full
+```
+
+- 小节由 `tools/factory/perf.py` 的 `parse_claim_section()` 读。只接受反引号包住的正则和一行 `Tier: quick|full`，别的写法（散文、没有指标、正则编译不过、未知或重复的档位、正文里有第二个性能声明小节）一律拒绝：Issue 模式在 G0 停下，PR 模式停下打 `agent-needs-help`，不会把声称的性能改动当成没声称而直接合并。
+- Issue 模式把工单里的小节原样写进 PR 正文，PR 轮询据此检查。本地评审的说明放在它下面单独的 `## Local review notes` 标题里；正文引用的计划、代理报告和异议里的 `## ` 标题降为 `### `，所以它们不会截断或重复这个小节。
+- 合并前重读 PR 时也比对正文；正文改过就跳过，下一轮按新正文判断，不会漏掉合并前才加上的声明。
+- 声明了性能改动、又改了测量工具本身（`paths.perfHarness`：`tests/game/headless_perf_record.gd`、`scripts/ui/perf_recorder.gd`）的 PR 不跑检查，停下由人评审合并。没有声明的 PR（例如修记录器的 bug）不受影响。
+- PR 轮询只在其余合并条件（评审、CI、范围、标签、可合并）都满足后才跑，用的是程序目录里工厂自己的 `tools/perf/perf_change_check.py`，不是 PR 里的；`tools/perf/` 也列入受保护路径。比较的是 PR 头与 `git merge-base <目标分支提交> <头部提交>`。
+- 结论只读脚本最后一行 `PERF_CHECK_RESULT=` 和退出码，二者不一致、缺行或格式不对都算检查跑不起来，停下交给人。`pass` 必须带报告路径；构建等步骤失败时脚本只给 `fail` 和原因，没有报告，原因照样写进停止评论。超时等跑不起来的原因写进停止评论和运行记录的 `perfCheck.error`。
+- 脚本会构建并运行 PR 的代码，所以只带 `PATH`、`HOME`、`USER`、`LOGNAME`、`SHELL`、`TMPDIR`、`LANG`、`LC_*`、`TERM` 这几个环境变量运行（`perf.ENV_KEEP`），工厂进程里的令牌和密钥不传下去。`HOME` 下的文件它仍然读得到，这和原生检查运行 PR 代码时一样；只有 fork 内分支的 PR 才会走到这一步。
+- 脚本自己在每步前检查机器：最近一秒 CPU 空闲不足一半，或有别的 Godot、scons、编译器在跑时等待，10 分钟预算用完就返回 `deferred`。工厂测量期间还拿着 Issue 通道的锁，Issue 任务在跑时检查直接跳过、下一轮再试，测量开始后 Issue 任务也启动不了，所以它不会和 `run_regression_checks.py --jobs 4` 同时测量；`deferred` 不写停止状态，下一轮（600 秒后）对同一头部提交再试，已测完的提交记录直接复用。
+- 合并评论列出结论、比较的提交、声称的指标和报告路径；停下时评论附 `report.md`。整次检查写入合并运行记录的 `perfCheck`，测量档案在 `~/.keynes-perf/`。
 
 两种模式都从仓库根目录的 `.factory-disagree.md` 读取异议，每行严格按 `- <评审项 ID>: <证据>` 写一项。ID 必须和交给 Codex 时给出的一致，可以直接写，也可以用一对反引号包住。证据写明相关文件和行号。空行可跳过。格式有误或 ID 不认识时保存补丁，列出问题行交给人处理。
 
@@ -98,9 +121,9 @@ flowchart TD
 
 | 关卡 | 必须满足 | 证据 | 不满足时 |
 |---|---|---|---|
-| G0 工单 | 标题；`## Acceptance criteria` 或 `## 验收标准` 下有勾选框或编号条目；没有跳过标签 | issue 正文和标签 | `agent-needs-help`，移除 `ready-for-agent`，评论列出原因 |
+| G0 工单 | 标题；`## Acceptance criteria` 或 `## 验收标准` 下有勾选框或编号条目；有 `## Performance claim` 小节时写法正确；没有跳过标签 | issue 正文和标签 | `agent-needs-help`，移除 `ready-for-agent`，评论列出原因 |
 | 计划 | 六个小节齐全，Questions 为 `none`，额外检查命令符合允许格式（`tools/ci/<脚本>.py`，可带 `--参数` 和 `tests/<路径>.gd`；开头的 `python3` 会去掉） | Codex 只读输出，贴在 issue 上 | 有问题或命令被拒绝时交给人 |
-| 范围 | `.github/`、`tools/factory/`、`tools/ci/`、`.qodo/`、基线、契约文件、`gdext/godot-cpp/`、`gdext/rebuild.sh` 和`Project/project-keynes/addons/dots_ext/bin/` 目录由人处理。正式项目的 macOS dylib 是本地构建产物 | 每次提交前重查 `git diff`、未跟踪文件和子模块状态，核对库目录的改动和重编产物 | 提交前发现越界或库文件不符合要求就停下 |
+| 范围 | `.github/`、`tools/factory/`、`tools/ci/`、`tools/perf/`、`.qodo/`、基线、契约文件、`gdext/godot-cpp/`、`gdext/rebuild.sh` 和`Project/project-keynes/addons/dots_ext/bin/` 目录由人处理。正式项目的 macOS dylib 是本地构建产物 | 每次提交前重查 `git diff`、未跟踪文件和子模块状态，核对库目录的改动和重编产物 | 提交前发现越界或库文件不符合要求就停下 |
 | 检查 | 工作树完整，检查脚本和测试目录齐全；推送前**所有**检查都要通过，master 上原本就失败的也算（AGENTS.md：推送前修复已发现的问题，不能因为是既有失败就留到以后）。base 上的失败只用来告诉 Codex 哪些是改动前就有的。C++ 改动时先跑 `gdext/rebuild.sh`，再导入项目，然后用 `check_macos_runtime_extension.py` 分别验证两份库。每次执行回归都先导入候选项目 | 每项检查的日志，存在 `~/.keynes-factory/logs/` | 工作树不完整或检查入口缺失时立即停下，记录错误并打 `agent-needs-help`。Issue 实现阶段把普通检查的失败日志尾部发给 Codex，最多尝试 3 次。PR 模式报告失败并停下 |
 | 本地评审（默认尽力而为） | Qodo 对未提交改动没有阻塞项（action_required / remediation_recommended） | `qodo review --repo hrhgit/Project.Keynes --json` | 评审失败或覆盖不完整时记入运行记录和 PR 正文，继续走 PR 评审。若配置要求本地评审，则停下交给人 |
 | PR 评审 | Qodo 对**当前头部提交**的评审已完成，没有未关闭的阻塞项 | `qodo read pr-review-session findings` | 最多 3 轮修复；同一批问题重复就停 |
@@ -147,3 +170,4 @@ Issue 开发和 PR 检查独立运行。Issue 任务领最早的一张可领工�
 - Qodo 本地评审目前跑不起来：评审服务在 120 秒内检出不了这个仓库的 base（2026-11-19 两次都超时）。所以 `localReviewRequired` 设为 `false`，本地评审失败时只记录，不拦；把关的是 PR 上对头部提交的 Qodo 评审，`verdict.py` 没有它就不会给 READY。
 - 工作树的 `origin` 是上游，Qodo 里没有连上游，所以本地评审显式传 `--repo hrhgit/Project.Keynes`。
 - 计划里要求的额外检查只接受 `tools/ci/<脚本>.py [--参数]` 这种格式。被拒绝的命令会写进运行记录和结论。
+- 性能检查只测无界面运行，不测窗口帧时间和 GPU。它在 PR 任务里跑，等安静机器时最多占住 PR 锁和 Issue 锁 10 分钟；Issue 任务从领单到交出 PR 一直拿着锁（含等 PR 评审），这段时间性能检查一直跳过；某个提交第一次在本机构建时要编译 godot-cpp 和全部源码（10 分钟以上），超出预算会一直 `deferred`，要先手动 `measure <提交> --budget 0` 一次。
