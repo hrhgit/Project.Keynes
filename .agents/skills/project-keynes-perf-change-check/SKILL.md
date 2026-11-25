@@ -81,7 +81,7 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
   medians differ by more than 15% **and** the two sides' ranges do not overlap. Everything else is
   `within_noise`. One round per side is refused.
 - Work counters (`bd_economy_scan_*`, `scan_steps*`, `*_epoch`, as per-day increases) and memory or
-  capacity values (names with `bytes`, `memory`, `_mb`, `_kb`, `capacity`) that repeat exactly within
+  capacity values (names with `bytes`, `memory`, `_mb`, `_kb`) that repeat exactly within
   each side are compared exactly: `less_work`, `more_work`, `unchanged`. A memory value that varies
   between rounds is judged like a timing. Other gauges have no better direction and are only
   `changed` or `unchanged`.

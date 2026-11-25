@@ -144,7 +144,7 @@ def validate_perf_run(exit_code: int, result: dict[str, str] | None, csv_rows: i
     return errors
 
 
-COST_MARKS = ("bytes", "memory", "_mb", "_kb", "capacity")
+COST_MARKS = ("bytes", "memory", "_mb", "_kb")
 
 
 def metric_kind(name: str) -> str:
