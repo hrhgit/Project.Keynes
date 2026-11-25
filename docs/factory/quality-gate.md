@@ -6,7 +6,7 @@ This is the gate every coding agent working on Project.Keynes follows, whether i
 
 > Fix every valid High or Medium finding, whatever its type (Bug, Rule violation, Requirement gap) or category. Report every Low finding to a person and leave it for them to decide. A task is done only when the latest completed Qodo review covers the current head commit, the relevant checks passed, and no valid High or Medium finding is open.
 
-Not done, with the blocker stated, when any of these holds: a High or Medium finding is still open; a check failed or did not run on the head; the Qodo review is missing, still running, failed, skipped, or covers an older commit; the fix-and-review loop made no progress (same findings again, or three rounds used). The agent does not weaken a check or dismiss a finding to get past the gate. If it thinks a finding is wrong it changes no code for it and records file and line evidence; the factory then dismisses that finding in Qodo with the evidence, where it stays visible. This means an agent's reasoned dispute can close a High finding without a person, which is a deliberate factory choice (`run.py`, `watch_prs.py`) and the main limit of this gate.
+Not done, with the blocker stated, when any of these holds: a High or Medium finding is still open; a check failed or did not run on the head; the Qodo review is missing, still running, failed, skipped, covers an older commit, or is `completed` with `review_complete` not true (Qodo judged the change trivial and did not review it; PR 69 merged on such a review before this was checked); the fix-and-review loop made no progress (same findings again, or three rounds used). The agent does not weaken a check or dismiss a finding to get past the gate. If it thinks a finding is wrong it changes no code for it and records file and line evidence; the factory then dismisses that finding in Qodo with the evidence, where it stays visible. This means an agent's reasoned dispute can close a High finding without a person, which is a deliberate factory choice (`run.py`, `watch_prs.py`) and the main limit of this gate.
 
 ## Severity as the tools expose it
 
@@ -22,6 +22,6 @@ An open finding with any other or a missing `action_level` is unknown and goes t
 
 ## Where it is enforced
 
-- `verdict.py` `judge()`: open High/Medium gives NEEDS_FIX; review of an older commit, a running review, or no review gives NOT_DONE; unknown status or level gives NEEDS_HUMAN; Low findings come back in `for_human` and are posted on the PR.
-- `watch_prs.py`: the factory merges only when the review is of the head, CI is green, and no open High/Medium remains; the merge comment lists the Low findings.
+- `verdict.py` `judge()`: open High/Medium gives NEEDS_FIX; review of an older commit, a running review, a review Qodo did not complete (`review_complete` not true), or no review gives NOT_DONE; unknown status or level gives NEEDS_HUMAN; Low findings come back in `for_human` and are posted on the PR.
+- `watch_prs.py`: the factory merges only when the review is of the head and complete (`review_complete: true`), CI is green, and no open High/Medium remains; an incomplete review stops for a person; the merge comment lists the Low findings.
 - This page, for agents that are not the factory: `AGENTS.md` points here.

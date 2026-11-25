@@ -133,6 +133,9 @@ def decide(pr: dict, review: dict | None, state: PrState, cfg: dict, *,
         return Decision("skip", "Qodo review in progress")
     if status != "completed":
         return Decision("stop", f"Qodo review ended with status {status!r}")
+    if session.get("review_complete") is not True:
+        # A completed session can be one Qodo skipped as trivial (review_effort "skip"): no findings, no review.
+        return Decision("stop", "Qodo did not complete its review of the head (review_complete is not true)")
     findings = review.get("findings")
     auto_merge = cfg["autoMerge"]
     if auto_merge and (not isinstance(findings, list) or any(not isinstance(f, dict) for f in findings)):

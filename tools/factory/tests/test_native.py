@@ -105,7 +105,7 @@ class NativeWorkflowTest(TempFactory):
 
         def review_head(tool, url, sha, timeout):
             findings = [FINDING] if review_fix and len(prompts) == 1 else []
-            return {"review_session": {"status": "completed", "commit_sha": sha}, "findings": findings}
+            return {"review_session": {"status": "completed", "commit_sha": sha, "review_complete": True}, "findings": findings}
 
         with (patch("work.ensure"), patch("work.prepare", return_value=self.base),
               patch("checks.base_results", return_value=[]), patch("agent.codex", side_effect=agent_run),

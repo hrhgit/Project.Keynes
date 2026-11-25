@@ -316,6 +316,7 @@ class Run:
             self.facts.review_status = session.get("status") if session.get("commit_sha") == head else (
                 "not started on the head" if not rev.get("timed_out") else "timed out")
             self.facts.review_sha = session.get("commit_sha")
+            self.facts.review_complete = session.get("review_complete") if session.get("commit_sha") == head else None
             self.facts.findings = rev.get("findings") or []
             self.facts.ci_state = self.wait_ci(head, lim["ciTimeoutMinutes"])
             block = qodo.blocking(self.facts.findings)
