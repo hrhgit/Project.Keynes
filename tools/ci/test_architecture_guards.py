@@ -18,6 +18,8 @@ import check_resolve_apply as resolve_apply
 import check_module_api as module_api
 import check_skill_mirrors as skill_mirrors
 import check_doc_links as doc_links
+import run_regression_checks as regression
+import re
 import world_ext_bindings
 import check_world_ext_bindings as binding_guard
 import check_script_native_access as script_access
@@ -1276,6 +1278,23 @@ class DocLinksTest(unittest.TestCase):
                 self.assertEqual(doc_links.main([]), 1)
         finally:
             doc_links.ROOT, doc_links.tracked_files = old_root, old_tracked
+
+
+class GuardListsTest(unittest.TestCase):
+    @staticmethod
+    def workflow_guards(text):
+        loop = re.search(r"for guard in (.*?); do", text, re.S)
+        return tuple(loop.group(1).replace("\\", " ").split()) if loop else ()
+
+    def test_local_regression_runner_and_pull_request_job_run_the_same_guards(self):
+        workflow = (regression.ROOT / ".github/workflows/runtime-checks.yml").read_text()
+        self.assertEqual(self.workflow_guards(workflow), regression.STATIC_GUARDS)
+
+    def test_list_comparison_rejects_a_guard_added_to_only_one_side(self):
+        one_sided = "for guard in a.py \\\n    b.py new.py; do\n"
+        self.assertEqual(self.workflow_guards(one_sided), ("a.py", "b.py", "new.py"))
+        self.assertNotEqual(self.workflow_guards(one_sided), ("a.py", "b.py"))
+        self.assertEqual(self.workflow_guards("no loop here"), ())
 
 if __name__ == "__main__":
     unittest.main()
