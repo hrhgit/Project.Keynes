@@ -18,7 +18,7 @@ Qodo's findings API (`qodo read pr-review-session findings`) returns `action_lev
 | Medium | remediation_recommended | blocks | Not seen on any of our PRs yet; assumed from the name. The factory blocks on it either way |
 | Low | informational | reported | Badge `Low` with alt text "Informational" on PR 7 and PR 38 |
 
-An open finding with any other or a missing `action_level` is unknown and goes to a person. `judge()` does not look at the level of a finding that is already closed; the merge path in `watch_prs.py` does, and stops on it.
+An open finding with any other or a missing `action_level` is unknown and goes to a person. A closed finding with such a level also goes to a person: `judge()` and the merge path in `watch_prs.py` both stop on it.
 
 ## Where it is enforced
 

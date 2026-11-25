@@ -223,6 +223,8 @@ GATES = {
         ("a review of an older commit", lambda: judge_refused(review_sha="old")),
         ("local checks on another commit", lambda: judge_refused(checks_sha="old")),
         ("CI still pending", lambda: judge_refused(ci_state="pending")),
+        ("a closed finding with no action_level", lambda: judge_refused(
+            findings=[{"id": "a", "attribution_status": "implemented"}])),
     ],
     "skip_before_review": [
         ("a draft PR", lambda: skipped(isDraft=True)),
