@@ -747,6 +747,12 @@ def ensure_records(repo: Path, archive: Archive, revs: list[str], args, busy_log
         record_dir = archive.new_record_dir(plan["identity"])
         plan["dir"] = record_dir
         plan["worktree"] = prepare_worktree(repo, archive, plan["commit"], args, record_dir)
+        if args.budget > 0:
+            # The build is done: give waiting what is left after the remaining work.
+            position = missing.index(plan)
+            remaining = (work_estimate([True] + ready[position + 1:], args.tier, args.rounds)
+                         + position * args.rounds * ESTIMATE_S["round"])  # earlier commits' rounds
+            args.wait_left = wait_allowance(args.budget * 60, time.monotonic() - args.started, remaining)
         record = {"identity": plan["identity"], "subject": plan["subject"], "tier": args.tier,
                   "created": now(), "status": "measuring", "build": build_hash(plan["worktree"]),
                   "rounds": [], "load_samples": [], "path": str(record_dir)}
