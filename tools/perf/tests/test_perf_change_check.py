@@ -101,6 +101,20 @@ class MetricClassification(unittest.TestCase):
         row = pc.compare_metric("csv.scan_steps_x.per_day", [5, 6, 7], [3, 3, 3])
         self.assertNotIn(row["status"], ("less_work", "unchanged"))
 
+    def test_memory_that_repeats_exactly_counts_as_less_or_more_work(self):
+        self.assertEqual(pc.metric_kind("csv.economy_memory_bytes.mean"), "cost")
+        self.assertEqual(pc.compare_metric("csv.economy_memory_bytes.mean", [900, 900], [600, 600])["status"],
+                         "less_work")
+        self.assertEqual(pc.compare_metric("csv.economy_memory_bytes.mean", [600, 600], [900, 900])["status"],
+                         "more_work")
+
+    def test_refuses_exact_verdict_for_memory_that_varies(self):
+        row = pc.compare_metric("csv.economy_memory_bytes.mean", [900, 905, 910], [890, 895, 899])
+        self.assertEqual(row["status"], "within_noise")
+
+    def test_gauges_without_a_direction_are_only_changed(self):
+        self.assertEqual(pc.compare_metric("result.population", [100, 100], [90, 90])["status"], "changed")
+
     def test_metric_missing_on_one_side(self):
         self.assertEqual(pc.compare_metric("waterfall.total_ms.p95", [], [1, 2])["status"], "only_in_head")
 

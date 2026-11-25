@@ -144,14 +144,20 @@ def validate_perf_run(exit_code: int, result: dict[str, str] | None, csv_rows: i
     return errors
 
 
+COST_MARKS = ("bytes", "memory", "_mb", "_kb", "capacity")
+
+
 def metric_kind(name: str) -> str:
-    """counter: cumulative work counter; timing: varies run to run; gauge: anything else."""
+    """counter: cumulative work; cost: memory or capacity the run holds; timing: varies run to run;
+    gauge: anything else, with no better direction."""
     if name.startswith("csv."):
         column = name.split(".")[1]
         if column.startswith(("bd_economy_scan_", "scan_steps")) or column.endswith("_epoch"):
             return "counter"
     if name.startswith("rusage.") or any(mark in name for mark in ("_ms", "_us", "per_second", "wait")):
         return "timing"
+    if any(mark in name.lower() for mark in COST_MARKS):
+        return "cost"
     return "gauge"
 
 
@@ -231,7 +237,7 @@ def compare_metric(name: str, base: list[float], head: list[float], noise: float
     if exact and row["kind"] != "timing":
         if med_b == med_h:
             row["status"] = "unchanged"
-        elif row["kind"] == "counter":
+        elif row["kind"] in ("counter", "cost"):
             row["status"] = "less_work" if med_h < med_b else "more_work"
         else:
             row["status"] = "changed"

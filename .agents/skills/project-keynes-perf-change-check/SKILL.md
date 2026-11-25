@@ -80,9 +80,11 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
 - Timings (`*_ms`, `*_us`, rates, waits, `rusage.*`) count as improved or regressed only when the
   medians differ by more than 15% **and** the two sides' ranges do not overlap. Everything else is
   `within_noise`. One round per side is refused.
-- Work counters (`bd_economy_scan_*`, `scan_steps*`, `*_epoch`, as per-day increases) and other
-  gauges that repeat exactly within each side are compared exactly: `less_work`, `more_work`,
-  `changed`, `unchanged`.
+- Work counters (`bd_economy_scan_*`, `scan_steps*`, `*_epoch`, as per-day increases) and memory or
+  capacity values (names with `bytes`, `memory`, `_mb`, `_kb`, `capacity`) that repeat exactly within
+  each side are compared exactly: `less_work`, `more_work`, `unchanged`. A memory value that varies
+  between rounds is judged like a timing. Other gauges have no better direction and are only
+  `changed` or `unchanged`.
 - Headline metrics: `result.run_ms`, `auth.authoritative_days_per_second`,
   `harness.adjusted_days_per_second`, `result.generation_ms`, `rusage.maxrss_mb`, `rusage.cpu_s`.
 
