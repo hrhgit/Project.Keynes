@@ -161,12 +161,34 @@ class ArchiveReuse(unittest.TestCase):
 
 class MachineLoadGate(unittest.TestCase):
     def test_quiet_machine_goes(self):
-        self.assertEqual(pc.load_gate(1.0, 8, [], 0.5), [])
+        self.assertEqual(pc.load_gate(0.7, [], 0.5), [])
 
-    def test_refuses_high_load_unknown_cpus_and_competitors(self):
-        self.assertTrue(pc.load_gate(6.0, 8, [], 0.5))
-        self.assertTrue(pc.load_gate(0.1, 0, [], 0.5))
-        self.assertTrue(pc.load_gate(0.1, 8, ["123 godot 90% cpu"], 0.5))
+    def test_refuses_busy_cpu_unknown_or_impossible_idle_and_competitors(self):
+        for idle in (0.3, None, -0.1, 1.5):
+            with self.subTest(idle=idle):
+                self.assertTrue(pc.load_gate(idle, [], 0.5))
+        self.assertTrue(pc.load_gate(0.9, ["123 godot 90% cpu"], 0.5))
+
+    def test_top_idle_uses_the_last_sample_not_the_since_boot_one(self):
+        text = ("CPU usage: 5.0% user, 2.0% sys, 93.0% idle\n"
+                "CPU usage: 67.43% user, 9.2% sys, 23.54% idle\n")
+        self.assertAlmostEqual(pc.parse_top_idle(text), 0.2354)
+
+    def test_refuses_top_output_without_two_samples(self):
+        for text in ("", "CPU usage: 5.0% user, 2.0% sys, 93.0% idle\n", "garbage"):
+            with self.subTest(text=text):
+                self.assertIsNone(pc.parse_top_idle(text))
+
+    def test_proc_stat_idle_between_two_readings(self):
+        before = "cpu  100 0 100 700 100 0 0 0\ncpu0 1 2 3 4 5\n"
+        after = "cpu  150 0 150 850 150 0 0 0\n"
+        self.assertAlmostEqual(pc.parse_proc_stat_idle(before, after), 200 / 300)
+
+    def test_refuses_unreadable_or_non_advancing_proc_stat(self):
+        same = "cpu  100 0 100 700 100 0 0 0\n"
+        for before, after in (("", same), (same, same), ("cpu x y z w v", same)):
+            with self.subTest(before=before):
+                self.assertIsNone(pc.parse_proc_stat_idle(before, after))
 
     def test_busy_godot_and_compilers_count_but_idle_editor_and_children_do_not(self):
         table = "\n".join([
@@ -193,21 +215,26 @@ class TimeBudget(unittest.TestCase):
         self.assertEqual(pc.wait_allowance(600, 500, 200), 0)
 
     def test_refuses_to_wait_once_the_allowance_is_spent(self):
-        args = argparse.Namespace(wait_left=0.0, poll_seconds=15, budget=10, max_load=0.5)
-        with mock.patch.object(pc, "load_gate", return_value=["load too high"]), \
+        args = argparse.Namespace(wait_left=0.0, poll_seconds=15, budget=10, min_idle=0.5)
+        with mock.patch.object(pc, "load_gate", return_value=["cpu busy"]), \
+             mock.patch.object(pc, "cpu_idle", return_value=0.1), \
              mock.patch.object(pc, "process_table", return_value=""), \
              mock.patch.object(pc.time, "sleep") as sleep, self.assertRaises(pc.Deferred):
             pc.wait_for_quiet_machine(args, [])
         sleep.assert_not_called()
 
     def test_quiet_machine_runs_even_with_no_allowance_left(self):
-        args = argparse.Namespace(wait_left=0.0, poll_seconds=15, budget=10, max_load=0.5)
+        args = argparse.Namespace(wait_left=0.0, poll_seconds=15, budget=10, min_idle=0.5)
         with mock.patch.object(pc, "load_gate", return_value=[]), \
+             mock.patch.object(pc, "cpu_idle", return_value=0.9), \
              mock.patch.object(pc, "process_table", return_value=""):
             self.assertEqual(pc.wait_for_quiet_machine(args, [])["busy"], [])
 
-    def test_refuses_negative_budget(self):
+    def test_refuses_negative_budget_and_impossible_idle_floor(self):
         self.assertEqual(pc.main(["compare", "a", "b", "--budget", "-1"]), pc.EXIT_USAGE)
+        for value in ("0", "1.5"):
+            with self.subTest(min_idle=value):
+                self.assertEqual(pc.main(["compare", "a", "b", "--min-idle", value]), pc.EXIT_USAGE)
 
 
 class GoldenComparison(unittest.TestCase):

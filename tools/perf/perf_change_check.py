@@ -298,15 +298,54 @@ def record_reusable(record: dict | None, identity: dict, tier: str) -> tuple[boo
     return True, "identity matches"
 
 
-def load_gate(load1: float, cpus: int, competing: list[str], max_load: float) -> list[str]:
-    """Reasons the machine is too busy to measure (empty list = go)."""
+def load_gate(idle: float | None, competing: list[str], min_idle: float) -> list[str]:
+    """Reasons the machine is too busy to measure (empty list = go). idle is the CPU idle fraction
+    over the last second: unlike the 1-minute load average it does not lag after a job ends."""
     reasons = []
-    if cpus <= 0:
-        reasons.append("cpu count unknown")
-    elif load1 / cpus > max_load:
-        reasons.append(f"load average {load1:.2f} on {cpus} cpus exceeds {max_load:.2f} per cpu")
+    if idle is None or not 0.0 <= idle <= 1.0:
+        reasons.append("cpu idle unknown")
+    elif idle < min_idle:
+        reasons.append(f"cpu {idle:.0%} idle, below {min_idle:.0%}")
     reasons += [f"competing process: {name}" for name in competing]
     return reasons
+
+
+TOP_IDLE = re.compile(r"CPU usage:.*?([0-9.]+)% idle")
+
+
+def parse_top_idle(text: str) -> float | None:
+    """Idle fraction from `top -l 2`: the first sample counts since boot, so only the last counts."""
+    found = TOP_IDLE.findall(text)
+    if len(found) < 2:
+        return None
+    return to_number(found[-1]) / 100 if to_number(found[-1]) is not None else None
+
+
+def parse_proc_stat_idle(before: str, after: str) -> float | None:
+    """Idle fraction between two /proc/stat readings (idle + iowait over all jiffies)."""
+    def totals(text):
+        for line in text.splitlines():
+            parts = line.split()
+            if parts and parts[0] == "cpu" and len(parts) >= 6 and all(x.isdigit() for x in parts[1:]):
+                values = [int(x) for x in parts[1:]]
+                return sum(values), values[3] + values[4]
+        return None
+    a, b = totals(before), totals(after)
+    if a is None or b is None or b[0] <= a[0]:
+        return None
+    return (b[1] - a[1]) / (b[0] - a[0])
+
+
+def cpu_idle() -> float | None:
+    if platform.system() == "Darwin":
+        done = subprocess.run(["top", "-l", "2", "-n", "0", "-s", "1"], text=True, capture_output=True)
+        return parse_top_idle(done.stdout)
+    try:
+        before = Path("/proc/stat").read_text()
+        time.sleep(1)
+        return parse_proc_stat_idle(before, Path("/proc/stat").read_text())
+    except OSError:
+        return None
 
 
 def judge(correctness: list[str], invalid_runs: list[str], rows: list[dict],
@@ -420,9 +459,11 @@ def wait_for_quiet_machine(args, log: list) -> dict:
     deadline = time.monotonic() + args.wait_left
     while True:
         load1 = os.getloadavg()[0]
+        idle = cpu_idle()
         cpus = os.cpu_count() or 0
-        reasons = load_gate(load1, cpus, competing_processes(process_table(), os.getpid()), args.max_load)
-        sample = {"at": now(), "load1": round(load1, 2), "cpus": cpus, "busy": reasons}
+        reasons = load_gate(idle, competing_processes(process_table(), os.getpid()), args.min_idle)
+        sample = {"at": now(), "cpu_idle": None if idle is None else round(idle, 3),
+                  "load1": round(load1, 2), "cpus": cpus, "busy": reasons}
         if not reasons:
             args.wait_left = max(0.0, deadline - time.monotonic())
             return sample
@@ -942,8 +983,8 @@ def parse_args(argv: list[str]):
         p.add_argument("--rounds", type=int, default=DEFAULT_ROUNDS)
         for key, value in DEFAULT_SCENARIO.items():
             p.add_argument(f"--{key.replace('_', '-')}", type=int, default=value)
-        p.add_argument("--max-load", type=float, default=0.5,
-                       help="highest 1-minute load average per cpu allowed before a run")
+        p.add_argument("--min-idle", type=float, default=0.5,
+                       help="lowest CPU idle fraction over one second allowed before each step")
         p.add_argument("--budget", type=float, default=10,
                        help="minutes for the whole run; waiting for a quiet machine gets what the "
                             "estimated work leaves, then the run is deferred (0 = no limit)")
@@ -952,6 +993,8 @@ def parse_args(argv: list[str]):
     h.add_argument("--commit")
     args = parser.parse_args(argv)
     if args.command in ("measure", "compare"):
+        if not 0.0 < args.min_idle <= 1.0:
+            parser.error("--min-idle must be in (0, 1]")
         if args.budget < 0:
             parser.error("--budget must be 0 (no limit) or positive")
         if args.rounds < 2:

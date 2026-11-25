@@ -46,8 +46,8 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
    recompiles what changed since the last build. It copies the library into a per-commit worktree
    under `~/.keynes-perf/worktrees/`, imports the project (reusing the newest imported asset cache,
    so only changed assets are imported again), and then:
-   - checks the machine before each step: it waits while the 1-minute load average is above 0.5 per
-     CPU or another Godot, scons, compiler or linker process is busy. The whole run has a 10-minute
+   - checks the machine before each step: it waits while less than half the CPU was idle over the
+     last second (`--min-idle`) or another Godot, scons, compiler or linker process is busy. The whole run has a 10-minute
      budget (`--budget`); waiting gets whatever the estimated work leaves, and when that is spent the
      run stops with exit 75 and status `deferred`;
    - runs `tools/ci/check_golden_determinism.py` twice on each side and compares base and head
@@ -71,7 +71,7 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
    | `pass` | 0 | Results unchanged, every claimed metric improved, no headline metric regressed | Report it as below |
    | `needs_human` | 2 | A claim matched no metric or did not improve, or a headline metric regressed beyond noise | Stop. Report the reasons and the report; do not reword the claim to fit |
    | `fail` | 1 | Daily results differ, a repeat check failed, a round was invalid or a build failed | Stop. A result difference is a correctness bug, not a performance question; fix the root cause (AGENTS.md rule 1, rule 4). An invalid round (for example the recorder's own `CSV row count mismatch`, exit 6) is reported with the commit it happened on; do not rerun until it passes |
-   | `deferred` | 75 | The machine stayed busy past what the time budget allows | Run again later; finished records are kept and reused. Never raise `--max-load` or `--budget` to get through |
+   | `deferred` | 75 | The machine stayed busy past what the time budget allows | Run again later; finished records are kept and reused. Never lower `--min-idle` or raise `--budget` to get through |
 
 4. **Run the change's own targeted test** (for example a byte-for-byte fixture named in the PR)
    separately and record its command and output. The script does not run PR-specific tests.
