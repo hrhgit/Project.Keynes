@@ -44,6 +44,9 @@ func _run() -> void:
 	check(target.size == Vector2i(1600, 960), "map uses the full configured drawing size")
 	_host.simulation_ui_updated.connect(func(_from, day, _generation): ui_days.append(day))
 	_host.simulation_day_records.connect(_record_days)
+	_timings.attach(_host)
+	var allow_map_read := func(): _host._presentation._map_updates.start_frame(0)
+	process_frame.connect(allow_map_read)
 	var start_day := _host.received_worker_day()
 	var command: Dictionary = COMMAND_LOG[0].duplicate()
 	command.requested_day = maxi(0, start_day) + 2
@@ -76,6 +79,8 @@ func _run() -> void:
 				check(int(row.day) == int(receipt.effective_day), "receipt arrived on its sealed day")
 	check(receipt_seen, "command receipt arrives while map is held")
 	check(not ui_days.is_empty() and date_before != top._date_label.text, "date updates on the held map")
+	check(not _timings.take().map_copies.is_empty() and target.draw_count == count,
+		"draw switch holds map drawing while the map reader still stages new textures")
 	var old_camera_pos := _camera.position
 	var old_zoom := _camera.zoom
 	push_button(MOUSE_BUTTON_RIGHT, sample, true)
@@ -101,6 +106,10 @@ func _run() -> void:
 	check(clicked_cell != null and ui._right_panel.visible and ui._right_panel._cell_index == clicked_cell.index,
 		"frozen map click opens the matching cell inspector")
 	check(ui._right_panel._model.get("tabs", []).is_empty(), "frozen cell summary excludes unpublished details")
+	if clicked_cell != null:
+		var unexplored: bool = _camera.drawn_frame.explored[clicked_cell.index] == 0
+		check((ui._right_panel._model.header.title == "未探索区域") == unexplored,
+			"frozen inspector uses the exploration knowledge in the drawn picture")
 	ui.toggle_pause_menu()
 	await RenderingServer.frame_post_draw
 	await RenderingServer.frame_post_draw
@@ -121,6 +130,8 @@ func _run() -> void:
 	check(top._date_label.text == held_ui_date, "ordinary date stays held")
 	check(texture_before.get_data() != target.get_texture().get_image().get_data(), "next map contains new pixels")
 	check(not frozen_world.is_equal_approx(_camera.safe_screen_to_world(sample)), "hit follows the newly drawn camera")
+	check(not ui._cell_panel._waiting_for_drawn_cell, "new map draw releases the inspector's detail query")
+	process_frame.disconnect(allow_map_read)
 	_host._presentation.ui_refresh_enabled = true
 	await RenderingServer.frame_post_draw
 	check(ui_days.back() == _host.received_worker_day(), "UI catches up to the latest received batch")
