@@ -1,5 +1,7 @@
 """Factory tests: the verdict, the ticket gate, plan parsing and the guard list. Stdlib only."""
 
+import ast
+import re
 import sys
 import tempfile
 import unittest
@@ -262,16 +264,45 @@ class GuardListTest(unittest.TestCase):
         self.assertIn("check_size_ratchet.py", checks.static_guards(str(root), ".github/workflows/runtime-checks.yml"))
 
 
+def config_reads(py_sources, sh_sources=()) -> set:
+    """String keys read as `x["key"]` or `x.get("key", ...)` on any receiver.
+
+    Python is parsed, so comments, strings and assignment targets do not count. Shell files only
+    hold Python in heredocs, so they are matched as text with the same two forms.
+    """
+    keys = set()
+    for src in py_sources:
+        for node in ast.walk(ast.parse(src)):
+            if (isinstance(node, ast.Subscript) and isinstance(node.ctx, ast.Load)
+                    and isinstance(node.slice, ast.Constant) and isinstance(node.slice.value, str)):
+                keys.add(node.slice.value)
+            elif (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "get"
+                  and node.args and isinstance(node.args[0], ast.Constant) and isinstance(node.args[0].value, str)):
+                keys.add(node.args[0].value)
+    for src in sh_sources:
+        code = "\n".join(line for line in src.splitlines() if not line.lstrip().startswith("#"))
+        pattern = r"""\[\s*["']([^"']+)["']\s*\]|\.get\(\s*["']([^"']+)["']"""
+        keys.update(a or b for a, b in re.findall(pattern, code))
+    return keys
+
+
 class ConfigKeysTest(unittest.TestCase):
     def test_every_top_level_config_key_is_read_by_the_factory(self):
-        # A key nothing reads looks like a setting but changes nothing.
+        # A key nothing reads looks like a setting but changes nothing. Tests do not count as readers.
         factory = Path(__file__).resolve().parents[1]
-        source = "\n".join(f.read_text() for f in [*factory.glob("*.py"), *factory.glob("*.sh")])
-        unread = [key for key in load_config()
-                  if f'cfg["{key}"]' not in source and f"cfg['{key}']" not in source
-                  and f'cfg.get("{key}"' not in source and f"cfg.get('{key}'" not in source]
-        self.assertEqual(unread, [])
+        reads = config_reads([f.read_text() for f in factory.glob("*.py")],
+                             [f.read_text() for f in factory.glob("*.sh")])
+        self.assertEqual([key for key in load_config() if key not in reads], [])
 
+    def test_counts_reads_through_any_receiver(self):
+        reads = config_reads(['load_config()["tools"]["python"]', 'CFG.get("limits", {})'],
+                             ['python3 - <<EOF\nx = load_config()["repo"]\nEOF'])
+        self.assertEqual(reads, {"tools", "python", "limits", "repo"})
+
+    def test_refuses_mentions_that_are_not_reads(self):
+        reads = config_reads(['# cfg["upstream"] is gone\nnote = \'cfg["upstream"]\'\ncfg["upstream"] = 1'],
+                             ['# load_config()["upstream"]'])
+        self.assertEqual(reads, set())
 
 if __name__ == "__main__":
     unittest.main()
