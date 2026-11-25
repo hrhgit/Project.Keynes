@@ -3,6 +3,7 @@
 Each gate, parser and classifier is fed inputs it must refuse, not only good ones.
 Run: python -m unittest tools/perf/tests/test_perf_change_check.py -v
 """
+import json
 import sys
 import tempfile
 import unittest
@@ -210,6 +211,35 @@ class Judgement(unittest.TestCase):
     def test_refuses_pass_when_headline_regressed(self):
         rows = self.ROWS + [{"metric": "result.run_ms", "status": "regressed", "change": 0.4}]
         self.assertEqual(pc.judge([], [], rows, [])[0], "needs_human")
+
+
+class Assessment(unittest.TestCase):
+    """Found on the first real run: an invalid round used to skip the base/head result comparison."""
+
+    def side(self, tmp, name, hashes, errors):
+        candidate = Path(tmp) / f"{name}.json"
+        candidate.write_text(json.dumps({"days": [{"day": 1, "domain_hashes": hashes}]}))
+        rounds = [{"metrics": {"result.run_ms": 100.0 + i}, "errors": list(e)} for i, e in enumerate(errors)]
+        return {"identity": {"commit": name * 12}, "golden": {"passed": True, "candidate": str(candidate)},
+                "rounds": rounds}
+
+    def test_result_difference_is_reported_even_when_a_round_is_invalid(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = self.side(tmp, "a", {"ECONOMY": "1"}, [["exit=6"], [], []])
+            head = self.side(tmp, "b", {"ECONOMY": "2"}, [[], [], []])
+            verdict = pc.assess(base, head, [], pc.NOISE)
+        self.assertEqual(verdict["status"], "fail")
+        self.assertTrue(any("differ" in reason for reason in verdict["reasons"]))
+        self.assertTrue(any("exit=6" in reason for reason in verdict["reasons"]))
+
+    def test_invalid_rounds_are_left_out_of_the_statistics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = self.side(tmp, "a", {"ECONOMY": "1"}, [["exit=6"], [], []])
+            head = self.side(tmp, "b", {"ECONOMY": "1"}, [[], [], []])
+            verdict = pc.assess(base, head, [], pc.NOISE)
+        row, = [r for r in verdict["rows"] if r["metric"] == "result.run_ms"]
+        self.assertEqual(row["base"], [101.0, 102.0])
+        self.assertEqual(verdict["excluded_rounds"], ["base round 1: exit=6"])
 
 
 class BuildRecipe(unittest.TestCase):

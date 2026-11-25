@@ -780,7 +780,7 @@ def render_markdown(report: dict) -> str:
     table(claimed, "Claimed metrics")
     moved = sorted((row for row in rows if row["status"] in ("improved", "regressed")),
                    key=lambda row: -abs(row.get("change") or 0))
-    table(moved[:40], f"Timings beyond noise ({len(moved)})")
+    table(moved[:40], f"Beyond noise ({len(moved)})")
     work = sorted((row for row in rows if row["status"] in ("less_work", "more_work", "changed")),
                   key=lambda row: -abs(row.get("change") or 0))
     table(work[:40], f"Deterministic counters and gauges that changed ({len(work)})")
@@ -789,6 +789,7 @@ def render_markdown(report: dict) -> str:
         counts[row["status"]] = counts.get(row["status"], 0) + 1
     lines += ["", "## Coverage", "",
               f"- {len(rows)} metrics compared: " + ", ".join(f"{v} {k}" for k, v in sorted(counts.items())),
+              *(f"- Excluded from the statistics: {item}" for item in report.get("excluded_rounds", [])),
               "- Not measured: windowed frame time and GPU work (needs an unlocked screen).",
               f"- Raw data: base `{base['path']}`, head `{head['path']}`"]
     if report["busy_samples"]:
@@ -796,16 +797,24 @@ def render_markdown(report: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def command_compare(args, repo: Path, archive: Archive) -> int:
-    busy = []
-    base, head = ensure_records(repo, archive, [args.base, args.head], args, busy)
-    rows = compare_rounds([r["metrics"] for r in base["rounds"]],
-                          [r["metrics"] for r in head["rounds"]], args.noise)
+def assess(base: dict, head: dict, claims: list[str], noise: float) -> dict:
+    """Correctness is always checked; invalid rounds fail the check and never enter the statistics."""
     invalid = [f"{side} round {i}: {'; '.join(r['errors'])}"
                for side, record in (("base", base), ("head", head))
                for i, r in enumerate(record["rounds"], 1) if r["errors"]]
-    correctness = correctness_facts(base, head) if not invalid else []
-    status, reasons = judge(correctness, invalid, rows, args.claim)
+    rows = compare_rounds([r["metrics"] for r in base["rounds"] if not r["errors"]],
+                          [r["metrics"] for r in head["rounds"] if not r["errors"]], noise)
+    correctness = correctness_facts(base, head)
+    status, reasons = judge(correctness, invalid, rows, claims)
+    return {"status": status, "reasons": reasons, "correctness": correctness, "rows": rows,
+            "excluded_rounds": invalid}
+
+
+def command_compare(args, repo: Path, archive: Archive) -> int:
+    busy = []
+    base, head = ensure_records(repo, archive, [args.base, args.head], args, busy)
+    verdict = assess(base, head, args.claim, args.noise)
+    status, reasons, correctness, rows = (verdict[key] for key in ("status", "reasons", "correctness", "rows"))
     def side(record):
         return {"commit": record["identity"]["commit"], "subject": record.get("subject"),
                 "created": record.get("created"), "reused": bool(record.get("reused")),
@@ -814,7 +823,8 @@ def command_compare(args, repo: Path, archive: Archive) -> int:
               "scenario": args.scenario, "tier": args.tier, "rounds": args.rounds, "noise": args.noise,
               "claims": args.claim, "machine": head["identity"]["machine_label"],
               "toolchain": head["identity"]["toolchain_label"], "correctness": correctness,
-              "busy_samples": busy, "metrics": rows, "created": now(), "method_version": METHOD_VERSION}
+              "busy_samples": busy, "metrics": rows, "excluded_rounds": verdict["excluded_rounds"],
+              "created": now(), "method_version": METHOD_VERSION}
     out = Path(args.out) if args.out else archive.comparisons / (
         f"{base['identity']['commit'][:12]}..{head['identity']['commit'][:12]}-"
         f"{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}")
