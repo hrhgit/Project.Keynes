@@ -355,11 +355,11 @@ class MachineLoadGate(unittest.TestCase):
 
     def test_busy_godot_and_compilers_count_but_idle_editor_and_children_do_not(self):
         table = "\n".join([
-            "  10     1  95.0 /opt/homebrew/bin/godot --headless --path x",
+            "  10     1  95.0 godot",
             "  11     1   0.3 /Applications/Godot.app/Contents/MacOS/Godot",
-            "  12     1  80.0 /usr/bin/clang++ -c a.cpp",
-            "  13   500  99.0 /opt/homebrew/bin/godot --headless",
-            "  14     1  99.0 /usr/bin/python3 tools/x.py",
+            "  12     1  80.0 /usr/bin/clang++",
+            "  13   500  99.0 /opt/homebrew/bin/godot",
+            "  14     1  99.0 /usr/bin/python3",
             "garbage line",
         ])
         found = pc.competing_processes(table, mine=500)
@@ -367,37 +367,41 @@ class MachineLoadGate(unittest.TestCase):
 
     def test_competing_build_is_found_when_its_path_has_a_space(self):
         table = "\n".join([
-            "  15     1  90.0 /Users/me/My Tools/scons -j8",
-            "  16     1  85.0 /Applications/Godot Engine.app/Contents/MacOS/Godot --headless",
-            "  17     1  99.0 /usr/bin/python3 /Users/me/My Tools/godot",
+            "  15     1  90.0 /Users/me/My Tools/scons",
+            "  16     1  85.0 /Applications/Godot Engine.app/Contents/MacOS/Godot",
+            "  17     1  99.0 /Users/me/godot Tools/python3",
         ])
-        names = pc.parse_executables("\n".join([
-            "15 /Users/me/My Tools/scons",
-            "16 /Applications/Godot Engine.app/Contents/MacOS/Godot",
-            "17 /usr/bin/python3",
-        ]))
-        self.assertEqual(pc.competing_processes(table, mine=500, executables=names),
-                         ["15 scons 90% cpu", "16 Godot 85% cpu"])
+        self.assertEqual(pc.competing_processes(table, mine=500), ["15 scons 90% cpu", "16 Godot 85% cpu"])
 
-    def test_refuses_quiet_sample_when_executable_lookup_fails(self):
+    def test_quiet_sample_uses_one_process_listing_with_executable_names(self):
         args = argparse.Namespace(wait_left=0, budget=0, min_idle=0.5)
-        table = "  15     1  90.0 /Users/me/My Tools/scons -j8"
-        failed = pc.subprocess.CompletedProcess(["ps", "-axo", "pid=,comm="], 1,
-                                                stdout="", stderr="ps: permission denied\n")
+        listing = pc.subprocess.CompletedProcess("ps", 0, stdout="  15     1  90.0 /usr/bin/python3\n",
+                                                 stderr="")
+        failed = pc.subprocess.CompletedProcess("ps", 1, stdout="", stderr="ps: permission denied\n")
         with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
-             mock.patch.object(pc, "process_table", return_value=table), \
-             mock.patch.object(pc.subprocess, "run", return_value=failed), \
-             self.assertRaisesRegex(pc.StepFailed, r"ps -axo pid=,comm= exited 1\nps: permission denied"):
+             mock.patch.object(pc.subprocess, "run", side_effect=[listing, failed]) as ps:
+            self.assertEqual(pc.wait_for_quiet_machine(args, [])["busy"], [])
+        ps.assert_called_once()
+        self.assertEqual(ps.call_args.args[0],
+                         ["ps", "-Aww", "-o", "pid=", "-o", "ppid=", "-o", "%cpu=", "-o", "comm="])
+
+    def test_refuses_quiet_sample_when_process_listing_fails(self):
+        args = argparse.Namespace(wait_left=0, budget=0, min_idle=0.5)
+        failed = pc.subprocess.CompletedProcess("ps", 1, stdout="", stderr="ps: permission denied\n")
+        with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
+             mock.patch.object(pc.subprocess, "run", return_value=failed) as ps, \
+             self.assertRaisesRegex(pc.StepFailed, r"ps .*%cpu= .*comm= exited 1\nps: permission denied"):
             pc.wait_for_quiet_machine(args, [])
+        ps.assert_called_once()
 
     def test_busiest_names_any_busy_process_busiest_first_but_not_ours(self):
         table = "\n".join([
-            "  20     1  40.0 /usr/bin/python3 tools/x.py",
+            "  20     1  40.0 /usr/bin/python3",
             "  21     1  95.0 /Applications/Xcode.app/Contents/MacOS/Xcode",
-            "  22   500  99.0 /opt/homebrew/bin/godot --headless",
-            "  500    1  99.0 /usr/bin/python3 perf_change_check.py",
+            "  22   500  99.0 /opt/homebrew/bin/godot",
+            "  500    1  99.0 /usr/bin/python3",
             "  23     1   5.0 /usr/sbin/idle_daemon",
-            "  24     1  60.0 /usr/bin/swift-frontend -c a.swift",
+            "  24     1  60.0 /usr/bin/swift-frontend",
             "  25     x  90.0 /bin/broken",
             "garbage line",
         ])
@@ -412,20 +416,26 @@ class MachineLoadGate(unittest.TestCase):
         self.assertEqual(pc.busiest_processes("  33     1   0.5 /usr/sbin/quiet", mine=500), [])
 
     def test_busiest_names_macos_apps_by_bundle_not_by_first_word(self):
-        table = "  40     1  70.0 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome --type=gpu"
-        names = pc.parse_executables(
-            "   40 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome\ngarbage\n")
-        self.assertEqual(pc.busiest_processes(table, mine=500, executables=names),
-                         ["40 Google Chrome 70% cpu"])
+        table = "  40     1  70.0 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        self.assertEqual(pc.busiest_processes(table, mine=500), ["40 Google Chrome 70% cpu"])
         self.assertEqual(pc.process_name("/usr/bin/swift-frontend"), "swift-frontend")
         self.assertEqual(pc.process_name("kernel_task"), "kernel_task")
-
-    def test_busiest_never_names_a_process_after_its_arguments(self):
-        table = "  41     1  80.0 /usr/bin/find /Applications/Xcode.app/Contents/MacOS/Xcode -newer x"
-        names = pc.parse_executables("41 /usr/bin/find")
-        self.assertEqual(pc.busiest_processes(table, mine=500, executables=names), ["41 find 80% cpu"])
-        self.assertEqual(pc.busiest_processes(table, mine=500), ["41 find 80% cpu"])
         self.assertEqual(pc.process_name("/Applications/Xcode.app/Contents/Resources/helper"), "helper")
+
+    def test_busy_sample_reports_executable_names(self):
+        args = argparse.Namespace(wait_left=0, budget=0, min_idle=0.5, poll_seconds=15)
+        table = ("  40     1  70.0 /Applications/Google Chrome.app/Contents/MacOS/Google Chrome\n"
+                 "  41     1  80.0 /usr/bin/find\n")
+        listing = pc.subprocess.CompletedProcess("ps", 0, stdout=table, stderr="")
+        log = []
+        with mock.patch.object(pc, "cpu_idle", return_value=0.1), \
+             mock.patch.object(pc.os, "getpid", return_value=500), \
+             mock.patch.object(pc.subprocess, "run", return_value=listing) as ps, \
+             self.assertRaisesRegex(pc.Deferred, "busiest processes: 41 find 80% cpu, 40 Google Chrome 70% cpu"):
+            pc.wait_for_quiet_machine(args, log)
+        ps.assert_called_once()
+        self.assertEqual(log[0]["busy"], ["cpu 10% idle, below 50%",
+                                         "busiest processes: 41 find 80% cpu, 40 Google Chrome 70% cpu"])
 
     def test_busiest_explains_low_idle_only_when_no_competitor_does(self):
         busiest = ["21 Xcode 95% cpu"]
@@ -459,7 +469,6 @@ class TimeBudget(unittest.TestCase):
         with mock.patch.object(pc, "load_gate", return_value=["cpu busy"]), \
              mock.patch.object(pc, "cpu_idle", return_value=0.1), \
              mock.patch.object(pc, "process_table", return_value=""), \
-             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", return_value=30), \
              mock.patch.object(pc.time, "sleep") as sleep, self.assertRaises(pc.Deferred):
             pc.wait_for_quiet_machine(args, [])
@@ -468,14 +477,12 @@ class TimeBudget(unittest.TestCase):
     def test_quiet_machine_runs_without_wait_allowance_if_budget_remains(self):
         with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
              mock.patch.object(pc, "process_table", return_value=""), \
-             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", return_value=30):
             self.assertEqual(pc.wait_for_quiet_machine(self.args(), [])["busy"], [])
 
     def test_wont_sleep_past_the_run_budget_with_waiting_allowance_left(self):
         with mock.patch.object(pc, "cpu_idle", return_value=0.1), \
              mock.patch.object(pc, "process_table", return_value=""), \
-             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", return_value=590), \
              mock.patch.object(pc.time, "sleep") as sleep, self.assertRaisesRegex(pc.Deferred, "busy"):
             pc.wait_for_quiet_machine(self.args(wait_left=120), [])
@@ -484,7 +491,6 @@ class TimeBudget(unittest.TestCase):
     def test_refuses_to_sample_after_the_run_budget_expires(self):
         with mock.patch.object(pc, "cpu_idle", return_value=0.9) as sample, \
              mock.patch.object(pc, "process_table", return_value=""), \
-             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", return_value=600), \
              self.assertRaisesRegex(pc.Deferred, "budget.*expired"):
             pc.wait_for_quiet_machine(self.args(), [])
@@ -500,7 +506,6 @@ class TimeBudget(unittest.TestCase):
 
         with mock.patch.object(pc, "cpu_idle", side_effect=cpu_idle), \
              mock.patch.object(pc, "process_table", return_value=""), \
-             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", side_effect=lambda: elapsed), \
              self.assertRaisesRegex(pc.Deferred, "budget.*expired"):
             pc.wait_for_quiet_machine(self.args(), [])
@@ -524,7 +529,6 @@ class TimeBudget(unittest.TestCase):
                  mock.patch.object(pc, "golden_check", return_value={"passed": True}), \
                  mock.patch.object(pc, "cpu_idle", return_value=0.9), \
                  mock.patch.object(pc, "process_table", return_value=""), \
-                 mock.patch.object(pc, "executable_table", return_value=""), \
                  mock.patch.object(pc, "perf_round", side_effect=perf_round) as measure, \
                  mock.patch.object(pc.time, "monotonic", side_effect=lambda: elapsed), \
                  self.assertRaisesRegex(pc.Deferred, "budget.*expired"):
@@ -535,7 +539,6 @@ class TimeBudget(unittest.TestCase):
     def test_zero_budget_is_unlimited(self):
         with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
              mock.patch.object(pc, "process_table", return_value=""), \
-             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", return_value=1000):
             self.assertEqual(pc.wait_for_quiet_machine(self.args(budget=0), [])["busy"], [])
 
@@ -787,7 +790,6 @@ class BuildRecipe(unittest.TestCase):
                                       budget=10, min_idle=0.5, poll_seconds=15)
             with mock.patch.object(pc, "cpu_idle", return_value=0.1), \
                  mock.patch.object(pc, "process_table", return_value=""), \
-                 mock.patch.object(pc, "executable_table", return_value=""), \
                  mock.patch.object(pc, "compile_commit") as compile_commit, \
                  mock.patch.object(pc, "git") as git, self.assertRaisesRegex(pc.Deferred, "busy"):
                 pc.prepare_worktree(repo, archive, "a" * 40, args, repo, [])
@@ -802,7 +804,6 @@ class BuildRecipe(unittest.TestCase):
                                       budget=10, min_idle=0.5, poll_seconds=15)
             with mock.patch.object(pc, "cpu_idle", side_effect=[0.9, 0.1]), \
                  mock.patch.object(pc, "process_table", return_value=""), \
-                 mock.patch.object(pc, "executable_table", return_value=""), \
                  mock.patch.object(pc, "compile_commit", return_value=[]) as compile_commit, \
                  mock.patch.object(pc, "git"), mock.patch.object(pc, "run") as run, \
                  self.assertRaisesRegex(pc.Deferred, "busy"):

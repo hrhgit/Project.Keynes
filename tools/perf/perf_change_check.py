@@ -58,7 +58,7 @@ HEADLINE = {
     "rusage.maxrss_mb": "lower",
     "rusage.cpu_s": "lower",
 }
-COMPETING = re.compile(r"(^|/)(godot|Godot|scons|clang\+\+|clang|cc1plus|ld|ld64)(\s|$)")
+COMPETING = {"godot", "Godot", "scons", "clang++", "clang", "cc1plus", "ld", "ld64"}
 COMPETING_CPU = 20.0
 RESULT_PREFIX = "[headless-perf/result]"
 AUTH_PREFIX = "[headless-perf/auth]"
@@ -516,17 +516,13 @@ def toolchain_identity(godot: str) -> dict:
     return {"toolchain": hashlib.sha256(label.encode()).hexdigest()[:16], "toolchain_label": label}
 
 
-def competing_processes(ps_output: str, mine: int, min_cpu: float = COMPETING_CPU,
-                        executables: dict[int, str] | None = None) -> list[str]:
-    """Busy Godot, build or link processes that are not ours (an idle editor does not count).
-    The program is taken from `executables` (`ps -o comm=`), so a path with spaces stays whole;
-    a process missing from it falls back to the first word of its command line."""
-    executables = executables or {}
+def competing_processes(ps_output: str, mine: int, min_cpu: float = COMPETING_CPU) -> list[str]:
+    """Busy Godot, build or link processes that are not ours (an idle editor does not count)."""
     found = []
-    for pid, cpu, command in busy_processes(ps_output, mine, min_cpu):
-        executable = executables.get(pid) or command.split()[0]
-        if COMPETING.search(executable + " "):
-            found.append(f"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu")
+    for pid, cpu, executable in busy_processes(ps_output, mine, min_cpu):
+        name = executable.rsplit("/", 1)[-1]
+        if name in COMPETING:
+            found.append(f"{pid} {name} {cpu:.0f}% cpu")
     return found
 
 
@@ -543,50 +539,33 @@ def process_name(executable: str) -> str:
     return bundle.group(1) if bundle else executable.rsplit("/", 1)[-1]
 
 
-def parse_executables(ps_output: str) -> dict[int, str]:
-    """pid -> executable path from `ps -axo pid=,comm=`. comm holds no arguments, so a path with
-    spaces stays whole and an argument can never be taken for the program."""
-    found = {}
-    for line in ps_output.splitlines():
-        parts = line.strip().split(None, 1)
-        if len(parts) == 2 and parts[0].isdigit():
-            found[int(parts[0])] = parts[1]
-    return found
-
-
-def busiest_processes(ps_output: str, mine: int, executables: dict[int, str] | None = None,
-                      limit: int = 3, min_cpu: float = BUSIEST_MIN_CPU) -> list[str]:
+def busiest_processes(ps_output: str, mine: int, limit: int = 3,
+                      min_cpu: float = BUSIEST_MIN_CPU) -> list[str]:
     """The busiest processes that are not ours, of any kind, busiest first. They name what is
-    using the CPU when the idle figure is low but no known competitor is running. A process
-    missing from `executables` is named by the first word of its command line."""
-    executables = executables or {}
+    using the CPU when the idle figure is low but no known competitor is running."""
     found = sorted(busy_processes(ps_output, mine, min_cpu), key=lambda p: (-p[1], p[0]))
-    return [f"{pid} {process_name(executables.get(pid) or command.split()[0])} {cpu:.0f}% cpu"
-            for pid, cpu, command in found[:limit]]
+    return [f"{pid} {process_name(executable)} {cpu:.0f}% cpu"
+            for pid, cpu, executable in found[:limit]]
 
 
 def busy_processes(ps_output: str, mine: int, min_cpu: float) -> list[tuple[int, float, str]]:
-    """(pid, %cpu, command) for `ps -axo pid=,ppid=,%cpu=,command=` rows at or above min_cpu,
-    leaving out this process and its children. Malformed rows are skipped."""
+    """(pid, %cpu, executable) for process_table rows at or above min_cpu, leaving out this
+    process and its children. The final `comm` field can contain spaces."""
     rows = []
     for line in ps_output.splitlines():
         parts = line.strip().split(None, 3)
         if len(parts) < 4 or not parts[0].isdigit() or not parts[1].isdigit():
             continue
-        pid, ppid, cpu, command = int(parts[0]), int(parts[1]), to_number(parts[2]), parts[3]
+        pid, ppid, cpu, executable = int(parts[0]), int(parts[1]), to_number(parts[2]), parts[3]
         if pid == mine or ppid == mine or cpu is None or cpu < min_cpu:
             continue
-        rows.append((pid, cpu, command))
+        rows.append((pid, cpu, executable))
     return rows
 
 
 def process_table() -> str:
-    return subprocess.run(["ps", "-axo", "pid=,ppid=,%cpu=,command="], text=True,
-                          capture_output=True, check=False).stdout
-
-
-def executable_table() -> str:
-    return run(["ps", "-axo", "pid=,comm="]).stdout
+    """Read CPU usage and untruncated executable names from the same process listing."""
+    return run(["ps", "-Aww", "-o", "pid=", "-o", "ppid=", "-o", "%cpu=", "-o", "comm="]).stdout
 
 
 # Rough cost of each step on a quiet machine, used only to decide how long waiting may last.
@@ -622,9 +601,9 @@ def wait_for_quiet_machine(args, log: list) -> dict:
         load1 = os.getloadavg()[0]
         idle = cpu_idle()
         cpus = os.cpu_count() or 0
-        table, executables, mine = process_table(), parse_executables(executable_table()), os.getpid()
-        competing = competing_processes(table, mine, executables=executables)
-        busiest = [] if competing else busiest_processes(table, mine, executables)
+        table, mine = process_table(), os.getpid()
+        competing = competing_processes(table, mine)
+        busiest = [] if competing else busiest_processes(table, mine)
         reasons = load_gate(idle, competing, args.min_idle, busiest)
         sample = {"at": now(), "cpu_idle": None if idle is None else round(idle, 3),
                   "load1": round(load1, 2), "cpus": cpus, "busy": reasons}
