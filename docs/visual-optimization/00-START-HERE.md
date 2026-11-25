@@ -69,7 +69,7 @@
 → 打开 [`shape-implementation-checklist.md`](shape-implementation-checklist.md)
 
 ### 场景E：我需要完整的代码
-→ 打开 [`shader-enhancements-code.md`](../shader-enhancements-code.md)
+→ 打开 [`shader-enhancements-code.md`](shader-enhancements-code.md)
 
 ### 场景F：我要看完整的文档导航
 → 打开 [`INDEX.md`](INDEX.md)
@@ -171,7 +171,7 @@ godot --headless -s Project/project-keynes/tests/resource_visual_art_review.gd
 | 理解问题和方案 | [`SHAPE-DESIGN-SUMMARY.md`](SHAPE-DESIGN-SUMMARY.md) | 15分钟 |
 | 看植物/动物的具体形状 | [`plant-animal-shape-design.md`](plant-animal-shape-design.md) | 1小时 |
 | 按步骤实施（Phase 1-3） | [`shape-implementation-checklist.md`](shape-implementation-checklist.md) | 边开发边看 |
-| 复制 Shader 代码 | [`shader-enhancements-code.md`](../shader-enhancements-code.md) | 30分钟 |
+| 复制 Shader 代码 | [`shader-enhancements-code.md`](shader-enhancements-code.md) | 30分钟 |
 | 找完整的参数优化 | [`implementation-guide.md`](implementation-guide.md) | 45分钟 |
 | 找所有文档 | [`INDEX.md`](INDEX.md) | 5分钟 |
 

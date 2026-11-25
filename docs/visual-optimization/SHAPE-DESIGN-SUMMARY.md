@@ -236,7 +236,7 @@ float shadow = ground_ao * terrain_shadow * self_shadow;
 |------|------|
 | [plant-animal-shape-design.md](./plant-animal-shape-design.md) | **完整设计**：形状函数、Shader代码、颜色方案 |
 | [shape-implementation-checklist.md](./shape-implementation-checklist.md) | **实施清单**：分步骤、验收标准、测试方法 |
-| [shader-enhancements-code.md](../resource-species-visual-enhancement.md) | **Shader片段**：可直接复制的代码 |
+| [shader-enhancements-code.md](shader-enhancements-code.md) | **Shader片段**：可直接复制的代码 |
 
 ---
 
