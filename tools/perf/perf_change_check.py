@@ -397,19 +397,39 @@ def process_table() -> str:
                           capture_output=True, check=False).stdout
 
 
+# Rough cost of each step on a quiet machine, used only to decide how long waiting may last.
+ESTIMATE_S = {"build": 240, "golden": 60, "load_consistency": 120, "round": 15}
+
+
+def work_estimate(missing_ready: list[bool], tier: str, rounds: int) -> float:
+    """Seconds of work for the commits still to measure; True means its worktree is already built."""
+    per_commit = ESTIMATE_S["golden"] + rounds * ESTIMATE_S["round"]
+    if tier == "full":
+        per_commit += ESTIMATE_S["load_consistency"]
+    return sum(per_commit + (0 if ready else ESTIMATE_S["build"]) for ready in missing_ready)
+
+
+def wait_allowance(budget_s: float, elapsed_s: float, estimate_s: float) -> float:
+    """Seconds the whole run may still spend waiting for a quiet machine: never negative."""
+    return max(0.0, budget_s - elapsed_s - estimate_s)
+
+
 def wait_for_quiet_machine(args, log: list) -> dict:
-    """Block until the machine is quiet, or raise Deferred after --max-wait minutes."""
-    deadline = time.monotonic() + args.max_wait * 60
+    """Block until the machine is quiet. Waiting shares one allowance for the whole run
+    (the time budget minus the estimated work); when it runs out the run is deferred."""
+    deadline = time.monotonic() + args.wait_left
     while True:
         load1 = os.getloadavg()[0]
         cpus = os.cpu_count() or 0
         reasons = load_gate(load1, cpus, competing_processes(process_table(), os.getpid()), args.max_load)
         sample = {"at": now(), "load1": round(load1, 2), "cpus": cpus, "busy": reasons}
         if not reasons:
+            args.wait_left = max(0.0, deadline - time.monotonic())
             return sample
         log.append(sample)
-        if time.monotonic() >= deadline:
-            raise Deferred("; ".join(reasons))
+        if time.monotonic() + args.poll_seconds > deadline:
+            raise Deferred(f"machine still busy and the {args.budget:g}-minute budget leaves no time "
+                           f"to wait: " + "; ".join(reasons))
         print(f"machine busy, waiting: {'; '.join(reasons)}", flush=True)
         time.sleep(args.poll_seconds)
 
@@ -560,12 +580,37 @@ def prepare_worktree(repo: Path, archive: Archive, commit: str, args, record_dir
                 shutil.copytree(library, target, dirs_exist_ok=True)
             else:
                 shutil.copy2(library, target)
+    seeded = seed_import_cache(archive, path)
+    import_started = time.monotonic()
     run([args.godot, "--headless", "--path", str(path / PROJECT), "--import"],
         log=record_dir / f"import-{commit[:12]}.log")
+    print(f"imported {commit[:12]} in {time.monotonic() - import_started:.0f}s"
+          + (f" (cache from {seeded.name})" if seeded else " (no cache)"), flush=True)
     ready.write_text(commit + "\n")
     print(f"built {commit[:12]}: compile {compiled:.0f}s, total {time.monotonic() - started:.0f}s",
           flush=True)
     return path
+
+
+def seed_import_cache(archive: Archive, target: Path) -> Path | None:
+    """Clone the newest imported asset cache into a fresh worktree so --import only redoes changed
+    assets. Godot checks each source against its recorded hash, so a stale cache costs time, not
+    correctness. Only .godot/imported is copied; the script class and uid caches are rebuilt."""
+    sources = sorted((p for p in archive.worktrees.iterdir()
+                      if p != target and (p / ".perf-built").exists()
+                      and (p / PROJECT / ".godot/imported").is_dir()),
+                     key=lambda p: p.stat().st_mtime, reverse=True)
+    if (archive.build / PROJECT / ".godot/imported").is_dir():
+        sources.append(archive.build)
+    if not sources:
+        return None
+    source, destination = sources[0] / PROJECT / ".godot/imported", target / PROJECT / ".godot/imported"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    clone = ["cp", "-cR", str(source), str(destination)] if platform.system() == "Darwin" else None
+    if clone is None or subprocess.run(clone, capture_output=True).returncode != 0:
+        shutil.rmtree(destination, ignore_errors=True)
+        shutil.copytree(source, destination)
+    return sources[0]
 
 
 def prune_worktrees(repo: Path, archive: Archive) -> None:
@@ -690,6 +735,13 @@ def ensure_records(repo: Path, archive: Archive, revs: list[str], args, busy_log
         plans.append({"commit": commit, "subject": subject, "identity": identity,
                       "record": record, "why": why})
     missing = [plan for plan in plans if plan["record"] is None]
+    ready = [(archive.worktrees / p["commit"][:12] / ".perf-built").exists() for p in missing]
+    estimate = work_estimate(ready, args.tier, args.rounds)
+    args.wait_left = (float("inf") if args.budget <= 0 else
+                      wait_allowance(args.budget * 60, time.monotonic() - args.started, estimate))
+    if missing:
+        print(f"estimated work {estimate:.0f}s; may wait up to "
+              f"{'unlimited' if args.budget <= 0 else f'{args.wait_left:.0f}s'} for a quiet machine", flush=True)
     for plan in missing:
         print(f"measuring {plan['commit'][:12]} ({plan['why']})", flush=True)
         record_dir = archive.new_record_dir(plan["identity"])
@@ -794,6 +846,9 @@ def render_markdown(report: dict) -> str:
               f"- Raw data: base `{base['path']}`, head `{head['path']}`"]
     if report["busy_samples"]:
         lines.append(f"- Waited for a busy machine {len(report['busy_samples'])} time(s) before measuring.")
+    if "elapsed_s" in report:
+        budget = report.get("budget_min") or 0
+        lines.append(f"- Run time: {report['elapsed_s']}s" + (f" of a {budget:g}-minute budget" if budget else ""))
     return "\n".join(lines) + "\n"
 
 
@@ -824,6 +879,7 @@ def command_compare(args, repo: Path, archive: Archive) -> int:
               "claims": args.claim, "machine": head["identity"]["machine_label"],
               "toolchain": head["identity"]["toolchain_label"], "correctness": correctness,
               "busy_samples": busy, "metrics": rows, "excluded_rounds": verdict["excluded_rounds"],
+              "elapsed_s": round(time.monotonic() - args.started), "budget_min": args.budget,
               "created": now(), "method_version": METHOD_VERSION}
     out = Path(args.out) if args.out else archive.comparisons / (
         f"{base['identity']['commit'][:12]}..{head['identity']['commit'][:12]}-"
@@ -882,12 +938,16 @@ def parse_args(argv: list[str]):
             p.add_argument(f"--{key.replace('_', '-')}", type=int, default=value)
         p.add_argument("--max-load", type=float, default=0.5,
                        help="highest 1-minute load average per cpu allowed before a run")
-        p.add_argument("--max-wait", type=float, default=30, help="minutes to wait for a quiet machine")
-        p.add_argument("--poll-seconds", type=float, default=60)
+        p.add_argument("--budget", type=float, default=10,
+                       help="minutes for the whole run; waiting for a quiet machine gets what the "
+                            "estimated work leaves, then the run is deferred (0 = no limit)")
+        p.add_argument("--poll-seconds", type=float, default=15)
     h = sub.add_parser("history")
     h.add_argument("--commit")
     args = parser.parse_args(argv)
     if args.command in ("measure", "compare"):
+        if args.budget < 0:
+            parser.error("--budget must be 0 (no limit) or positive")
         if args.rounds < 2:
             parser.error("--rounds must be at least 2 so timings have a range")
         args.scenario = {key: getattr(args, key) for key in DEFAULT_SCENARIO}
@@ -901,6 +961,7 @@ def main(argv: list[str] | None = None) -> int:
         args = parse_args(sys.argv[1:] if argv is None else argv)
     except SystemExit as exit_:
         return EXIT_USAGE if exit_.code else EXIT_PASS
+    args.started = time.monotonic()
     archive = Archive(Path(args.home).expanduser())
     if args.command == "history":
         return command_history(args, archive)

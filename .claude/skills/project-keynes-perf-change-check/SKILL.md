@@ -44,10 +44,12 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
    The script compiles each commit's `template_debug` library (the one the headless editor loads)
    in one long-lived build tree, `~/.keynes-perf/build/` (or `$KEYNES_PERF_HOME`), so SCons only
    recompiles what changed since the last build. It copies the library into a per-commit worktree
-   under `~/.keynes-perf/worktrees/`, imports the project, and then:
-   - checks the machine first: it waits while the 1-minute load average is above 0.5 per CPU or
-     another Godot, scons, compiler or linker process is busy, and gives up after 30 minutes
-     (`--max-wait`), exiting 75 with status `deferred`;
+   under `~/.keynes-perf/worktrees/`, imports the project (reusing the newest imported asset cache,
+   so only changed assets are imported again), and then:
+   - checks the machine before each step: it waits while the 1-minute load average is above 0.5 per
+     CPU or another Godot, scons, compiler or linker process is busy. The whole run has a 10-minute
+     budget (`--budget`); waiting gets whatever the estimated work leaves, and when that is spent the
+     run stops with exit 75 and status `deferred`;
    - runs `tools/ci/check_golden_determinism.py` twice on each side and compares base and head
      daily per-domain hashes field by field (full tier also runs
      `tools/ci/check_runtime_load_consistency.py`);
@@ -56,7 +58,8 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
      a synthetic start or too few countries;
    - compares every metric and writes `report.json` and `report.md`.
 
-   The first build on a machine compiles godot-cpp and every source; later builds are incremental.
+   The first build on a machine compiles godot-cpp and every source (over 10 minutes; run it once
+   with `measure <commit> --budget 0`); later builds are incremental.
    When the archive already holds a record for a commit with the same scenario, machine,
    toolchain and method version, that record is reused and the commit is not built or run again.
    This is the normal case when a PR comes back from review: only the new head is measured.
@@ -68,7 +71,7 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
    | `pass` | 0 | Results unchanged, every claimed metric improved, no headline metric regressed | Report it as below |
    | `needs_human` | 2 | A claim matched no metric or did not improve, or a headline metric regressed beyond noise | Stop. Report the reasons and the report; do not reword the claim to fit |
    | `fail` | 1 | Daily results differ, a repeat check failed, a round was invalid or a build failed | Stop. A result difference is a correctness bug, not a performance question; fix the root cause (AGENTS.md rule 1, rule 4). An invalid round (for example the recorder's own `CSV row count mismatch`, exit 6) is reported with the commit it happened on; do not rerun until it passes |
-   | `deferred` | 75 | The machine stayed busy | Run again later; never lower `--max-load` to get through |
+   | `deferred` | 75 | The machine stayed busy past what the time budget allows | Run again later; finished records are kept and reused. Never raise `--max-load` or `--budget` to get through |
 
 4. **Run the change's own targeted test** (for example a byte-for-byte fixture named in the PR)
    separately and record its command and output. The script does not run PR-specific tests.

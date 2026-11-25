@@ -3,10 +3,12 @@
 Each gate, parser and classifier is fed inputs it must refuse, not only good ones.
 Run: python -m unittest tools/perf/tests/test_perf_change_check.py -v
 """
+import argparse
 import json
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -177,6 +179,35 @@ class MachineLoadGate(unittest.TestCase):
         ])
         found = pc.competing_processes(table, mine=500)
         self.assertEqual([entry.split()[0] for entry in found], ["10", "12"])
+
+
+class TimeBudget(unittest.TestCase):
+    def test_estimate_counts_builds_only_for_unbuilt_worktrees(self):
+        built = pc.work_estimate([True], "quick", 3)
+        self.assertEqual(pc.work_estimate([False], "quick", 3), built + pc.ESTIMATE_S["build"])
+        self.assertGreater(pc.work_estimate([True], "full", 3), built)
+        self.assertEqual(pc.work_estimate([], "quick", 3), 0)
+
+    def test_allowance_is_what_the_work_leaves_and_never_negative(self):
+        self.assertEqual(pc.wait_allowance(600, 0, 200), 400)
+        self.assertEqual(pc.wait_allowance(600, 500, 200), 0)
+
+    def test_refuses_to_wait_once_the_allowance_is_spent(self):
+        args = argparse.Namespace(wait_left=0.0, poll_seconds=15, budget=10, max_load=0.5)
+        with mock.patch.object(pc, "load_gate", return_value=["load too high"]), \
+             mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc.time, "sleep") as sleep, self.assertRaises(pc.Deferred):
+            pc.wait_for_quiet_machine(args, [])
+        sleep.assert_not_called()
+
+    def test_quiet_machine_runs_even_with_no_allowance_left(self):
+        args = argparse.Namespace(wait_left=0.0, poll_seconds=15, budget=10, max_load=0.5)
+        with mock.patch.object(pc, "load_gate", return_value=[]), \
+             mock.patch.object(pc, "process_table", return_value=""):
+            self.assertEqual(pc.wait_for_quiet_machine(args, [])["busy"], [])
+
+    def test_refuses_negative_budget(self):
+        self.assertEqual(pc.main(["compare", "a", "b", "--budget", "-1"]), pc.EXIT_USAGE)
 
 
 class GoldenComparison(unittest.TestCase):
