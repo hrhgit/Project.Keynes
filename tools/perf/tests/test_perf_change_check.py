@@ -84,30 +84,44 @@ class PerfRunValidation(unittest.TestCase):
         self.assertTrue(any("speed_multiplier" in error for error in
                             pc.validate_perf_run(0, GOOD_RESULT, rows, SCENARIO)))
 
-    def test_perf_round_rejects_missing_required_column_and_corrupt_optional_cells(self):
+    def run_csv_round(self, tmp, headers, values):
+        worktree = Path(tmp)
+        path = worktree / "perf.csv"
+        path.write_text("\n".join([headers, *values]) + "\n")
+        days = len(values)
+        result = GOOD_RESULT | {"rows": str(days), "expected_rows": str(days), "path": str(path)}
         usage = argparse.Namespace(ru_utime=0.1, ru_stime=0.1, ru_maxrss=1000)
+
+        def godot(*_, stdout, **__):
+            stdout.write(pc.RESULT_PREFIX + " " + " ".join(f"{k}={v}" for k, v in result.items()) + "\n")
+            stdout.write(pc.AUTH_PREFIX + " authoritative_days_per_second=50\n")
+            stdout.write(pc.HARNESS_PREFIX + " adjusted_days_per_second=50\n")
+            return argparse.Namespace(pid=42)
+
+        with mock.patch.object(pc.subprocess, "Popen", side_effect=godot), \
+             mock.patch.object(pc.os, "wait4", return_value=(42, 0, usage), create=True):
+            return pc.perf_round(worktree, worktree / "round", SCENARIO | {"days": days},
+                                 "quick", "godot", "r1")
+
+    def test_perf_round_uses_observed_samples_for_optional_metrics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = self.run_csv_round(tmp, "tick_idx,speed_multiplier,t_sus_ms,market_ms",
+                                     ["1,50,0,", "2,50,0,7", "3,50,0,", "4,50,0,3"])
+        self.assertEqual(run["errors"], [])
+        self.assertEqual(run["metrics"]["csv.market_ms.mean"], 5)
+        self.assertEqual(run["metrics"]["csv.market_ms.p95"], 7)
+        self.assertEqual(run["metrics"]["csv.market_ms.max"], 7)
+
+    def test_perf_round_rejects_missing_required_column_and_corrupt_optional_cells(self):
         for headers, values, reason in (
             ("tick_idx,t_sus_ms", ["1,0", "2,0"], "speed_multiplier"),
-            ("tick_idx,speed_multiplier,t_sus_ms,market_ms", ["1,50,0,7", "2,50,0,"], "market_ms"),
+            ("tick_idx,speed_multiplier,t_sus_ms", ["1,50,0", "2,,0"], "speed_multiplier"),
+            ("tick_idx,speed_multiplier,t_sus_ms,market_ms", ["1,50,0,7", "2,50,0,invalid"], "market_ms"),
             ("tick_idx,speed_multiplier,t_sus_ms,market_ms", ["1,50,0,7", "2,50,0"], "header width"),
             ("tick_idx,speed_multiplier,t_sus_ms,t_sus_ms", ["1,50,0,0", "2,50,0,0"], "duplicate"),
         ):
             with self.subTest(reason=reason), tempfile.TemporaryDirectory() as tmp:
-                worktree = Path(tmp)
-                path = worktree / "perf.csv"
-                path.write_text("\n".join([headers, *values]) + "\n")
-                result = GOOD_RESULT | {"rows": "2", "expected_rows": "2", "path": str(path)}
-
-                def godot(*_, stdout, **__):
-                    stdout.write(pc.RESULT_PREFIX + " " + " ".join(f"{k}={v}" for k, v in result.items()) + "\n")
-                    stdout.write(pc.AUTH_PREFIX + " authoritative_days_per_second=50\n")
-                    stdout.write(pc.HARNESS_PREFIX + " adjusted_days_per_second=50\n")
-                    return argparse.Namespace(pid=42)
-
-                with mock.patch.object(pc.subprocess, "Popen", side_effect=godot), \
-                     mock.patch.object(pc.os, "wait4", return_value=(42, 0, usage), create=True):
-                    run = pc.perf_round(worktree, worktree / "round", SCENARIO | {"days": 2},
-                                        "quick", "godot", "r1")
+                run = self.run_csv_round(tmp, headers, values)
                 self.assertTrue(any(reason in error for error in run["errors"]), run["errors"])
 
 
@@ -177,10 +191,18 @@ class CsvSummaries(unittest.TestCase):
         self.assertNotIn("csv.label.mean", metrics)
         self.assertNotIn("csv.unused_ms.mean", metrics)
 
-    def test_refuses_partially_numeric_column(self):
-        for bad in ("", "invalid", "nan"):
+    def test_sparse_counters_use_elapsed_days_between_samples(self):
+        rows = [{"scan_steps_a": "", "scan_steps_b": ""},
+                {"scan_steps_a": "0", "scan_steps_b": ""},
+                {"scan_steps_a": "", "scan_steps_b": "3"},
+                {"scan_steps_a": "6", "scan_steps_b": ""},
+                {"scan_steps_a": "", "scan_steps_b": ""}]
+        self.assertEqual(pc.csv_metrics(rows), {"csv.scan_steps_a.per_day": 3})
+
+    def test_refuses_nonnumeric_populated_cells_in_a_numeric_column(self):
+        for bad in ("invalid", "nan"):
             with self.subTest(bad=bad), self.assertRaisesRegex(ValueError, "market_ms"):
-                pc.csv_metrics([{"market_ms": "1"}, {"market_ms": bad}])
+                pc.csv_metrics([{"market_ms": "1"}, {"market_ms": ""}, {"market_ms": bad}])
 
     def test_fewer_research_fallback_scans_satisfy_a_claim(self):
         for name in ("research_full_scan_fallbacks", "bd_country_research_full_scan_fallbacks"):

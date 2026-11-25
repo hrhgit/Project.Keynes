@@ -180,27 +180,39 @@ def percentile(values: list[float], fraction: float) -> float:
 
 
 def csv_metrics(rows: list[dict[str, str]]) -> dict[str, float]:
-    """Per-run summary of every numeric perf_record column."""
+    """Summarize numeric perf_record samples. The run validator checks required cells."""
     if not rows:
         return {}
     out = {}
-    days = max(len(rows) - 1, 1)
     for column in rows[0]:
-        values = [v for v in (to_number(row.get(column)) for row in rows) if v is not None]
-        if not values:
+        samples = []
+        populated = 0
+        for day, row in enumerate(rows):
+            cell = row.get(column)
+            if cell == "":
+                continue
+            populated += 1
+            value = to_number(cell)
+            if value is not None:
+                samples.append((day, value))
+        if not samples:
             # Text labels and optional columns with no samples are part of the recorder's schema.
             continue
-        if len(values) != len(rows):
-            raise ValueError(f"column {column} has {len(values)}/{len(rows)} numeric values")
+        if len(samples) != populated:
+            raise ValueError(f"column {column} has {len(samples)}/{populated} numeric populated values")
         name = f"csv.{column}"
         if metric_kind(name + ".per_day") == "counter":
-            out[f"{name}.per_day"] = (values[-1] - values[0]) / days
-        elif column.endswith(("_ms", "_us")):
-            out[f"{name}.mean"] = statistics.fmean(values)
+            # A sparse counter needs two readings. Keep the existing one-day summary.
+            if len(samples) > 1 or len(rows) == 1:
+                first_day, first_value = samples[0]
+                last_day, last_value = samples[-1]
+                out[f"{name}.per_day"] = (last_value - first_value) / max(last_day - first_day, 1)
+            continue
+        values = [value for _, value in samples]
+        out[f"{name}.mean"] = statistics.fmean(values)
+        if column.endswith(("_ms", "_us")):
             out[f"{name}.p95"] = percentile(values, 0.95)
             out[f"{name}.max"] = max(values)
-        else:
-            out[f"{name}.mean"] = statistics.fmean(values)
     return out
 
 
