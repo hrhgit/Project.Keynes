@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import agent  # noqa: E402
 import checks  # noqa: E402
+import perf  # noqa: E402
 import qodo  # noqa: E402
 import work  # noqa: E402
 from common import Events, lane_lock, legacy_lane_gate, load_config  # noqa: E402
@@ -298,7 +299,10 @@ class Run:
                       + "\n".join(f"- `{n}`" for n in self.facts.base_extra_failures) + "\n\n")
         if self.facts.local_review_incomplete:
             local += "Qodo local review coverage was incomplete. See the factory run record for details.\n\n"
-        return (f"Closes #{self.number}\n\n## Acceptance criteria\n{crit}\n\n{local}"
+        # The PR poller runs the performance check before merging a PR that carries this section.
+        claim = perf.parse_claim_section(issue["body"] or "")
+        claimed = perf.claim_text(*claim) + "\n" if claim else ""
+        return (f"Closes #{self.number}\n\n## Acceptance criteria\n{crit}\n\n{claimed}{local}"
                 f"## Factory\nPlan, checks and reviews are in the run record `{self.stamp}` "
                 f"and the issue comments. The verdict is computed from facts, not from this report.\n\n"
                 f"{self.facts.report()}\n\n"

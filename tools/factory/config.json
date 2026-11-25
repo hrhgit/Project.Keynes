@@ -38,7 +38,8 @@
     "localReviewTimeoutMinutes": 30,
     "prReviewTimeoutMinutes": 40,
     "ciTimeoutMinutes": 40,
-    "checkTimeoutMinutes": 45
+    "checkTimeoutMinutes": 45,
+    "perfCheckTimeoutMinutes": 60
   },
   "checks": {
     "staticWorkflow": ".github/workflows/runtime-checks.yml",
@@ -57,7 +58,7 @@
     "extraCheckPattern": "^tools/ci/[a-z0-9_]+\\.py( --?[a-z0-9-]+| [0-9]+| tests/[a-z0-9_/]+\\.gd)*$"
   },
   "paths": {
-    "forbidden": [".github/", "tools/factory/", ".qodo/", "tools/ci/"],
+    "forbidden": [".github/", "tools/factory/", ".qodo/", "tools/ci/", "tools/perf/"],
     "needsHuman": ["tools/ci/*baseline*.json", "tools/ci/module_api/", "tools/ci/module_api_shared.json", "tools/ci/cross_domain_inventory.json", "gdext/godot-cpp/", "gdext/rebuild.sh"],
     "trackedBinaries": [
       "Project/project-keynes/addons/dots_ext/bin/"

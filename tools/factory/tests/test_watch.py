@@ -514,6 +514,70 @@ class MergeWorkflow(unittest.TestCase):
         self.assert_no_merge_command()
         self.assert_stopped("the PR has failing native checks")
 
+    def perf_merge(self, status, reasons=("claimed metric improved",)):
+        self.pr["body"] = "## Performance claim\n- `result.economy_memory_bytes`\nTier: full\n"
+        report = self.home / "report.md"
+        report.write_text("# Performance change check\n")
+        result = {"status": status, "reasons": list(reasons),
+                  "report": None if status == "deferred" else str(report), "command": [], "log": "perf.log"}
+        self.enterContext(patch.object(self.watcher, "prepare_head", return_value=True))
+        self.enterContext(patch("work.git", return_value="d" * 40))
+        return self.enterContext(patch("perf.run", return_value=result))
+
+    def test_claimed_performance_change_merges_after_the_check_passes(self):
+        run = self.perf_merge("pass")
+        self.assertEqual(self.watcher.tick(None), 0)
+        args = run.call_args.args
+        self.assertEqual(args[3:7], ("d" * 40, HEAD, ["result.economy_memory_bytes"], "full"))
+        record = self.record()
+        self.assertEqual(record["outcome"], "merged")
+        self.assertEqual(record["perfCheck"]["status"], "pass")
+        comment = self.cli.call_args.kwargs["stdin"]
+        self.assertIn("Performance check", comment)
+        self.assertIn("claimed metric improved", comment)
+        self.assertIn("# Performance change check", comment)
+
+    def test_deferred_performance_check_skips_without_stopping(self):
+        self.perf_merge("deferred", ["machine still busy"])
+        self.assert_skipped("the performance check was deferred: machine still busy")
+        record = self.record()
+        self.assertEqual(record["outcome"], "skipped")
+        self.assertIsNone(self.watcher.load(7).gave_up_at)
+
+    def assert_perf_stop(self, status):
+        self.perf_merge(status, ["daily results differ"])
+        self.assertEqual(self.watcher.tick(None), 1)
+        self.assert_no_merge_command()
+        self.assert_stopped(f"the performance check returned {status}: daily results differ")
+        comments = "".join(c.kwargs.get("stdin") or "" for c in self.cli.call_args_list)
+        self.assertIn("# Performance change check", comments)
+
+    def test_failed_performance_check_stops_before_merge(self):
+        self.assert_perf_stop("fail")
+
+    def test_performance_check_that_needs_a_person_stops_before_merge(self):
+        self.assert_perf_stop("needs_human")
+
+    def test_performance_check_that_cannot_run_stops(self):
+        run = self.perf_merge("pass")
+        run.side_effect = ValueError("the performance check printed no PERF_CHECK_RESULT= line (exit 124)")
+        self.assertEqual(self.watcher.tick(None), 1)
+        self.assert_no_merge_command()
+        self.assert_stopped("the performance check could not run")
+
+    def test_unreadable_claim_section_stops_without_running_the_check(self):
+        self.pr["body"] = "## Performance claim\nfaster economy\n"
+        with patch("perf.run") as run:
+            self.assertEqual(self.watcher.tick(None), 1)
+        run.assert_not_called()
+        self.assert_no_merge_command()
+        self.assert_stopped("the performance claim cannot be checked")
+
+    def test_pr_without_a_claim_does_not_run_the_check(self):
+        with patch("perf.run") as run:
+            self.assertEqual(self.watcher.tick(None), 0)
+        run.assert_not_called()
+
     def test_binary_additions_and_modifications_require_a_person(self):
         for path in self.watcher.cfg["paths"]["trackedBinaries"]:
             for status in ("added", "modified"):

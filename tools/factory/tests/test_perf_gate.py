@@ -1,0 +1,96 @@
+"""The performance claim section and the factory's call into tools/perf/perf_change_check.py.
+
+Refusals are registered in test_gates_refuse.py; this file covers what must be accepted and the real
+subprocess path, with a stand-in script in place of the measuring one."""
+
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+import perf  # noqa: E402
+from common import load_config  # noqa: E402
+from ticket import gate  # noqa: E402
+
+CRITERIA = "## Acceptance criteria\n- [ ] economy memory falls\n"
+
+
+class ClaimSection(unittest.TestCase):
+    def test_no_section_means_no_performance_check(self):
+        self.assertIsNone(perf.parse_claim_section(CRITERIA))
+        self.assertIsNone(perf.parse_claim_section(""))
+
+    def test_claims_and_tier_are_read(self):
+        body = CRITERIA + ("\n## Performance claim\n- `result.economy_memory_bytes`\n\n"
+                           "* `household_market.*_ms`\nTier: FULL\n\n## Notes\n- `ignored`\n")
+        self.assertEqual(perf.parse_claim_section(body),
+                         (["result.economy_memory_bytes", "household_market.*_ms"], "full"))
+
+    def test_tier_defaults_to_quick_and_chinese_heading_is_accepted(self):
+        self.assertEqual(perf.parse_claim_section("## 性能声明\n- `result.run_ms`\n"), (["result.run_ms"], "quick"))
+
+    def test_written_section_reads_back(self):
+        claims = ["result.economy_memory_bytes", "csv\\.household_market_ms\\.mean"]
+        self.assertEqual(perf.parse_claim_section(perf.claim_text(claims, "full")), (claims, "full"))
+
+    def test_ticket_gate_accepts_a_good_section(self):
+        self.assertEqual(gate("t", CRITERIA + "## Performance claim\n- `result.run_ms`\n", [], []), [])
+
+
+class ResultLine(unittest.TestCase):
+    def test_each_status_with_its_exit_code(self):
+        for status, code in perf.EXITS.items():
+            report = None if status == "deferred" else "/archive/report.md"
+            line = "PERF_CHECK_RESULT=" + json.dumps({"status": status, "reasons": ["r"], "report": report})
+            with self.subTest(status=status):
+                self.assertEqual(perf.parse_perf_result(f"built\n{line}\n", code),
+                                 {"status": status, "reasons": ["r"], "report": report})
+
+
+STAND_IN = """import json, sys
+print("argv=" + json.dumps(sys.argv[1:]))
+print("PERF_CHECK_RESULT=" + json.dumps({"status": STATUS, "reasons": ["claimed metric improved"],
+                                         "report": "REPORT"}))
+sys.exit(CODE)
+"""
+
+
+class RunScript(unittest.TestCase):
+    def run_with(self, status, code):
+        tmp = Path(self.enterContext(tempfile.TemporaryDirectory()))
+        script = tmp / "runner" / perf.SCRIPT
+        script.parent.mkdir(parents=True)
+        report = tmp / "report.md"
+        report.write_text("# Report\n")
+        script.write_text(STAND_IN.replace("STATUS", repr(status)).replace("CODE", str(code))
+                          .replace("REPORT", str(report)))
+        cfg = load_config()
+        cfg["tools"]["python"] = sys.executable
+        log = tmp / "perf.log"
+        return perf.run(cfg, str(tmp / "runner"), str(tmp), "b" * 40, "h" * 40,
+                        ["result.run_ms", "household_market.*_ms"], "full", str(log)), log
+
+    def test_passes_commits_claims_and_tier_and_reads_the_verdict(self):
+        result, log = self.run_with("pass", 0)
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(perf.report_excerpt(result), "# Report\n")
+        argv = json.loads(log.read_text().splitlines()[0].removeprefix("argv="))
+        self.assertEqual(argv[argv.index("compare"):],
+                         ["compare", "b" * 40, "h" * 40, "--tier", "full",
+                          "--claim", "result.run_ms", "--claim", "household_market.*_ms"])
+        self.assertIn("--repo", argv)
+
+    def test_a_status_that_disagrees_with_the_exit_code_is_refused(self):
+        with self.assertRaises(ValueError):
+            self.run_with("pass", 1)
+
+    def test_missing_script_is_refused(self):
+        with tempfile.TemporaryDirectory() as tmp, self.assertRaises(ValueError):
+            perf.run(load_config(), tmp, tmp, "b", "h", ["x"], "quick", str(Path(tmp) / "log"))
+
+
+if __name__ == "__main__":
+    unittest.main()

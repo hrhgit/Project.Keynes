@@ -18,6 +18,7 @@ sys.path.insert(0, str(FACTORY))
 
 import agent
 import checks
+import perf
 import ticket
 import verdict
 import work
@@ -60,6 +61,26 @@ def symlink_to_text(path):
     target = path.with_name("target.txt")
     target.write_text("Valid text")
     path.symlink_to(target)
+
+
+def refuses_claim(text):
+    try:
+        perf.parse_claim_section("## Performance claim\n" + text)
+    except ValueError:
+        return True
+    return False
+
+
+def refuses_result(output, code):
+    try:
+        perf.parse_perf_result(output, code)
+    except ValueError:
+        return True
+    return False
+
+
+def result_line(status="pass", reasons=("ok",), report="/r/report.md"):
+    return "PERF_CHECK_RESULT=" + json.dumps({"status": status, "reasons": list(reasons), "report": report})
 
 
 def pr(**kw):
@@ -202,6 +223,31 @@ GATES = {
         ("no criteria heading", lambda: bool(ticket.gate("t", "just text", [], []))),
         ("heading with no items", lambda: bool(ticket.gate("t", "## Acceptance criteria\nnothing", [], []))),
         ("a skip label", lambda: bool(ticket.gate("t", "## Acceptance criteria\n- [ ] a", ["no-agent"], ["no-agent"]))),
+        ("a performance claim section the factory cannot read",
+         lambda: bool(ticket.gate("t", "## Acceptance criteria\n- [ ] a\n\n## Performance claim\nfaster", [], []))),
+    ],
+    "parse_claim_section": [
+        ("a heading with no metric", lambda: refuses_claim("")),
+        ("a metric written without backticks", lambda: refuses_claim("- result.run_ms")),
+        ("prose next to a good claim", lambda: refuses_claim("- `result.run_ms`\nshould be faster")),
+        ("a regex that does not compile", lambda: refuses_claim("- `household_market.(*_ms`")),
+        ("a blank claim", lambda: refuses_claim("- `   `")),
+        ("an unknown tier", lambda: refuses_claim("- `result.run_ms`\nTier: windowed")),
+        ("two tiers", lambda: refuses_claim("- `result.run_ms`\nTier: quick\nTier: full")),
+        ("a tier and no metric", lambda: refuses_claim("Tier: full")),
+    ],
+    "parse_perf_result": [
+        ("no result line", lambda: refuses_result("built\nimported", 0)),
+        ("a result line that is not JSON", lambda: refuses_result("PERF_CHECK_RESULT={pass", 0)),
+        ("a result line that is a list", lambda: refuses_result("PERF_CHECK_RESULT=[]", 0)),
+        ("an unknown status", lambda: refuses_result(result_line("ok"), 0)),
+        ("pass with a failing exit code", lambda: refuses_result(result_line("pass"), 1)),
+        ("fail with exit 0", lambda: refuses_result(result_line("fail"), 0)),
+        ("deferred with exit 0", lambda: refuses_result(result_line("deferred", report=None), 0)),
+        ("reasons that are not strings", lambda: refuses_result(result_line(reasons=(1,)), 0)),
+        ("pass without a report", lambda: refuses_result(result_line(report=None), 0)),
+        ("an earlier pass overridden by a later failure line",
+         lambda: refuses_result(result_line("pass") + "\n" + result_line("fail"), 0)),
     ],
     "update_preflight": [
         ("an unreadable base branch", lambda: preflight_refuses("update", remote_base=None, moved=False)),

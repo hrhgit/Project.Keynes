@@ -97,6 +97,21 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
    and within noise, and the path of `report.md`. Say plainly that windowed frame time and GPU work
    were not measured.
 
+## In the factory
+
+A ticket or PR that claims a performance gain declares it in its body, one metric regex per line:
+
+```markdown
+## Performance claim
+- `result.economy_memory_bytes`
+Tier: quick
+```
+
+The factory refuses a ticket whose section it cannot read (G0), copies the section into the PR it
+opens, and before merging any PR that carries it runs its own copy of this script on
+`merge-base..head`. Only `pass` merges; `deferred` is retried at the next poll; anything else
+stops with `agent-needs-help` and the report. Details: `docs/factory/README.md`, "性能检查".
+
 ## How the numbers are judged
 
 - Timings (`*_ms`, `*_us`, rates, waits, `rusage.*`) count as improved or regressed only when the

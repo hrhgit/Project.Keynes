@@ -197,6 +197,14 @@ class IssueWorkflowTest(TempFactory):
                 self.assertTrue(run.facts.local_review_incomplete)
                 self.assertIn("coverage was incomplete", run.pr_body(ISSUE, ""))
 
+    def test_ticket_performance_claim_is_carried_into_the_pr_body(self):
+        import perf
+        issue = {**ISSUE, "body": ISSUE["body"] + "\n## Performance claim\n- `result.economy_memory_bytes`\n"}
+        run = self.make_run()
+        self.assertEqual(perf.parse_claim_section(run.pr_body(issue, "")),
+                         (["result.economy_memory_bytes"], "quick"))
+        self.assertIsNone(perf.parse_claim_section(run.pr_body(ISSUE, "")))
+
     def test_scope_before_commit_catches_protected_paths_from_checks(self):
         for path in ("tools/ci/check_extra.py", "tools/ci/module_api/test.json", "gdext/godot-cpp"):
             with self.subTest(path=path):

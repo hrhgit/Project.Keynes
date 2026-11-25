@@ -40,6 +40,11 @@ def gate(title: str, body: str, labels: list[str], skip_labels: list[str]) -> li
         errors.append("the ticket has no '## Acceptance criteria' (or '## 验收标准') section")
     elif not criteria(body):
         errors.append("the acceptance-criteria section has no checkbox or numbered items")
+    from perf import parse_claim_section  # perf reads sections with this module's parser
+    try:
+        parse_claim_section(body)
+    except ValueError as e:
+        errors.append(str(e))
     blocked = sorted(set(labels) & set(skip_labels))
     if blocked:
         errors.append("the ticket carries " + ", ".join(blocked))
