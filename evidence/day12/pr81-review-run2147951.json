@@ -1,0 +1,71 @@
+{
+    "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/81",
+    "git_provider": null,
+    "finding_count": 1,
+    "review_session": {
+        "run_id": 2147951,
+        "status": "completed",
+        "commit_sha": "efd9603cb53846494392dee5e9565544e9de8ef1",
+        "started_at": "2026-11-25T04:28:37.873812Z",
+        "git_provider": "github",
+        "review_complete": true
+    },
+    "findings": [
+        {
+            "git_sha": "efd9603cb53846494392dee5e9565544e9de8ef1",
+            "id": "b1f5e899-e1f9-4e8e-8484-5a21b99ed009",
+            "description": "`decide()` in `watch_prs.py` and `judge()` in `verdict.py` both gained a new refusal branch for `review_complete`, and both decide whether a PR may merge or an issue is done, yet neither is listed in `GATES` in `test_gates_refuse.py`. Neither name matches `NAME_PARTS`, so `test_every_gate_function_is_registered` never sees them and a later change to either gate can lose its refusal test without any failure.",
+            "category": "Correctness",
+            "action_level": "action_required",
+            "attribution_status": "pending",
+            "title": "Changed gates can drop refusal coverage",
+            "evidence": {
+                "citations": [
+                    {
+                        "source_type": "rules",
+                        "source": "https://app.qodo.ai/rules/4990668?state=active",
+                        "id": 4990668,
+                        "platform_entity_type": "rule",
+                        "citation": "Keynes: gates are tested with inputs they must refuse",
+                        "platform_entity_id": "4990668"
+                    },
+                    {
+                        "source_type": "pr_branch_file",
+                        "source": "tools/factory/tests/test_gates_refuse.py[1-30]",
+                        "citation": "\"\"\"Gates, parsers, allowlists and validators are tested with inputs they must refuse (AGENTS.md rule 6).\n\nEvery gate-like function in the factory is listed in GATES with at least one input it must refuse.\nThe AST scan fails when a new gate-named function is added without an entry, so the rule is\nenforced by this test and not by anyone remembering it.\n\"\"\"\n\nimport ast\nimport json\nimport sys\nimport unittest\nfrom pathlib import Path\nfrom tempfile import TemporaryDirectory\nfrom unittest.mock import patch\n\nFACTORY = Path(__file__).resolve().parents[1]\nsys.path.insert(0, str(FACTORY))\n\nimport agent\nimport checks\nimport ticket\nimport verdict\nimport work\nimport watch_prs\nfrom common import Result, legacy_lane_gate, load_config\n\nCFG = load_config()\nNATIVE = CFG[\"checks\"][\"nativeRuntimeCheck\"]\nFINDINGS = [{\"id\": \"f1\"}, {\"id\": \"f10\"}]\n\u2026 (1 more lines)"
+                    },
+                    {
+                        "source_type": "pr_branch_file",
+                        "source": "tools/factory/tests/test_gates_refuse.py[205-216]",
+                        "citation": "\ndef gate_functions():\n    found = set()\n    for path in FACTORY.glob(\"*.py\"):\n        for node in ast.walk(ast.parse(path.read_text())):\n            if isinstance(node, ast.FunctionDef) and not node.name.startswith(\"_\") and \\\n                    any(p in node.name for p in NAME_PARTS):\n                found.add(node.name)\n    return found\n\n\nclass GatesRefuse(unittest.TestCase):"
+                    },
+                    {
+                        "source_type": "pr_branch_file",
+                        "source": "tools/factory/verdict.py[150-155]",
+                        "citation": "        missing.append(f\"the Qodo review is {f.review_status}\")\n    elif f.review_sha != f.head:\n        missing.append(\"the Qodo review is of an older commit\")\n    elif f.review_complete is not True:\n        missing.append(\"Qodo did not complete its review of the head (review_complete is not true)\")\n    if f.ci_state in (None, \"pending\"):"
+                    }
+                ],
+                "explanation": "The rule requires a changed gate to be listed in GATES. The registry scan only matches NAME_PARTS names, and `decide` and `judge` are not registered, while the new refusal branches in both gates are in this PR."
+            },
+            "location": {
+                "file_path": "tools/factory/watch_prs.py",
+                "start_line": 136,
+                "end_line": 137,
+                "side": "right",
+                "code_snippet": "+    if session.get(\"review_complete\") is not True:\n+        # A completed session can be one Qodo skipped as trivial (review_effort \"skip\"): no findings, no review."
+            },
+            "dismiss_reason": null,
+            "dismiss_explanation": null
+        }
+    ],
+    "review_runs": [
+        {
+            "run_id": 2147951,
+            "commit_sha": "efd9603cb53846494392dee5e9565544e9de8ef1",
+            "started_at": "2026-11-25T04:28:37.873812Z",
+            "status": "completed",
+            "review_effort": "standard",
+            "review_complete": true
+        }
+    ]
+}

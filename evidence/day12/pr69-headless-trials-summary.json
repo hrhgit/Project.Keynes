@@ -1,0 +1,284 @@
+{
+  "config": {
+    "camera": "(1152.68, 665.5)",
+    "configured_countries": 4,
+    "display": "headless",
+    "driver": "metal",
+    "height": 40,
+    "max_fps": 0,
+    "quality": "high",
+    "renderer": "mobile",
+    "seed": 20260718,
+    "speed": 50.0,
+    "start_day": -1,
+    "viewport_size": "(64.0, 64.0)",
+    "vsync": 1,
+    "width": 60,
+    "window_size": "(0, 0)",
+    "zoom": "(1.0, 1.0)"
+  },
+  "daily_days_equal": 180,
+  "pairs": [
+    {
+      "pair": 1,
+      "order": [
+        "before",
+        "after"
+      ],
+      "sides": {
+        "before": {
+          "days": [
+            [
+              26,
+              75
+            ],
+            [
+              86,
+              135
+            ],
+            [
+              147,
+              175
+            ]
+          ],
+          "writeback_calls": 87,
+          "wind_arrays_copied": 261,
+          "skipped_wind_writebacks": 0,
+          "publications": 87,
+          "same_wind_publications": 76,
+          "changed_wind_publications": 11,
+          "wind_encodes": 87,
+          "wind_encodes_skipped": 0,
+          "encode_total_ms": 255.274,
+          "wind_uploads": 87,
+          "wind_uploads_skipped": 0,
+          "copy_marker_median_us": 0.0,
+          "copy_marker_p95_us": 0.0,
+          "publish_markers_median_us": 0,
+          "publish_markers_p95_us": 0.0,
+          "publish_frame_count": 87,
+          "publish_frame_p95_ms": 12.452,
+          "all_frame_p95_ms": 37.377,
+          "all_draw_p95_ms_per_range": [
+            null,
+            null,
+            null
+          ]
+        },
+        "after": {
+          "days": [
+            [
+              26,
+              75
+            ],
+            [
+              86,
+              135
+            ],
+            [
+              147,
+              175
+            ]
+          ],
+          "writeback_calls": 103,
+          "wind_arrays_copied": 33,
+          "skipped_wind_writebacks": 92,
+          "publications": 103,
+          "same_wind_publications": 92,
+          "changed_wind_publications": 11,
+          "wind_encodes": 11,
+          "wind_encodes_skipped": 92,
+          "encode_total_ms": 37.04,
+          "wind_uploads": 22,
+          "wind_uploads_skipped": 81,
+          "copy_marker_median_us": 10.083,
+          "copy_marker_p95_us": 13.791,
+          "publish_markers_median_us": 23,
+          "publish_markers_p95_us": 29.0,
+          "publish_frame_count": 103,
+          "publish_frame_p95_ms": 12.294,
+          "all_frame_p95_ms": 38.203,
+          "all_draw_p95_ms_per_range": [
+            null,
+            null,
+            null
+          ]
+        }
+      }
+    },
+    {
+      "pair": 2,
+      "order": [
+        "after",
+        "before"
+      ],
+      "sides": {
+        "after": {
+          "days": [
+            [
+              25,
+              74
+            ],
+            [
+              85,
+              135
+            ],
+            [
+              147,
+              174
+            ]
+          ],
+          "writeback_calls": 83,
+          "wind_arrays_copied": 30,
+          "skipped_wind_writebacks": 73,
+          "publications": 83,
+          "same_wind_publications": 73,
+          "changed_wind_publications": 10,
+          "wind_encodes": 10,
+          "wind_encodes_skipped": 73,
+          "encode_total_ms": 27.731,
+          "wind_uploads": 20,
+          "wind_uploads_skipped": 63,
+          "copy_marker_median_us": 10.208,
+          "copy_marker_p95_us": 13.209,
+          "publish_markers_median_us": 21,
+          "publish_markers_p95_us": 26.0,
+          "publish_frame_count": 83,
+          "publish_frame_p95_ms": 9.508,
+          "all_frame_p95_ms": 42.391,
+          "all_draw_p95_ms_per_range": [
+            null,
+            null,
+            null
+          ]
+        },
+        "before": {
+          "days": [
+            [
+              25,
+              74
+            ],
+            [
+              85,
+              135
+            ],
+            [
+              147,
+              174
+            ]
+          ],
+          "writeback_calls": 97,
+          "wind_arrays_copied": 291,
+          "skipped_wind_writebacks": 0,
+          "publications": 97,
+          "same_wind_publications": 87,
+          "changed_wind_publications": 10,
+          "wind_encodes": 97,
+          "wind_encodes_skipped": 0,
+          "encode_total_ms": 298.824,
+          "wind_uploads": 97,
+          "wind_uploads_skipped": 0,
+          "copy_marker_median_us": 0.0,
+          "copy_marker_p95_us": 0.0,
+          "publish_markers_median_us": 0,
+          "publish_markers_p95_us": 0.0,
+          "publish_frame_count": 97,
+          "publish_frame_p95_ms": 13.142,
+          "all_frame_p95_ms": 35.217,
+          "all_draw_p95_ms_per_range": [
+            null,
+            null,
+            null
+          ]
+        }
+      }
+    },
+    {
+      "pair": 3,
+      "order": [
+        "before",
+        "after"
+      ],
+      "sides": {
+        "before": {
+          "days": [
+            [
+              25,
+              74
+            ],
+            [
+              85,
+              134
+            ],
+            [
+              146,
+              175
+            ]
+          ],
+          "writeback_calls": 116,
+          "wind_arrays_copied": 348,
+          "skipped_wind_writebacks": 0,
+          "publications": 116,
+          "same_wind_publications": 106,
+          "changed_wind_publications": 10,
+          "wind_encodes": 116,
+          "wind_encodes_skipped": 0,
+          "encode_total_ms": 462.689,
+          "wind_uploads": 116,
+          "wind_uploads_skipped": 0,
+          "copy_marker_median_us": 0.0,
+          "copy_marker_p95_us": 0.0,
+          "publish_markers_median_us": 0.0,
+          "publish_markers_p95_us": 0.0,
+          "publish_frame_count": 116,
+          "publish_frame_p95_ms": 16.23,
+          "all_frame_p95_ms": 33.478,
+          "all_draw_p95_ms_per_range": [
+            null,
+            null,
+            null
+          ]
+        },
+        "after": {
+          "days": [
+            [
+              25,
+              74
+            ],
+            [
+              85,
+              134
+            ],
+            [
+              146,
+              175
+            ]
+          ],
+          "writeback_calls": 92,
+          "wind_arrays_copied": 30,
+          "skipped_wind_writebacks": 82,
+          "publications": 92,
+          "same_wind_publications": 82,
+          "changed_wind_publications": 10,
+          "wind_encodes": 10,
+          "wind_encodes_skipped": 82,
+          "encode_total_ms": 35.51,
+          "wind_uploads": 20,
+          "wind_uploads_skipped": 72,
+          "copy_marker_median_us": 10.021,
+          "copy_marker_p95_us": 15.125,
+          "publish_markers_median_us": 23.0,
+          "publish_markers_p95_us": 30.0,
+          "publish_frame_count": 92,
+          "publish_frame_p95_ms": 12.373,
+          "all_frame_p95_ms": 42.776,
+          "all_draw_p95_ms_per_range": [
+            null,
+            null,
+            null
+          ]
+        }
+      }
+    }
+  ]
+}

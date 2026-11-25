@@ -1,0 +1,7 @@
+3,4d2
+< Closes #61
+< 
+66c64
+< **#61 候选实现已撤回。** 三轮 50 倍速无窗口复测中，发布帧 P95 均下降，全部帧 P95 分别从 37.38、35.22、33.48 ms 升至 38.20、42.39、42.78 ms。九个共同结算区间均出现退化，因此保守撤回。工作树仅保留[验证记录](/Users/herh/.keynes-factory/work/docs/architecture/feature-status.md:6)。
+---
+> **候选实现已撤回。** 三轮 50 倍速无窗口复测中，发布帧 P95 均下降，全部帧 P95 分别从 37.38、35.22、33.48 ms 升至 38.20、42.39、42.78 ms。九个共同结算区间均出现退化，因此保守撤回。工作树仅保留[验证记录](/Users/herh/.keynes-factory/work/docs/architecture/feature-status.md:6)。
