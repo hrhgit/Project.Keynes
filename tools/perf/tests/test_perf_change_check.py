@@ -365,6 +365,32 @@ class MachineLoadGate(unittest.TestCase):
         found = pc.competing_processes(table, mine=500)
         self.assertEqual([entry.split()[0] for entry in found], ["10", "12"])
 
+    def test_busiest_names_any_busy_process_busiest_first_but_not_ours(self):
+        table = "\n".join([
+            "  20     1  40.0 /usr/bin/python3 tools/x.py",
+            "  21     1  95.0 /Applications/Xcode.app/Contents/MacOS/Xcode",
+            "  22   500  99.0 /opt/homebrew/bin/godot --headless",
+            "  500    1  99.0 /usr/bin/python3 perf_change_check.py",
+            "  23     1   5.0 /usr/sbin/idle_daemon",
+            "  24     1  60.0 /usr/bin/swift-frontend -c a.swift",
+            "  25     x  90.0 /bin/broken",
+            "garbage line",
+        ])
+        self.assertEqual(pc.busiest_processes(table, mine=500, limit=2),
+                         ["21 Xcode 95% cpu", "24 swift-frontend 60% cpu"])
+        self.assertEqual(pc.busiest_processes("", mine=500), [])
+
+    def test_busiest_explains_low_idle_only_when_no_competitor_does(self):
+        busiest = ["21 Xcode 95% cpu"]
+        self.assertEqual(pc.load_gate(0.0, [], 0.5, busiest),
+                         ["cpu 0% idle, below 50%", "busiest processes: 21 Xcode 95% cpu"])
+        with_competitor = pc.load_gate(0.0, ["10 godot 95% cpu"], 0.5, busiest)
+        self.assertNotIn("busiest processes: 21 Xcode 95% cpu", with_competitor)
+
+    def test_busiest_never_makes_a_quiet_machine_busy(self):
+        self.assertEqual(pc.load_gate(0.7, [], 0.5, ["21 Xcode 95% cpu"]), [])
+        self.assertEqual(pc.load_gate(None, [], 0.5, ["21 Xcode 95% cpu"]), ["cpu idle unknown"])
+
 
 class TimeBudget(unittest.TestCase):
     def args(self, **overrides):

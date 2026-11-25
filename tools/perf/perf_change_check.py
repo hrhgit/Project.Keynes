@@ -376,14 +376,20 @@ def record_reusable(record: dict | None, identity: dict, tier: str, rounds: int)
     return True, "record matches"
 
 
-def load_gate(idle: float | None, competing: list[str], min_idle: float) -> list[str]:
+def load_gate(idle: float | None, competing: list[str], min_idle: float,
+              busiest: list[str] = ()) -> list[str]:
     """Reasons the machine is too busy to measure (empty list = go). idle is the CPU idle fraction
-    over the last second: unlike the 1-minute load average it does not lag after a job ends."""
+    over the last second: unlike the 1-minute load average it does not lag after a job ends.
+
+    `busiest` only explains a low idle figure that no known competitor accounts for; it never
+    decides on its own whether the machine is busy."""
     reasons = []
     if idle is None or not 0.0 <= idle <= 1.0:
         reasons.append("cpu idle unknown")
     elif idle < min_idle:
         reasons.append(f"cpu {idle:.0%} idle, below {min_idle:.0%}")
+        if not competing and busiest:
+            reasons.append("busiest processes: " + ", ".join(busiest))
     reasons += [f"competing process: {name}" for name in competing]
     return reasons
 
@@ -512,18 +518,33 @@ def toolchain_identity(godot: str) -> dict:
 
 def competing_processes(ps_output: str, mine: int, min_cpu: float = COMPETING_CPU) -> list[str]:
     """Busy Godot, build or link processes that are not ours (an idle editor does not count)."""
-    names = []
+    return [f"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu"
+            for pid, cpu, executable in busy_processes(ps_output, mine, min_cpu)
+            if COMPETING.search(executable + " ")]
+
+
+def busiest_processes(ps_output: str, mine: int, limit: int = 3,
+                      min_cpu: float = COMPETING_CPU) -> list[str]:
+    """The busiest processes that are not ours, of any kind, busiest first. They name what is
+    using the CPU when the idle figure is low but no known competitor is running."""
+    found = sorted(busy_processes(ps_output, mine, min_cpu), key=lambda p: (-p[1], p[0]))
+    return [f"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu"
+            for pid, cpu, executable in found[:limit]]
+
+
+def busy_processes(ps_output: str, mine: int, min_cpu: float) -> list[tuple[int, float, str]]:
+    """(pid, %cpu, executable) for `ps -axo pid=,ppid=,%cpu=,command=` rows at or above min_cpu,
+    leaving out this process and its children. Malformed rows are skipped."""
+    rows = []
     for line in ps_output.splitlines():
         parts = line.strip().split(None, 3)
-        if len(parts) < 4 or not parts[0].isdigit():
+        if len(parts) < 4 or not parts[0].isdigit() or not parts[1].isdigit():
             continue
         pid, ppid, cpu, command = int(parts[0]), int(parts[1]), to_number(parts[2]), parts[3]
         if pid == mine or ppid == mine or cpu is None or cpu < min_cpu:
             continue
-        executable = command.split()[0]
-        if COMPETING.search(executable + " "):
-            names.append(f"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu")
-    return names
+        rows.append((pid, cpu, command.split()[0]))
+    return rows
 
 
 def process_table() -> str:
@@ -564,7 +585,9 @@ def wait_for_quiet_machine(args, log: list) -> dict:
         load1 = os.getloadavg()[0]
         idle = cpu_idle()
         cpus = os.cpu_count() or 0
-        reasons = load_gate(idle, competing_processes(process_table(), os.getpid()), args.min_idle)
+        table, mine = process_table(), os.getpid()
+        reasons = load_gate(idle, competing_processes(table, mine), args.min_idle,
+                            busiest_processes(table, mine))
         sample = {"at": now(), "cpu_idle": None if idle is None else round(idle, 3),
                   "load1": round(load1, 2), "cpus": cpus, "busy": reasons}
         check_budget(args)
