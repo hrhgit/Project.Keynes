@@ -84,12 +84,16 @@ class PerfRunValidation(unittest.TestCase):
         self.assertTrue(any("speed_multiplier" in error for error in
                             pc.validate_perf_run(0, GOOD_RESULT, rows, SCENARIO)))
 
-    def run_csv_round(self, tmp, headers, values):
+    def run_csv_round(self, tmp, headers, values, result_fields=None, source="legacy recorder"):
         worktree = Path(tmp)
+        script = worktree / pc.PROJECT / pc.PERF_SCRIPT.removeprefix("res://")
+        script.parent.mkdir(parents=True)
+        script.write_text(source)
         path = worktree / "perf.csv"
         path.write_text("\n".join([headers, *values]) + "\n")
         days = len(values)
-        result = GOOD_RESULT | {"rows": str(days), "expected_rows": str(days), "path": str(path)}
+        result = (GOOD_RESULT | {"rows": str(days), "expected_rows": str(days), "path": str(path)}
+                  | (result_fields or {}))
         usage = argparse.Namespace(ru_utime=0.1, ru_stime=0.1, ru_maxrss=1000)
 
         def godot(*_, stdout, **__):
@@ -123,6 +127,73 @@ class PerfRunValidation(unittest.TestCase):
             with self.subTest(reason=reason), tempfile.TemporaryDirectory() as tmp:
                 run = self.run_csv_round(tmp, headers, values)
                 self.assertTrue(any(reason in error for error in run["errors"]), run["errors"])
+
+
+    def test_new_recorder_uses_only_measured_daily_intervals(self):
+        columns = ("row_idx,tick_idx,speed_multiplier,t_sus_ms,runtime_graph_simulation_committed_day,"
+                   "runtime_graph_simulation_generation,commit_produced_at_us,commit_interval_ms")
+        method = "day_records_worker_v1"
+        with tempfile.TemporaryDirectory() as tmp:
+            run = self.run_csv_round(tmp, columns, ["0,6,50,,6,106,2000,1", "1,7,50,,7,107,5000,3"],
+                                     {"warmup_days": "5", "recorder_method": method})
+        self.assertEqual(run["errors"], [])
+        self.assertEqual(run["recorder_method"], method)
+        self.assertEqual(run["metrics"]["csv.commit_interval_ms.mean"], 2.0)
+        self.assertEqual(run["metrics"]["csv.commit_interval_ms.p95"], 3.0)
+        self.assertEqual(run["metrics"]["csv.commit_interval_ms.max"], 3.0)
+        self.assertNotIn("csv.t_sus_ms.mean", run["metrics"])
+        self.assertNotIn("csv.commit_produced_at_us.mean", run["metrics"])
+
+    def test_day_format_refuses_fake_timings_and_a_gap_even_at_the_expected_count(self):
+        first = {"row_idx": "0", "tick_idx": "6", "speed_multiplier": "50", "t_sus_ms": "",
+                 "runtime_graph_simulation_committed_day": "6", "runtime_graph_simulation_generation": "106",
+                 "commit_produced_at_us": "2000", "commit_interval_ms": "1"}
+        second = first | {"row_idx": "1", "tick_idx": "7", "runtime_graph_simulation_committed_day": "7",
+                          "runtime_graph_simulation_generation": "107", "commit_produced_at_us": "5000",
+                          "commit_interval_ms": "3"}
+        result = GOOD_RESULT | {"rows": "2", "expected_rows": "2", "warmup_days": "5",
+                                "recorder_method": "day_records_worker_v1"}
+        scenario = SCENARIO | {"days": 2}
+        self.assertEqual(pc.validate_perf_run(0, result, [first, second], scenario), [])
+        for column, value, reason in (
+            ("t_sus_ms", "0", "t_sus_ms"),
+            ("fast_ms", "1", "columns"),
+            ("tick_idx", "8", "ordered day 7"),
+            ("runtime_graph_simulation_committed_day", "8", "ordered day 7"),
+            ("commit_produced_at_us", "", "commit_produced_at_us"),
+            ("commit_produced_at_us", "1000", "commit_produced_at_us"),
+            ("commit_interval_ms", "", "commit_interval_ms"),
+            ("commit_interval_ms", "0", "commit_interval_ms"),
+        ):
+            with self.subTest(column=column, value=value):
+                errors = pc.validate_perf_run(0, result, [first, second | {column: value}], scenario)
+                self.assertTrue(any(reason in error for error in errors), errors)
+        for method in ("", "unknown", "day_records_main_v1"):
+            with self.subTest(method=method):
+                errors = pc.validate_perf_run(0, result | {"recorder_method": method}, [first, second], scenario)
+                self.assertTrue(any("recorder method" in error for error in errors), errors)
+
+    def test_zero_warmup_allows_only_the_first_interval_to_be_absent(self):
+        rows = [{"row_idx": "0", "tick_idx": "1", "speed_multiplier": "50", "t_sus_ms": "",
+                 "runtime_graph_simulation_committed_day": "1", "runtime_graph_simulation_generation": "101",
+                 "commit_produced_at_us": "2000", "commit_interval_ms": ""}]
+        result = GOOD_RESULT | {"rows": "1", "expected_rows": "1", "warmup_days": "0",
+                                "recorder_method": "day_records_main_v1"}
+        scenario = SCENARIO | {"days": 1}
+        self.assertEqual(pc.validate_perf_run(0, result, rows, scenario), [])
+        errors = pc.validate_perf_run(0, result, [rows[0] | {"commit_interval_ms": "0"}], scenario)
+        self.assertTrue(any("no preceding commit" in error for error in errors), errors)
+
+    def test_unversioned_recorders_use_their_own_source_identity(self):
+        methods = []
+        for source in ("foreground clock", "worker clock"):
+            with tempfile.TemporaryDirectory() as tmp:
+                run = self.run_csv_round(tmp, "tick_idx,speed_multiplier,t_sus_ms", ["1,50,0"],
+                                         source=source)
+                self.assertEqual(run["errors"], [])
+                methods.append(run["recorder_method"])
+        self.assertNotEqual(*methods)
+        self.assertTrue(all(method.startswith("unversioned:") for method in methods))
 
 
 class MetricClassification(unittest.TestCase):
@@ -226,6 +297,10 @@ class ArchiveReuse(unittest.TestCase):
                            ("method_version", pc.METHOD_VERSION + 1)):
             with self.subTest(key):
                 self.assertFalse(pc.record_reusable(record(), IDENTITY | {key: value}, "quick", 3)[0])
+
+    def test_does_not_reuse_version_two_measurements(self):
+        stored = record(identity=IDENTITY | {"method_version": 2})
+        self.assertFalse(pc.record_reusable(stored, IDENTITY, "quick", 3)[0])
 
     def test_refuses_incomplete_invalid_missing_or_lower_tier(self):
         self.assertFalse(pc.record_reusable(None, IDENTITY, "quick", 3)[0])
@@ -488,9 +563,38 @@ class Assessment(unittest.TestCase):
     def side(self, tmp, name, hashes, errors):
         candidate = Path(tmp) / f"{name}.json"
         candidate.write_text(json.dumps({"days": [{"day": 1, "domain_hashes": hashes}]}))
-        rounds = [{"metrics": {"result.run_ms": 100.0 + i}, "errors": list(e)} for i, e in enumerate(errors)]
+        rounds = [{"metrics": {"result.run_ms": 100.0 + i}, "errors": list(e),
+                   "recorder_method": "day_records_worker_v1"} for i, e in enumerate(errors)]
         return {"identity": {"commit": name * 12}, "golden": {"passed": True, "candidate": str(candidate)},
                 "rounds": rounds}
+
+    def test_refuses_throughput_comparison_between_different_recorder_methods(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = self.side(tmp, "a", {"ECONOMY": "1"}, [[], [], []])
+            head = self.side(tmp, "b", {"ECONOMY": "1"}, [[], [], []])
+            for run in base["rounds"]:
+                run["recorder_method"] = "unversioned:foreground"
+                run["metrics"]["auth.authoritative_days_per_second"] = 50
+                run["metrics"]["harness.adjusted_days_per_second"] = 50
+            for run in head["rounds"]:
+                run["metrics"]["auth.authoritative_days_per_second"] = 100
+                run["metrics"]["harness.adjusted_days_per_second"] = 100
+            verdict = pc.assess(base, head, ["days_per_second"], pc.NOISE)
+        self.assertEqual(verdict["status"], "needs_human")
+        self.assertEqual(verdict["rows"], [])
+        self.assertIn("incompatible recorder methods", verdict["reasons"][0])
+
+    def test_refuses_a_record_with_mixed_or_missing_methods(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = self.side(tmp, "a", {"ECONOMY": "1"}, [[], [], []])
+            head = self.side(tmp, "b", {"ECONOMY": "1"}, [[], [], []])
+            for method in ("day_records_main_v1", None):
+                with self.subTest(method=method):
+                    head["rounds"][0]["recorder_method"] = method
+                    verdict = pc.assess(base, head, ["result.run_ms"], pc.NOISE)
+                    self.assertEqual(verdict["status"], "fail")
+                    self.assertEqual(verdict["rows"], [])
+                    self.assertIn("inconsistent recorder methods", verdict["reasons"][0])
 
     def test_result_difference_is_reported_even_when_a_round_is_invalid(self):
         with tempfile.TemporaryDirectory() as tmp:
