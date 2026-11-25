@@ -15,7 +15,7 @@ Subcommands:
 
 Exit codes: 0 pass, 1 fail (results changed, a run was invalid, a build failed),
 2 needs a person (a claimed metric did not improve, a headline metric regressed),
-75 deferred (the machine stayed busy), 64 usage error.
+75 deferred (the machine stayed busy or the run budget expired), 64 usage error.
 
 Only headless measurements are taken. Windowed frame time needs an unlocked
 screen and is reported as not measured.
@@ -29,7 +29,6 @@ from __future__ import annotations
 import argparse
 import contextlib
 import csv
-import fcntl
 import datetime as dt
 import hashlib
 import json
@@ -43,7 +42,7 @@ import sys
 import time
 from pathlib import Path
 
-METHOD_VERSION = 1
+METHOD_VERSION = 2
 DEFAULT_SCENARIO = {"days": 50, "speed": 50, "seed": 20260718, "width": 60, "height": 40,
                     "foreign_count": 3}
 TIERS = ("quick", "full")
@@ -65,6 +64,7 @@ RESULT_PREFIX = "[headless-perf/result]"
 AUTH_PREFIX = "[headless-perf/auth]"
 HARNESS_PREFIX = "[headless-perf/harness]"
 PERF_SCRIPT = "res://tests/game/headless_perf_record.gd"
+REQUIRED_CSV_COLUMNS = ("tick_idx", "speed_multiplier", "t_sus_ms")
 PROJECT = "Project/project-keynes"
 GODOT_CPP = "gdext/godot-cpp"
 LIBRARY_DIR = "addons/dots_ext/bin"
@@ -72,7 +72,7 @@ MAX_WORKTREES = 3
 
 
 class Deferred(Exception):
-    """The machine stayed busy; nothing was measured."""
+    """The machine stayed busy or the run budget expired."""
 
 
 class StepFailed(Exception):
@@ -105,7 +105,7 @@ def to_number(value) -> float | None:
     return number if number == number and abs(number) != float("inf") else None
 
 
-def validate_perf_run(exit_code: int, result: dict[str, str] | None, csv_rows: int | None,
+def validate_perf_run(exit_code: int, result: dict[str, str] | None, csv_rows: list[dict] | None,
                       scenario: dict) -> list[str]:
     """Errors that make a headless perf run unusable as evidence (empty list = valid)."""
     errors = []
@@ -124,8 +124,15 @@ def validate_perf_run(exit_code: int, result: dict[str, str] | None, csv_rows: i
         errors.append(f"result rows={rows:g} expected {days}")
     if expected is not None and expected != days:
         errors.append(f"result expected_rows={expected:g} expected {days}")
-    if csv_rows != days:
-        errors.append(f"perf csv has {csv_rows} data rows, expected {days}")
+    csv_count = len(csv_rows) if csv_rows is not None else None
+    if csv_count != days:
+        errors.append(f"perf csv has {csv_count} data rows, expected {days}")
+    if csv_rows:
+        for column in REQUIRED_CSV_COLUMNS:
+            if column not in csv_rows[0]:
+                errors.append(f"perf csv missing required column {column}")
+            elif any(to_number(row.get(column)) is None for row in csv_rows):
+                errors.append(f"perf csv required column {column} has a missing or nonnumeric value")
     if result.get("fatal") != "false":
         errors.append(f"fatal={result.get('fatal')}")
     if result.get("economy_configured") != "true":
@@ -152,13 +159,14 @@ def metric_kind(name: str) -> str:
     gauge: anything else, with no better direction."""
     if name.startswith("csv."):
         column = name.split(".")[1]
-        if column.startswith(("bd_economy_scan_", "scan_steps")) or column.endswith("_epoch"):
+        if (column.startswith(("bd_economy_scan_", "scan_steps")) or column.endswith("_epoch")
+                or column in ("research_full_scan_fallbacks", "bd_country_research_full_scan_fallbacks")):
             return "counter"
-    if name.startswith("rusage.") or any(mark in name for mark in ("_ms", "_us", "per_second", "wait")):
+    if any(mark in name for mark in ("_ms", "_us", "per_second", "wait")):
         return "timing"
     if any(mark in name.lower() for mark in COST_MARKS):
         return "cost"
-    return "gauge"
+    return "timing" if name.startswith("rusage.") else "gauge"
 
 
 def direction(name: str) -> str:
@@ -179,8 +187,11 @@ def csv_metrics(rows: list[dict[str, str]]) -> dict[str, float]:
     days = max(len(rows) - 1, 1)
     for column in rows[0]:
         values = [v for v in (to_number(row.get(column)) for row in rows) if v is not None]
-        if len(values) != len(rows):
+        if not values:
+            # Text labels and optional columns with no samples are part of the recorder's schema.
             continue
+        if len(values) != len(rows):
+            raise ValueError(f"column {column} has {len(values)}/{len(rows)} numeric values")
         name = f"csv.{column}"
         if metric_kind(name + ".per_day") == "counter":
             out[f"{name}.per_day"] = (values[-1] - values[0]) / days
@@ -257,8 +268,15 @@ def compare_metric(name: str, base: list[float], head: list[float], noise: float
 
 def compare_rounds(base_rounds: list[dict], head_rounds: list[dict], noise: float = NOISE) -> list[dict]:
     names = sorted({k for r in base_rounds + head_rounds for k in r})
-    return [compare_metric(name, [r[name] for r in base_rounds if name in r],
-                           [r[name] for r in head_rounds if name in r], noise) for name in names]
+    rows = []
+    for name in names:
+        base = [r[name] for r in base_rounds if name in r]
+        head = [r[name] for r in head_rounds if name in r]
+        row = compare_metric(name, base, head, noise)
+        if base and head and (len(base) != len(base_rounds) or len(head) != len(head_rounds)):
+            row["status"] = "missing_rounds"
+        rows.append(row)
+    return rows
 
 
 def first_difference(expected, actual, path="golden"):
@@ -283,8 +301,8 @@ def first_difference(expected, actual, path="golden"):
     return None if expected == actual else {"path": path, "base": expected, "head": actual}
 
 
-def record_reusable(record: dict | None, identity: dict, tier: str) -> tuple[bool, str]:
-    """A stored record is reused only for an identical identity and a sufficient tier."""
+def record_reusable(record: dict | None, identity: dict, tier: str, rounds: int) -> tuple[bool, str]:
+    """A stored record needs an identical identity, a sufficient tier and enough rounds."""
     if record is None:
         return False, "no record"
     if record.get("status") != "complete":
@@ -295,7 +313,12 @@ def record_reusable(record: dict | None, identity: dict, tier: str) -> tuple[boo
             return False, f"identity differs: {key}"
     if TIERS.index(record.get("tier", "quick")) < TIERS.index(tier):
         return False, f"record tier {record.get('tier')} is below {tier}"
-    return True, "identity matches"
+    samples = record.get("rounds")
+    if not isinstance(samples, list):
+        return False, "record has no rounds list"
+    if len(samples) < rounds:
+        return False, f"record has {len(samples)} rounds, need {rounds}"
+    return True, "record matches"
 
 
 def load_gate(idle: float | None, competing: list[str], min_idle: float) -> list[str]:
@@ -354,19 +377,29 @@ def judge(correctness: list[str], invalid_runs: list[str], rows: list[dict],
     reasons = list(correctness) + list(invalid_runs)
     if reasons:
         return "fail", reasons
-    human = []
+    incomplete = ("only_in_base", "only_in_head", "missing_rounds", "insufficient_rounds")
+    missing = [f"incomplete measurement for {row['metric']} ({row['status']})" for row in rows
+               if row["status"] in incomplete]
+    if missing:
+        return "fail", missing
+    human = [] if claims else ["no improvement claim supplied"]
+    regressions = ("regressed", "more_work")
     for pattern in claims:
         matched = [row for row in rows if re.search(pattern, row["metric"])]
         if not matched:
             human.append(f"claim {pattern!r} matches no metric")
             continue
-        good = [row for row in matched if row["status"] in ("improved", "less_work")]
-        if not good:
+        if not any(row["status"] in ("improved", "less_work") for row in matched):
             states = sorted({row["status"] for row in matched})
             human.append(f"claim {pattern!r} not shown to improve ({', '.join(states)})")
+        for row in matched:
+            if row["status"] in regressions:
+                human.append(f"claim {pattern!r} includes {row['metric']} ({row['status']})")
     for row in rows:
-        if row["metric"] in HEADLINE and row["status"] == "regressed":
-            human.append(f"headline {row['metric']} regressed {row['change']:+.1%}")
+        if row["metric"] in HEADLINE and row["status"] in regressions:
+            change = row.get("change")
+            extent = f" {change:+.1%}" if change is not None else ""
+            human.append(f"headline {row['metric']} {row['status']}{extent}")
     return ("needs_human", human) if human else ("pass", [])
 
 
@@ -453,17 +486,26 @@ def wait_allowance(budget_s: float, elapsed_s: float, estimate_s: float) -> floa
     return max(0.0, budget_s - elapsed_s - estimate_s)
 
 
+def check_budget(args) -> None:
+    if args.budget > 0 and time.monotonic() - args.started >= args.budget * 60:
+        raise Deferred(f"the {args.budget:g}-minute run budget expired")
+
+
 def wait_for_quiet_machine(args, log: list) -> dict:
     """Block until the machine is quiet. Waiting shares one allowance for the whole run
     (the time budget minus the estimated work); when it runs out the run is deferred."""
     deadline = time.monotonic() + args.wait_left
+    if args.budget > 0:
+        deadline = min(deadline, args.started + args.budget * 60)
     while True:
+        check_budget(args)
         load1 = os.getloadavg()[0]
         idle = cpu_idle()
         cpus = os.cpu_count() or 0
         reasons = load_gate(idle, competing_processes(process_table(), os.getpid()), args.min_idle)
         sample = {"at": now(), "cpu_idle": None if idle is None else round(idle, 3),
                   "load1": round(load1, 2), "cpus": cpus, "busy": reasons}
+        check_budget(args)
         if not reasons:
             args.wait_left = max(0.0, deadline - time.monotonic())
             return sample
@@ -494,6 +536,8 @@ class Archive:
     @contextlib.contextmanager
     def build_lock(self):
         """One build at a time per archive: two checks would otherwise check out over each other."""
+        import fcntl
+
         with (self.home / "build.lock").open("w") as handle:
             fcntl.flock(handle, fcntl.LOCK_EX)
             try:
@@ -504,14 +548,14 @@ class Archive:
     def scenario_id(self, scenario: dict) -> str:
         return "_".join(f"{key}{scenario[key]}" for key in sorted(scenario))
 
-    def find(self, identity: dict, tier: str) -> tuple[dict | None, str]:
+    def find(self, identity: dict, tier: str, rounds: int) -> tuple[dict | None, str]:
         folder = self.records / identity["commit"][:12] / self.scenario_id(identity["scenario"])
         why = "no record"
         if not folder.exists():
             return None, why
         for path in sorted(folder.glob("*/record.json"), reverse=True):
             record = json.loads(path.read_text())
-            ok, why = record_reusable(record, identity, tier)
+            ok, why = record_reusable(record, identity, tier, rounds)
             if ok:
                 record["path"] = str(path.parent)
                 return record, why
@@ -591,6 +635,7 @@ def compile_commit(repo: Path, archive: Archive, commit: str, args, record_dir: 
     env = {}
     if args.scons:
         env["PATH"] = os.pathsep.join([str(Path(args.scons).expanduser().parent), os.environ["PATH"]])
+    check_budget(args)
     run(scons_command(platform.system(), platform.machine(), os.cpu_count() or 8),
         cwd=tree / "gdext", env=env, log=record_dir / f"build-{commit[:12]}.log")
     built = debug_libraries(tree, *host)
@@ -599,7 +644,8 @@ def compile_commit(repo: Path, archive: Archive, commit: str, args, record_dir: 
     return built
 
 
-def prepare_worktree(repo: Path, archive: Archive, commit: str, args, record_dir: Path) -> Path:
+def prepare_worktree(repo: Path, archive: Archive, commit: str, args, record_dir: Path,
+                     busy_log: list) -> Path:
     path = archive.worktrees / commit[:12]
     ready = path / ".perf-built"
     if ready.exists() and ready.read_text().strip() == commit:
@@ -611,7 +657,9 @@ def prepare_worktree(repo: Path, archive: Archive, commit: str, args, record_dir
     prune_worktrees(repo, archive)
     started = time.monotonic()
     with archive.build_lock():
+        wait_for_quiet_machine(args, busy_log)
         built = compile_commit(repo, archive, commit, args, record_dir)
+        check_budget(args)
         compiled = time.monotonic() - started
         git(repo, "worktree", "add", "--detach", str(path), commit)
         for library in built:
@@ -622,6 +670,7 @@ def prepare_worktree(repo: Path, archive: Archive, commit: str, args, record_dir
             else:
                 shutil.copy2(library, target)
     seeded = seed_import_cache(archive, path)
+    wait_for_quiet_machine(args, busy_log)
     import_started = time.monotonic()
     run([args.godot, "--headless", "--path", str(path / PROJECT), "--import"],
         log=record_dir / f"import-{commit[:12]}.log")
@@ -705,10 +754,18 @@ def perf_round(worktree: Path, out: Path, scenario: dict, tier: str, godot: str,
     csv_path = Path(result.get("path", "")) if result else None
     rows = None
     if csv_path and csv_path.is_file():
-        with csv_path.open(newline="", encoding="utf-8-sig") as handle:
-            data = list(csv.DictReader(handle))
-        rows = len(data)
-        metrics.update(csv_metrics(data))
+        try:
+            with csv_path.open(newline="", encoding="utf-8-sig") as handle:
+                reader = csv.DictReader(handle, strict=True)
+                columns = reader.fieldnames
+                if not columns or "" in columns or len(set(columns)) != len(columns):
+                    raise ValueError("missing or duplicate column names")
+                rows = list(reader)
+            if any(None in row or None in row.values() for row in rows):
+                raise ValueError("row does not match header width")
+            metrics.update(csv_metrics(rows))
+        except (csv.Error, OSError, ValueError) as error:
+            errors.append(f"perf csv: {error}")
     waterfall = out / "waterfall.csv"
     if waterfall.is_file():
         with waterfall.open(newline="", encoding="utf-8", errors="replace") as handle:
@@ -764,12 +821,13 @@ def identity_for(commit: str, scenario: dict, machine: dict, toolchain: dict) ->
 
 def ensure_records(repo: Path, archive: Archive, revs: list[str], args, busy_log: list) -> list[dict]:
     """Return one complete record per rev, measuring alternately only the missing ones."""
+    check_budget(args)
     machine, toolchain = machine_identity(), toolchain_identity(args.godot)
     plans = []
     for rev in revs:
         commit, subject = resolve(repo, rev)
         identity = identity_for(commit, args.scenario, machine, toolchain)
-        record, why = archive.find(identity, args.tier)
+        record, why = archive.find(identity, args.tier, args.rounds)
         if record is not None:
             print(f"reusing archived record for {commit[:12]}: {record['path']}", flush=True)
             record["reused"] = True
@@ -783,14 +841,15 @@ def ensure_records(repo: Path, archive: Archive, revs: list[str], args, busy_log
     if missing:
         print(f"estimated work {estimate:.0f}s; may wait up to "
               f"{'unlimited' if args.budget <= 0 else f'{args.wait_left:.0f}s'} for a quiet machine", flush=True)
-    for plan in missing:
+    for position, plan in enumerate(missing):
+        check_budget(args)
         print(f"measuring {plan['commit'][:12]} ({plan['why']})", flush=True)
         record_dir = archive.new_record_dir(plan["identity"])
         plan["dir"] = record_dir
-        plan["worktree"] = prepare_worktree(repo, archive, plan["commit"], args, record_dir)
+        plan["worktree"] = prepare_worktree(repo, archive, plan["commit"], args, record_dir, busy_log)
+        check_budget(args)
         if args.budget > 0:
             # The build is done: give waiting what is left after the remaining work.
-            position = missing.index(plan)
             remaining = (work_estimate([True] + ready[position + 1:], args.tier, args.rounds)
                          + position * args.rounds * ESTIMATE_S["round"])  # earlier commits' rounds
             args.wait_left = wait_allowance(args.budget * 60, time.monotonic() - args.started, remaining)
@@ -813,6 +872,7 @@ def ensure_records(repo: Path, archive: Archive, revs: list[str], args, busy_log
             print(f"round {index}/{args.rounds} {plan['commit'][:12]}", flush=True)
             plan["record"]["rounds"].append(
                 perf_round(plan["worktree"], out, args.scenario, args.tier, args.godot, label))
+    check_budget(args)
     for plan in missing:
         record = plan["record"]
         record["headline"] = headline(record["rounds"])
@@ -850,7 +910,8 @@ def render_markdown(report: dict) -> str:
              f"- Status: **{report['status']}**" + (f" — {'; '.join(report['reasons'])}" if report["reasons"] else ""),
              f"- Base: `{base['commit'][:12]}` {base['subject']} ({'archived ' + base['created'] if base['reused'] else 'measured now'})",
              f"- Head: `{head['commit'][:12]}` {head['subject']} ({'archived ' + head['created'] if head['reused'] else 'measured now'})",
-             f"- Scenario: {json.dumps(report['scenario'])}; tier {report['tier']}; {report['rounds']} rounds per side",
+             f"- Scenario: {json.dumps(report['scenario'])}; tier {report['tier']}; "
+             f"base {base['rounds']} rounds, head {head['rounds']} rounds",
              f"- Machine: {report['machine']}; toolchain: {report['toolchain']}",
              f"- Noise threshold for timings: ±{report['noise']:.0%} and no overlap between the two sides' ranges",
              "", "## Results unchanged", ""]
@@ -904,8 +965,17 @@ def assess(base: dict, head: dict, claims: list[str], noise: float) -> dict:
     invalid = [f"{side} round {i}: {'; '.join(r['errors'])}"
                for side, record in (("base", base), ("head", head))
                for i, r in enumerate(record["rounds"], 1) if r["errors"]]
-    rows = compare_rounds([r["metrics"] for r in base["rounds"] if not r["errors"]],
-                          [r["metrics"] for r in head["rounds"] if not r["errors"]], noise)
+    # A full record may satisfy a quick request. Waterfall timings belong to the full tier.
+    same_tier = base.get("tier", "quick") == head.get("tier", "quick")
+
+    def valid_metrics(record):
+        samples = [r["metrics"] for r in record["rounds"] if not r["errors"]]
+        if same_tier:
+            return samples
+        return [{key: value for key, value in sample.items() if not key.startswith("waterfall.")}
+                for sample in samples]
+
+    rows = compare_rounds(valid_metrics(base), valid_metrics(head), noise)
     correctness = correctness_facts(base, head)
     status, reasons = judge(correctness, invalid, rows, claims)
     return {"status": status, "reasons": reasons, "correctness": correctness, "rows": rows,
@@ -920,9 +990,10 @@ def command_compare(args, repo: Path, archive: Archive) -> int:
     def side(record):
         return {"commit": record["identity"]["commit"], "subject": record.get("subject"),
                 "created": record.get("created"), "reused": bool(record.get("reused")),
+                "rounds": len(record["rounds"]),
                 "path": record.get("path"), "load_consistency": record.get("load_consistency")}
     report = {"status": status, "reasons": reasons, "base": side(base), "head": side(head),
-              "scenario": args.scenario, "tier": args.tier, "rounds": args.rounds, "noise": args.noise,
+              "scenario": args.scenario, "tier": args.tier, "requested_rounds": args.rounds, "noise": args.noise,
               "claims": args.claim, "machine": head["identity"]["machine_label"],
               "toolchain": head["identity"]["toolchain_label"], "correctness": correctness,
               "busy_samples": busy, "metrics": rows, "excluded_rounds": verdict["excluded_rounds"],
@@ -931,15 +1002,18 @@ def command_compare(args, repo: Path, archive: Archive) -> int:
     out = Path(args.out) if args.out else archive.comparisons / (
         f"{base['identity']['commit'][:12]}..{head['identity']['commit'][:12]}-"
         f"{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}")
+    markdown = render_markdown(report)
+    check_budget(args)
     out.mkdir(parents=True, exist_ok=True)
     save(out / "report.json", report)
-    (out / "report.md").write_text(render_markdown(report))
+    (out / "report.md").write_text(markdown, encoding="utf-8")
     print(f"PERF_CHECK_RESULT={json.dumps({'status': status, 'reasons': reasons, 'report': str(out / 'report.md')}, ensure_ascii=False)}")
     return {"pass": EXIT_PASS, "needs_human": EXIT_HUMAN}.get(status, EXIT_FAIL)
 
 
 def command_measure(args, repo: Path, archive: Archive) -> int:
     record, = ensure_records(repo, archive, [args.rev], args, [])
+    check_budget(args)
     print(f"PERF_RECORD={json.dumps({'status': record['status'], 'path': record['path']})}")
     return EXIT_PASS if record["status"] == "complete" else EXIT_FAIL
 
@@ -975,7 +1049,7 @@ def parse_args(argv: list[str]):
         else:
             p.add_argument("base")
             p.add_argument("head")
-            p.add_argument("--claim", action="append", default=[],
+            p.add_argument("--claim", action="append", required=True,
                            help="regex of a metric the change claims to improve (repeatable)")
             p.add_argument("--noise", type=float, default=NOISE)
             p.add_argument("--out", help="report directory (default: inside the archive)")
@@ -992,10 +1066,18 @@ def parse_args(argv: list[str]):
     h = sub.add_parser("history")
     h.add_argument("--commit")
     args = parser.parse_args(argv)
+    if args.command == "compare":
+        for pattern in args.claim:
+            if not pattern.strip():
+                parser.error("--claim must be a nonempty regex")
+            try:
+                re.compile(pattern)
+            except re.error as error:
+                parser.error(f"invalid --claim regex {pattern!r}: {error}")
     if args.command in ("measure", "compare"):
         if not 0.0 < args.min_idle <= 1.0:
             parser.error("--min-idle must be in (0, 1]")
-        if args.budget < 0:
+        if to_number(args.budget) is None or args.budget < 0:
             parser.error("--budget must be 0 (no limit) or positive")
         if args.rounds < 2:
             parser.error("--rounds must be at least 2 so timings have a range")
@@ -1014,8 +1096,10 @@ def main(argv: list[str] | None = None) -> int:
     archive = Archive(Path(args.home).expanduser())
     if args.command == "history":
         return command_history(args, archive)
-    repo = Path(git(Path(args.repo), "rev-parse", "--show-toplevel"))
     try:
+        if platform.system() not in ("Darwin", "Linux"):
+            raise StepFailed("measure and compare require macOS or Linux for process timing and load sampling")
+        repo = Path(git(Path(args.repo), "rev-parse", "--show-toplevel"))
         if args.command == "measure":
             return command_measure(args, repo, archive)
         return command_compare(args, repo, archive)

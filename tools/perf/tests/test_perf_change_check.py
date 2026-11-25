@@ -4,7 +4,10 @@ Each gate, parser and classifier is fed inputs it must refuse, not only good one
 Run: python -m unittest tools/perf/tests/test_perf_change_check.py -v
 """
 import argparse
+import contextlib
+import io
 import json
+import runpy
 import sys
 import tempfile
 import unittest
@@ -19,12 +22,14 @@ SCENARIO = dict(pc.DEFAULT_SCENARIO)
 GOOD_RESULT = {"rows": "50", "expected_rows": "50", "fatal": "false", "economy_configured": "true",
                "formal_start": "true", "ledger_failures": "0", "population": "1200",
                "country_count": "4", "path": "/tmp/perf.csv"}
+GOOD_CSV = [{"tick_idx": str(i), "speed_multiplier": "50", "t_sus_ms": "1"} for i in range(1, 51)]
 IDENTITY = {"commit": "a" * 40, "scenario": SCENARIO, "method_version": pc.METHOD_VERSION,
             "machine": "m1", "machine_label": "Mac", "toolchain": "t1", "toolchain_label": "godot"}
 
 
 def record(**changes):
-    value = {"status": "complete", "tier": "quick", "identity": dict(IDENTITY)}
+    value = {"status": "complete", "tier": "quick", "identity": dict(IDENTITY),
+             "rounds": [{"errors": [], "metrics": {}} for _ in range(3)]}
     value.update(changes)
     return value
 
@@ -44,35 +49,74 @@ class ResultLineParsing(unittest.TestCase):
 
 class PerfRunValidation(unittest.TestCase):
     def test_accepts_a_complete_run(self):
-        self.assertEqual(pc.validate_perf_run(0, GOOD_RESULT, 50, SCENARIO), [])
+        self.assertEqual(pc.validate_perf_run(0, GOOD_RESULT, GOOD_CSV, SCENARIO), [])
 
     def test_refuses_each_broken_fact(self):
         cases = {
-            "exit": (1, GOOD_RESULT, 50),
-            "no result": (0, None, 50),
-            "short csv": (0, GOOD_RESULT, 49),
+            "exit": (1, GOOD_RESULT, GOOD_CSV),
+            "no result": (0, None, GOOD_CSV),
+            "short csv": (0, GOOD_RESULT, GOOD_CSV[:-1]),
             "missing csv": (0, GOOD_RESULT, None),
-            "rows": (0, GOOD_RESULT | {"rows": "49"}, 50),
-            "expected rows": (0, GOOD_RESULT | {"expected_rows": "10"}, 50),
-            "fatal": (0, GOOD_RESULT | {"fatal": "true"}, 50),
-            "fatal missing": (0, {k: v for k, v in GOOD_RESULT.items() if k != "fatal"}, 50),
-            "ledger": (0, GOOD_RESULT | {"ledger_failures": "2"}, 50),
-            "ledger not a number": (0, GOOD_RESULT | {"ledger_failures": "nan"}, 50),
-            "economy": (0, GOOD_RESULT | {"economy_configured": "false"}, 50),
-            "synthetic start": (0, GOOD_RESULT | {"formal_start": "false"}, 50),
-            "no population": (0, GOOD_RESULT | {"population": "0"}, 50),
-            "too few countries": (0, GOOD_RESULT | {"country_count": "2"}, 50),
+            "rows": (0, GOOD_RESULT | {"rows": "49"}, GOOD_CSV),
+            "expected rows": (0, GOOD_RESULT | {"expected_rows": "10"}, GOOD_CSV),
+            "fatal": (0, GOOD_RESULT | {"fatal": "true"}, GOOD_CSV),
+            "fatal missing": (0, {k: v for k, v in GOOD_RESULT.items() if k != "fatal"}, GOOD_CSV),
+            "ledger": (0, GOOD_RESULT | {"ledger_failures": "2"}, GOOD_CSV),
+            "ledger not a number": (0, GOOD_RESULT | {"ledger_failures": "nan"}, GOOD_CSV),
+            "economy": (0, GOOD_RESULT | {"economy_configured": "false"}, GOOD_CSV),
+            "synthetic start": (0, GOOD_RESULT | {"formal_start": "false"}, GOOD_CSV),
+            "no population": (0, GOOD_RESULT | {"population": "0"}, GOOD_CSV),
+            "too few countries": (0, GOOD_RESULT | {"country_count": "2"}, GOOD_CSV),
         }
         for name, (code, result, rows) in cases.items():
             with self.subTest(name):
                 self.assertTrue(pc.validate_perf_run(code, result, rows, SCENARIO))
+
+    def test_refuses_required_columns_missing_with_the_correct_row_count(self):
+        for column in ("tick_idx", "speed_multiplier", "t_sus_ms"):
+            rows = [{key: value for key, value in row.items() if key != column} for row in GOOD_CSV]
+            with self.subTest(column=column):
+                self.assertTrue(any(column in error for error in
+                                    pc.validate_perf_run(0, GOOD_RESULT, rows, SCENARIO)))
+
+    def test_refuses_required_column_with_no_numeric_values(self):
+        rows = [row | {"speed_multiplier": ""} for row in GOOD_CSV]
+        self.assertTrue(any("speed_multiplier" in error for error in
+                            pc.validate_perf_run(0, GOOD_RESULT, rows, SCENARIO)))
+
+    def test_perf_round_rejects_missing_required_column_and_corrupt_optional_cells(self):
+        usage = argparse.Namespace(ru_utime=0.1, ru_stime=0.1, ru_maxrss=1000)
+        for headers, values, reason in (
+            ("tick_idx,t_sus_ms", ["1,0", "2,0"], "speed_multiplier"),
+            ("tick_idx,speed_multiplier,t_sus_ms,market_ms", ["1,50,0,7", "2,50,0,"], "market_ms"),
+            ("tick_idx,speed_multiplier,t_sus_ms,market_ms", ["1,50,0,7", "2,50,0"], "header width"),
+            ("tick_idx,speed_multiplier,t_sus_ms,t_sus_ms", ["1,50,0,0", "2,50,0,0"], "duplicate"),
+        ):
+            with self.subTest(reason=reason), tempfile.TemporaryDirectory() as tmp:
+                worktree = Path(tmp)
+                path = worktree / "perf.csv"
+                path.write_text("\n".join([headers, *values]) + "\n")
+                result = GOOD_RESULT | {"rows": "2", "expected_rows": "2", "path": str(path)}
+
+                def godot(*_, stdout, **__):
+                    stdout.write(pc.RESULT_PREFIX + " " + " ".join(f"{k}={v}" for k, v in result.items()) + "\n")
+                    stdout.write(pc.AUTH_PREFIX + " authoritative_days_per_second=50\n")
+                    stdout.write(pc.HARNESS_PREFIX + " adjusted_days_per_second=50\n")
+                    return argparse.Namespace(pid=42)
+
+                with mock.patch.object(pc.subprocess, "Popen", side_effect=godot), \
+                     mock.patch.object(pc.os, "wait4", return_value=(42, 0, usage), create=True):
+                    run = pc.perf_round(worktree, worktree / "round", SCENARIO | {"days": 2},
+                                        "quick", "godot", "r1")
+                self.assertTrue(any(reason in error for error in run["errors"]), run["errors"])
 
 
 class MetricClassification(unittest.TestCase):
     def test_kinds(self):
         self.assertEqual(pc.metric_kind("csv.bd_economy_scan_cells.per_day"), "counter")
         self.assertEqual(pc.metric_kind("csv.t_sus_ms.p95"), "timing")
-        self.assertEqual(pc.metric_kind("rusage.maxrss_mb"), "timing")
+        self.assertEqual(pc.metric_kind("rusage.maxrss_mb"), "cost")
+        self.assertEqual(pc.metric_kind("rusage.cpu_s"), "timing")
         self.assertEqual(pc.metric_kind("result.population"), "gauge")
         self.assertEqual(pc.direction("auth.authoritative_days_per_second"), "higher")
 
@@ -124,39 +168,61 @@ class MetricClassification(unittest.TestCase):
 
 class CsvSummaries(unittest.TestCase):
     def test_counters_become_per_day_increase_and_timings_get_tail(self):
-        rows = [{"bd_economy_scan_a": "0", "t_sus_ms": "1", "label": "x"},
-                {"bd_economy_scan_a": "10", "t_sus_ms": "3", "label": "x"},
-                {"bd_economy_scan_a": "20", "t_sus_ms": "2", "label": "x"}]
+        rows = [{"bd_economy_scan_a": "0", "t_sus_ms": "1", "label": "x", "unused_ms": ""},
+                {"bd_economy_scan_a": "10", "t_sus_ms": "3", "label": "", "unused_ms": ""},
+                {"bd_economy_scan_a": "20", "t_sus_ms": "2", "label": "x", "unused_ms": ""}]
         metrics = pc.csv_metrics(rows)
         self.assertEqual(metrics["csv.bd_economy_scan_a.per_day"], 10)
         self.assertEqual(metrics["csv.t_sus_ms.max"], 3)
         self.assertNotIn("csv.label.mean", metrics)
+        self.assertNotIn("csv.unused_ms.mean", metrics)
 
     def test_refuses_partially_numeric_column(self):
-        rows = [{"t_sus_ms": "1"}, {"t_sus_ms": ""}]
-        self.assertEqual(pc.csv_metrics(rows), {})
+        for bad in ("", "invalid", "nan"):
+            with self.subTest(bad=bad), self.assertRaisesRegex(ValueError, "market_ms"):
+                pc.csv_metrics([{"market_ms": "1"}, {"market_ms": bad}])
+
+    def test_fewer_research_fallback_scans_satisfy_a_claim(self):
+        for name in ("research_full_scan_fallbacks", "bd_country_research_full_scan_fallbacks"):
+            with self.subTest(name=name):
+                base = pc.csv_metrics([{name: "7"}, {name: "9"}, {name: "11"}])
+                head = pc.csv_metrics([{name: "7"}, {name: "8"}, {name: "9"}])
+                row, = pc.compare_rounds([base, base], [head, head])
+                self.assertEqual(row["metric"], f"csv.{name}.per_day")
+                self.assertEqual(row["status"], "less_work")
+                self.assertEqual(pc.judge([], [], [row], [name]), ("pass", []))
 
 
 class ArchiveReuse(unittest.TestCase):
     def test_reuses_identical_identity(self):
-        self.assertTrue(pc.record_reusable(record(), dict(IDENTITY), "quick")[0])
-        self.assertTrue(pc.record_reusable(record(tier="full"), dict(IDENTITY), "quick")[0])
+        self.assertTrue(pc.record_reusable(record(), dict(IDENTITY), "quick", 3)[0])
+        self.assertTrue(pc.record_reusable(record(tier="full"), dict(IDENTITY), "quick", 2)[0])
 
     def test_refuses_any_identity_difference(self):
         for key, value in (("commit", "b" * 40), ("scenario", SCENARIO | {"days": 60}),
                            ("machine", "m2"), ("toolchain", "t2"),
                            ("method_version", pc.METHOD_VERSION + 1)):
             with self.subTest(key):
-                self.assertFalse(pc.record_reusable(record(), IDENTITY | {key: value}, "quick")[0])
+                self.assertFalse(pc.record_reusable(record(), IDENTITY | {key: value}, "quick", 3)[0])
 
     def test_refuses_incomplete_invalid_missing_or_lower_tier(self):
-        self.assertFalse(pc.record_reusable(None, IDENTITY, "quick")[0])
-        self.assertFalse(pc.record_reusable(record(status="invalid"), IDENTITY, "quick")[0])
-        self.assertFalse(pc.record_reusable(record(status="measuring"), IDENTITY, "quick")[0])
-        self.assertFalse(pc.record_reusable(record(), IDENTITY, "full")[0])
+        self.assertFalse(pc.record_reusable(None, IDENTITY, "quick", 3)[0])
+        self.assertFalse(pc.record_reusable(record(status="invalid"), IDENTITY, "quick", 3)[0])
+        self.assertFalse(pc.record_reusable(record(status="measuring"), IDENTITY, "quick", 3)[0])
+        self.assertFalse(pc.record_reusable(record(), IDENTITY, "full", 3)[0])
         stored = record()
         stored["identity"] = IDENTITY | {"extra": 1}
-        self.assertFalse(pc.record_reusable(stored, IDENTITY, "quick")[0])
+        self.assertFalse(pc.record_reusable(stored, IDENTITY, "quick", 3)[0])
+
+    def test_archive_refuses_fewer_rounds_than_requested(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = pc.Archive(Path(tmp))
+            entry = archive.new_record_dir(IDENTITY) / "record.json"
+            pc.save(entry, record())
+            found, reason = archive.find(IDENTITY, "quick", 4)
+            self.assertIsNone(found)
+            self.assertIn("3 rounds", reason)
+            self.assertEqual(len(archive.find(IDENTITY, "quick", 2)[0]["rounds"]), 3)
 
 
 class MachineLoadGate(unittest.TestCase):
@@ -204,6 +270,10 @@ class MachineLoadGate(unittest.TestCase):
 
 
 class TimeBudget(unittest.TestCase):
+    def args(self, **overrides):
+        values = dict(started=0.0, wait_left=0.0, poll_seconds=15, budget=10, min_idle=0.5)
+        return argparse.Namespace(**(values | overrides))
+
     def test_estimate_counts_builds_only_for_unbuilt_worktrees(self):
         built = pc.work_estimate([True], "quick", 3)
         self.assertEqual(pc.work_estimate([False], "quick", 3), built + pc.ESTIMATE_S["build"])
@@ -215,26 +285,92 @@ class TimeBudget(unittest.TestCase):
         self.assertEqual(pc.wait_allowance(600, 500, 200), 0)
 
     def test_refuses_to_wait_once_the_allowance_is_spent(self):
-        args = argparse.Namespace(wait_left=0.0, poll_seconds=15, budget=10, min_idle=0.5)
+        args = self.args()
         with mock.patch.object(pc, "load_gate", return_value=["cpu busy"]), \
              mock.patch.object(pc, "cpu_idle", return_value=0.1), \
              mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc.time, "monotonic", return_value=30), \
              mock.patch.object(pc.time, "sleep") as sleep, self.assertRaises(pc.Deferred):
             pc.wait_for_quiet_machine(args, [])
         sleep.assert_not_called()
 
-    def test_quiet_machine_runs_even_with_no_allowance_left(self):
-        args = argparse.Namespace(wait_left=0.0, poll_seconds=15, budget=10, min_idle=0.5)
-        with mock.patch.object(pc, "load_gate", return_value=[]), \
-             mock.patch.object(pc, "cpu_idle", return_value=0.9), \
-             mock.patch.object(pc, "process_table", return_value=""):
-            self.assertEqual(pc.wait_for_quiet_machine(args, [])["busy"], [])
+    def test_quiet_machine_runs_without_wait_allowance_if_budget_remains(self):
+        with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
+             mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc.time, "monotonic", return_value=30):
+            self.assertEqual(pc.wait_for_quiet_machine(self.args(), [])["busy"], [])
+
+    def test_wont_sleep_past_the_run_budget_with_waiting_allowance_left(self):
+        with mock.patch.object(pc, "cpu_idle", return_value=0.1), \
+             mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc.time, "monotonic", return_value=590), \
+             mock.patch.object(pc.time, "sleep") as sleep, self.assertRaisesRegex(pc.Deferred, "busy"):
+            pc.wait_for_quiet_machine(self.args(wait_left=120), [])
+        sleep.assert_not_called()
+
+    def test_refuses_to_sample_after_the_run_budget_expires(self):
+        with mock.patch.object(pc, "cpu_idle", return_value=0.9) as sample, \
+             mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc.time, "monotonic", return_value=600), \
+             self.assertRaisesRegex(pc.Deferred, "budget.*expired"):
+            pc.wait_for_quiet_machine(self.args(), [])
+        sample.assert_not_called()
+
+    def test_refuses_a_quiet_sample_that_finishes_after_the_budget(self):
+        elapsed = 599
+
+        def cpu_idle():
+            nonlocal elapsed
+            elapsed = 600
+            return 0.9
+
+        with mock.patch.object(pc, "cpu_idle", side_effect=cpu_idle), \
+             mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc.time, "monotonic", side_effect=lambda: elapsed), \
+             self.assertRaisesRegex(pc.Deferred, "budget.*expired"):
+            pc.wait_for_quiet_machine(self.args(), [])
+
+    def test_last_round_over_budget_cannot_complete_a_record(self):
+        elapsed = 0
+
+        def perf_round(*_):
+            nonlocal elapsed
+            elapsed += 30
+            return {"errors": [], "metrics": {}}
+
+        args = self.args(rev="a", godot="godot", scenario=SCENARIO, tier="quick", rounds=2, budget=1)
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            archive = pc.Archive(repo)
+            with mock.patch.object(pc, "machine_identity", return_value={"machine": "m", "machine_label": "test"}), \
+                 mock.patch.object(pc, "toolchain_identity", return_value={}), \
+                 mock.patch.object(pc, "resolve", return_value=("a" * 40, "test")), \
+                 mock.patch.object(pc, "prepare_worktree", return_value=repo), \
+                 mock.patch.object(pc, "golden_check", return_value={"passed": True}), \
+                 mock.patch.object(pc, "cpu_idle", return_value=0.9), \
+                 mock.patch.object(pc, "process_table", return_value=""), \
+                 mock.patch.object(pc, "perf_round", side_effect=perf_round) as measure, \
+                 mock.patch.object(pc.time, "monotonic", side_effect=lambda: elapsed), \
+                 self.assertRaisesRegex(pc.Deferred, "budget.*expired"):
+                pc.command_measure(args, repo, archive)
+            self.assertEqual(measure.call_count, 2)
+            self.assertFalse((repo / "index.jsonl").exists())
+
+    def test_zero_budget_is_unlimited(self):
+        with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
+             mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc.time, "monotonic", return_value=1000):
+            self.assertEqual(pc.wait_for_quiet_machine(self.args(budget=0), [])["busy"], [])
 
     def test_refuses_negative_budget_and_impossible_idle_floor(self):
-        self.assertEqual(pc.main(["compare", "a", "b", "--budget", "-1"]), pc.EXIT_USAGE)
+        command = ["compare", "a", "b", "--claim", "run_ms"]
+        for value in ("-1", "nan", "inf"):
+            with self.subTest(budget=value), contextlib.redirect_stderr(io.StringIO()) as stderr:
+                self.assertEqual(pc.main([*command, "--budget", value]), pc.EXIT_USAGE)
+                self.assertIn("--budget", stderr.getvalue())
         for value in ("0", "1.5"):
             with self.subTest(min_idle=value):
-                self.assertEqual(pc.main(["compare", "a", "b", "--min-idle", value]), pc.EXIT_USAGE)
+                self.assertEqual(pc.main([*command, "--min-idle", value]), pc.EXIT_USAGE)
 
 
 class GoldenComparison(unittest.TestCase):
@@ -263,12 +399,43 @@ class Judgement(unittest.TestCase):
         self.assertEqual(pc.judge([], ["round 1: fatal"], self.ROWS, [])[0], "fail")
 
     def test_refuses_pass_when_claim_missing_or_not_improved(self):
+        self.assertEqual(pc.judge([], [], self.ROWS, [])[0], "needs_human")
         self.assertEqual(pc.judge([], [], self.ROWS, [r"no_such_metric"])[0], "needs_human")
         self.assertEqual(pc.judge([], [], self.ROWS, [r"run_ms"])[0], "needs_human")
 
     def test_refuses_pass_when_headline_regressed(self):
-        rows = self.ROWS + [{"metric": "result.run_ms", "status": "regressed", "change": 0.4}]
-        self.assertEqual(pc.judge([], [], rows, [])[0], "needs_human")
+        for metric, base, head in (("result.run_ms", [10, 10], [14, 14]),
+                                   ("rusage.maxrss_mb", [600, 600], [601, 601])):
+            with self.subTest(metric=metric):
+                rows = [self.ROWS[0], pc.compare_metric(metric, base, head)]
+                status, reasons = pc.judge([], [], rows, ["t_sus_ms"])
+                self.assertEqual(status, "needs_human")
+                self.assertTrue(any(metric in reason for reason in reasons))
+
+    def test_refuses_pass_when_any_metric_in_a_claim_regresses(self):
+        for metric, base, head in (("csv.household_market_ms.p95", [10, 10], [14, 14]),
+                                   ("csv.household_market_memory_bytes.mean", [500, 500], [501, 501])):
+            with self.subTest(metric=metric):
+                rows = [
+                    pc.compare_metric("csv.household_market_ms.mean", [10, 10], [6, 6]),
+                    pc.compare_metric(metric, base, head),
+                ]
+                status, reasons = pc.judge([], [], rows, ["household_market"])
+                self.assertEqual(status, "needs_human")
+                self.assertTrue(any(metric in reason for reason in reasons))
+
+    def test_refuses_pass_if_an_unclaimed_measurement_is_missing(self):
+        base = {"result.run_ms": 100, "csv.optional_ms.max": 10}
+        head = {"result.run_ms": 65, "csv.optional_ms.max": 10}
+        base_missing, head_missing = {"result.run_ms": 100}, {"result.run_ms": 65}
+        for base_rounds, head_rounds in (([base] * 3, [head_missing] * 3),
+                                         ([base] * 3, [head, head_missing, head]),
+                                         ([base_missing] * 3, [head] * 3)):
+            with self.subTest(base_rounds=base_rounds, head_rounds=head_rounds):
+                rows = pc.compare_rounds(base_rounds, head_rounds)
+                status, reasons = pc.judge([], [], rows, ["result.run_ms"])
+                self.assertEqual(status, "fail")
+                self.assertTrue(any("csv.optional_ms.max" in reason for reason in reasons))
 
 
 class Assessment(unittest.TestCase):
@@ -299,6 +466,43 @@ class Assessment(unittest.TestCase):
         self.assertEqual(row["base"], [101.0, 102.0])
         self.assertEqual(verdict["excluded_rounds"], ["base round 1: exit=6"])
 
+    def test_quick_comparison_can_reuse_a_full_tier_record(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = self.side(tmp, "a", {"ECONOMY": "1"}, [[], []])
+            head = self.side(tmp, "b", {"ECONOMY": "1"}, [[], []])
+            base["tier"] = "full"
+            base["load_consistency"] = {"passed": True}
+            head["tier"] = "quick"
+            for run in base["rounds"]:
+                run["metrics"]["waterfall.total_ms.mean"] = 100
+            for run in head["rounds"]:
+                run["metrics"]["result.run_ms"] = 60
+            verdict = pc.assess(base, head, ["result.run_ms"], pc.NOISE)
+        self.assertEqual(verdict["status"], "pass")
+        self.assertEqual([row["metric"] for row in verdict["rows"]], ["result.run_ms"])
+
+    def test_report_uses_the_round_counts_from_the_records(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            base = self.side(tmp, "a", {"ECONOMY": "1"}, [[], [], [], []])
+            head = self.side(tmp, "b", {"ECONOMY": "1"}, [[], [], []])
+            for saved in (base, head):
+                saved["identity"] = IDENTITY | saved["identity"]
+            base["reused"] = True
+            base["created"] = "2026-11-24T12:00:00Z"
+            for run in head["rounds"]:
+                run["metrics"]["result.run_ms"] = 60
+            args = pc.parse_args(["compare", "a", "b", "--claim", "result.run_ms", "--out", tmp])
+            args.started = pc.time.monotonic()
+            with mock.patch.object(pc, "ensure_records", return_value=[base, head]), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(pc.command_compare(args, repo, pc.Archive(repo)), pc.EXIT_PASS)
+            report = json.loads((repo / "report.json").read_text())
+            self.assertEqual(report["requested_rounds"], 3)
+            self.assertEqual(report["base"]["rounds"], 4)
+            self.assertEqual(report["head"]["rounds"], 3)
+            self.assertIn("base 4 rounds, head 3 rounds", (repo / "report.md").read_text())
+
 
 class BuildRecipe(unittest.TestCase):
     def test_builds_only_the_debug_target_the_headless_editor_loads(self):
@@ -324,11 +528,56 @@ class BuildRecipe(unittest.TestCase):
             with self.subTest(system=system, machine=machine), self.assertRaises(pc.StepFailed):
                 pc.scons_command(system, machine, 8)
 
+    def test_refuses_to_start_build_while_machine_is_busy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            archive = pc.Archive(repo)
+            args = argparse.Namespace(started=pc.time.monotonic(), wait_left=0,
+                                      budget=10, min_idle=0.5, poll_seconds=15)
+            with mock.patch.object(pc, "cpu_idle", return_value=0.1), \
+                 mock.patch.object(pc, "process_table", return_value=""), \
+                 mock.patch.object(pc, "compile_commit") as compile_commit, \
+                 mock.patch.object(pc, "git") as git, self.assertRaisesRegex(pc.Deferred, "busy"):
+                pc.prepare_worktree(repo, archive, "a" * 40, args, repo, [])
+            compile_commit.assert_not_called()
+            git.assert_not_called()
+
+    def test_refuses_to_import_if_the_machine_became_busy_during_build(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            archive = pc.Archive(repo)
+            args = argparse.Namespace(started=pc.time.monotonic(), wait_left=0,
+                                      budget=10, min_idle=0.5, poll_seconds=15)
+            with mock.patch.object(pc, "cpu_idle", side_effect=[0.9, 0.1]), \
+                 mock.patch.object(pc, "process_table", return_value=""), \
+                 mock.patch.object(pc, "compile_commit", return_value=[]) as compile_commit, \
+                 mock.patch.object(pc, "git"), mock.patch.object(pc, "run") as run, \
+                 self.assertRaisesRegex(pc.Deferred, "busy"):
+                pc.prepare_worktree(repo, archive, "a" * 40, args, repo, [])
+            compile_commit.assert_called_once()
+            run.assert_not_called()
+
 
 class ArgumentChecks(unittest.TestCase):
     def test_refuses_single_round_and_nonpositive_scenario(self):
-        self.assertEqual(pc.main(["compare", "a", "b", "--rounds", "1"]), pc.EXIT_USAGE)
+        self.assertEqual(pc.main(["compare", "a", "b", "--claim", "run_ms", "--rounds", "1"]), pc.EXIT_USAGE)
         self.assertEqual(pc.main(["measure", "a", "--days", "0"]), pc.EXIT_USAGE)
+
+    def test_compare_requires_an_explicit_nonempty_claim(self):
+        for flags in ([], ["--claim", ""], ["--claim", "["]):
+            with self.subTest(flags=flags), contextlib.redirect_stderr(io.StringIO()) as stderr:
+                self.assertEqual(pc.main(["compare", "a", "b", *flags]), pc.EXIT_USAGE)
+                self.assertIn("--claim", stderr.getvalue())
+
+    def test_history_starts_without_unix_fcntl(self):
+        with mock.patch.dict(sys.modules, {"fcntl": None}), \
+             mock.patch.object(pc.platform, "system", return_value="Windows"), \
+             tempfile.TemporaryDirectory() as tmp, contextlib.redirect_stdout(io.StringIO()) as stdout:
+            main = runpy.run_path(pc.__file__)["main"]
+            self.assertEqual(main(["--home", tmp, "history"]), pc.EXIT_PASS)
+            self.assertIn("archive is empty", stdout.getvalue())
+            self.assertEqual(main(["--home", tmp, "measure", "a"]), pc.EXIT_FAIL)
+            self.assertIn("macOS or Linux", stdout.getvalue())
 
 
 if __name__ == "__main__":
