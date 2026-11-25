@@ -379,6 +379,17 @@ class MachineLoadGate(unittest.TestCase):
         self.assertEqual(pc.competing_processes(table, mine=500, executables=names),
                          ["15 scons 90% cpu", "16 Godot 85% cpu"])
 
+    def test_refuses_quiet_sample_when_executable_lookup_fails(self):
+        args = argparse.Namespace(wait_left=0, budget=0, min_idle=0.5)
+        table = "  15     1  90.0 /Users/me/My Tools/scons -j8"
+        failed = pc.subprocess.CompletedProcess(["ps", "-axo", "pid=,comm="], 1,
+                                                stdout="", stderr="ps: permission denied\n")
+        with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
+             mock.patch.object(pc, "process_table", return_value=table), \
+             mock.patch.object(pc.subprocess, "run", return_value=failed), \
+             self.assertRaisesRegex(pc.StepFailed, r"ps -axo pid=,comm= exited 1\nps: permission denied"):
+            pc.wait_for_quiet_machine(args, [])
+
     def test_busiest_names_any_busy_process_busiest_first_but_not_ours(self):
         table = "\n".join([
             "  20     1  40.0 /usr/bin/python3 tools/x.py",
@@ -448,6 +459,7 @@ class TimeBudget(unittest.TestCase):
         with mock.patch.object(pc, "load_gate", return_value=["cpu busy"]), \
              mock.patch.object(pc, "cpu_idle", return_value=0.1), \
              mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", return_value=30), \
              mock.patch.object(pc.time, "sleep") as sleep, self.assertRaises(pc.Deferred):
             pc.wait_for_quiet_machine(args, [])
@@ -456,12 +468,14 @@ class TimeBudget(unittest.TestCase):
     def test_quiet_machine_runs_without_wait_allowance_if_budget_remains(self):
         with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
              mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", return_value=30):
             self.assertEqual(pc.wait_for_quiet_machine(self.args(), [])["busy"], [])
 
     def test_wont_sleep_past_the_run_budget_with_waiting_allowance_left(self):
         with mock.patch.object(pc, "cpu_idle", return_value=0.1), \
              mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", return_value=590), \
              mock.patch.object(pc.time, "sleep") as sleep, self.assertRaisesRegex(pc.Deferred, "busy"):
             pc.wait_for_quiet_machine(self.args(wait_left=120), [])
@@ -470,6 +484,7 @@ class TimeBudget(unittest.TestCase):
     def test_refuses_to_sample_after_the_run_budget_expires(self):
         with mock.patch.object(pc, "cpu_idle", return_value=0.9) as sample, \
              mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", return_value=600), \
              self.assertRaisesRegex(pc.Deferred, "budget.*expired"):
             pc.wait_for_quiet_machine(self.args(), [])
@@ -485,6 +500,7 @@ class TimeBudget(unittest.TestCase):
 
         with mock.patch.object(pc, "cpu_idle", side_effect=cpu_idle), \
              mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", side_effect=lambda: elapsed), \
              self.assertRaisesRegex(pc.Deferred, "budget.*expired"):
             pc.wait_for_quiet_machine(self.args(), [])
@@ -508,6 +524,7 @@ class TimeBudget(unittest.TestCase):
                  mock.patch.object(pc, "golden_check", return_value={"passed": True}), \
                  mock.patch.object(pc, "cpu_idle", return_value=0.9), \
                  mock.patch.object(pc, "process_table", return_value=""), \
+                 mock.patch.object(pc, "executable_table", return_value=""), \
                  mock.patch.object(pc, "perf_round", side_effect=perf_round) as measure, \
                  mock.patch.object(pc.time, "monotonic", side_effect=lambda: elapsed), \
                  self.assertRaisesRegex(pc.Deferred, "budget.*expired"):
@@ -518,6 +535,7 @@ class TimeBudget(unittest.TestCase):
     def test_zero_budget_is_unlimited(self):
         with mock.patch.object(pc, "cpu_idle", return_value=0.9), \
              mock.patch.object(pc, "process_table", return_value=""), \
+             mock.patch.object(pc, "executable_table", return_value=""), \
              mock.patch.object(pc.time, "monotonic", return_value=1000):
             self.assertEqual(pc.wait_for_quiet_machine(self.args(budget=0), [])["busy"], [])
 
@@ -769,6 +787,7 @@ class BuildRecipe(unittest.TestCase):
                                       budget=10, min_idle=0.5, poll_seconds=15)
             with mock.patch.object(pc, "cpu_idle", return_value=0.1), \
                  mock.patch.object(pc, "process_table", return_value=""), \
+                 mock.patch.object(pc, "executable_table", return_value=""), \
                  mock.patch.object(pc, "compile_commit") as compile_commit, \
                  mock.patch.object(pc, "git") as git, self.assertRaisesRegex(pc.Deferred, "busy"):
                 pc.prepare_worktree(repo, archive, "a" * 40, args, repo, [])
@@ -783,6 +802,7 @@ class BuildRecipe(unittest.TestCase):
                                       budget=10, min_idle=0.5, poll_seconds=15)
             with mock.patch.object(pc, "cpu_idle", side_effect=[0.9, 0.1]), \
                  mock.patch.object(pc, "process_table", return_value=""), \
+                 mock.patch.object(pc, "executable_table", return_value=""), \
                  mock.patch.object(pc, "compile_commit", return_value=[]) as compile_commit, \
                  mock.patch.object(pc, "git"), mock.patch.object(pc, "run") as run, \
                  self.assertRaisesRegex(pc.Deferred, "busy"):

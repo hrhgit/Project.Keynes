@@ -586,8 +586,7 @@ def process_table() -> str:
 
 
 def executable_table() -> str:
-    return subprocess.run(["ps", "-axo", "pid=,comm="], text=True,
-                          capture_output=True, check=False).stdout
+    return run(["ps", "-axo", "pid=,comm="]).stdout
 
 
 # Rough cost of each step on a quiet machine, used only to decide how long waiting may last.
