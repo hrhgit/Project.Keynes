@@ -1,6 +1,14 @@
 # Ticket to master, with the Day 14 approval step
 
-Day 10 diagram ([evidence/day10](../day10/factory-diagram.png)) with the approval step updated on Day 14. New on Day 14: the Qodo workflow, the approval guard and the route to me. CI, local checks and the merge gate are unchanged and still required; the Qodo approved label does not replace them.
+![Ticket to master with the Day 14 approval step](factory-diagram.png)
+
+The Day 10 diagram ([evidence/day10](../day10/factory-diagram.png)) with only the "Before merge" band changed on Day 14. New: the Qodo workflow, the approval guard on `tools/factory/**` and the route to me when it applies. The checks before it (18 static guards, tests, golden replay, C++ runtime, Qodo local review) and CI, the review re-read and the merge gate after it are unchanged and still required; the Qodo approved label does not replace them.
+
+Pink boxes are configured in Qodo, not in the factory's code. The factory's merge gate does not read the label; it re-reads the review, findings and CI itself, so the label and the merge gate check the same review independently.
+
+The image was edited by Codex's image model from the Day 10 image; I checked every label and arrow against the text version below.
+
+## Text version
 
 ```mermaid
 flowchart TD
@@ -75,5 +83,3 @@ flowchart TD
   classDef done fill:#dcfce7,stroke:#15803d,color:#052e16
   classDef planned fill:#f1f5f9,stroke:#64748b,color:#334155,stroke-dasharray:5 5
 ```
-
-Pink boxes are configured in Qodo, not in the factory's code. The factory's merge gate does not read the label; it re-reads the review, findings and CI itself, so the label and the merge gate check the same review independently.
