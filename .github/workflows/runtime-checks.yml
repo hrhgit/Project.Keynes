@@ -22,6 +22,7 @@ jobs:
           sparse-checkout: |
             /tools/ci/
             /tools/factory/
+            /tools/perf/
             /gdext/src/
             /gdext/tests/
             /Project/project-keynes/**/*.gd

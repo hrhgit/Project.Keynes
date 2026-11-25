@@ -37,8 +37,9 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
    If no metric measures the claim headlessly, do not stop yet. Examples: the claim counts work
    done while an overlay is open (the recorder leaves overlays closed, so
    `csv.tail_overlay_refresh_count.mean` is 0 on both sides), or it needs a window or the GPU. Run
-   step 2 with `--unmeasured '<why, naming the metric you checked>'` instead of `--claim`. The
-   run still proves the daily results unchanged and checks the headline metrics. Its best status is
+   step 2 with `--unmeasured '<why, naming the metric you checked>'`. Keep a `--claim` for each
+   part of the claim that a metric does measure; both are judged in the same run. The run still
+   proves the daily results unchanged and checks the headline metrics. Its best status is
    `needs_human`. Do not pick a different metric that does move and call it the claim.
 
 2. **Run the comparison** from the repository root:
@@ -46,10 +47,15 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
    ```sh
    python3 tools/perf/perf_change_check.py compare <base> <head> --tier quick \
      --claim '<regex>' [--claim '<regex>'...]
-   # or, when step 1 found no headless metric for the claim:
+   # when step 1 found no headless metric for (part of) the claim:
    python3 tools/perf/perf_change_check.py compare <base> <head> --tier quick \
-     --unmeasured '<why>'
+     --unmeasured '<why>' [--claim '<regex>'...]
    ```
+
+   Run it from this checkout with the default `--home`. Do not give it a separate home, archive
+   or clone: records are only reused from the shared archive, and a changed `$HOME` can hide the
+   build tools. What the script writes is part of the procedure, not a change to the repository
+   (see "What the script writes").
 
    The script compiles each commit's `template_debug` library (the one the headless editor loads)
    in one long-lived build tree, `~/.keynes-perf/build/` (or `$KEYNES_PERF_HOME`), so SCons only
@@ -115,6 +121,18 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
   stop after the `--unmeasured` run, and say what measurement the claim still needs.
 - You are tempted to raise `--noise`, lower `--rounds`, edit the archive or delete a record to get
   a pass.
+
+## What the script writes
+
+It does not touch the checkout's files or branch. It writes only under `~/.keynes-perf` (or
+`$KEYNES_PERF_HOME`) and registers its worktrees in the repository's git metadata:
+
+- `build/`: the long-lived build tree.
+- `worktrees/<commit12>/`: at most 3 cached worktrees. Adding one removes the oldest
+  (`git worktree remove`). That is expected; the records of those commits stay and are reused.
+- `records/`, `comparisons/`, `index.jsonl`: kept, never overwritten or removed.
+
+Do not delete or edit anything there by hand.
 
 ## Evidence kept
 

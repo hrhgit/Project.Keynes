@@ -432,6 +432,16 @@ class Judgement(unittest.TestCase):
         self.assertEqual(reasons, ["claim not measured headlessly: needs an open overlay"])
         self.assertEqual(pc.judge(["hash differs"], [], self.ROWS, [], "overlay")[0], "fail")
         self.assertEqual(pc.judge([], ["round 1: fatal"], self.ROWS, [], "overlay")[0], "fail")
+        # Found by Qodo on b05f8fc: a measurable claim given next to --unmeasured is still judged.
+        status, reasons = pc.judge([], [], self.ROWS, [r"t_sus_ms"], "overlay")
+        self.assertEqual((status, reasons), ("needs_human", ["claim not measured headlessly: overlay"]))
+        args = pc.parse_args(["compare", "a", "b", "--claim", "t_sus_ms", "--unmeasured", "overlay"])
+        self.assertEqual((args.claim, args.unmeasured), (["t_sus_ms"], "overlay"))
+        for pattern in (r"no_such_metric", r"run_ms"):
+            with self.subTest(pattern=pattern):
+                status, reasons = pc.judge([], [], self.ROWS, [pattern], "overlay")
+                self.assertEqual(status, "needs_human")
+                self.assertTrue(any(pattern in reason for reason in reasons))
         regressed = [self.ROWS[0], pc.compare_metric("result.run_ms", [10, 10], [14, 14])]
         status, reasons = pc.judge([], [], regressed, [], "overlay")
         self.assertEqual(status, "needs_human")
@@ -626,9 +636,8 @@ class ArgumentChecks(unittest.TestCase):
                 self.assertEqual(pc.main(["compare", "a", "b", *flags]), pc.EXIT_USAGE)
                 self.assertIn("--claim", stderr.getvalue())
 
-    def test_unmeasured_needs_a_reason_and_excludes_claims(self):
-        for flags in (["--unmeasured", ""], ["--unmeasured", "  "],
-                      ["--unmeasured", "overlay", "--claim", "run_ms"]):
+    def test_unmeasured_needs_a_reason(self):
+        for flags in (["--unmeasured", ""], ["--unmeasured", "  "]):
             with self.subTest(flags=flags), contextlib.redirect_stderr(io.StringIO()) as stderr:
                 self.assertEqual(pc.main(["compare", "a", "b", *flags]), pc.EXIT_USAGE)
                 self.assertIn("--unmeasured", stderr.getvalue())

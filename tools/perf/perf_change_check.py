@@ -1070,12 +1070,12 @@ def parse_args(argv: list[str]):
         else:
             p.add_argument("base")
             p.add_argument("head")
-            what = p.add_mutually_exclusive_group(required=True)
-            what.add_argument("--claim", action="append",
-                              help="regex of a metric the change claims to improve (repeatable)")
-            what.add_argument("--unmeasured", metavar="REASON",
-                              help="the claimed gain has no headless metric (say why); still checks "
-                                   "the daily results and headline metrics, and never passes")
+            p.add_argument("--claim", action="append", default=[],
+                           help="regex of a metric the change claims to improve (repeatable)")
+            p.add_argument("--unmeasured", metavar="REASON",
+                           help="part of the claimed gain has no headless metric (say why); the daily "
+                                "results, headline metrics and any --claim are still judged, and the "
+                                "run never passes")
             p.add_argument("--noise", type=float, default=NOISE)
             p.add_argument("--out", help="report directory (default: inside the archive)")
         p.add_argument("--tier", choices=TIERS, default="quick")
@@ -1094,7 +1094,8 @@ def parse_args(argv: list[str]):
     if args.command == "compare":
         if args.unmeasured is not None and not args.unmeasured.strip():
             parser.error("--unmeasured needs a reason")
-        args.claim = args.claim or []
+        if not args.claim and args.unmeasured is None:
+            parser.error("compare needs --claim, --unmeasured or both")
         for pattern in args.claim:
             if not pattern.strip():
                 parser.error("--claim must be a nonempty regex")
