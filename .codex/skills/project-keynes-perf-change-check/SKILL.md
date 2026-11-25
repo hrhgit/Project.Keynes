@@ -28,8 +28,11 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
 1. **Find the metric names for the claim.** Metrics are named `result.*`, `auth.*`, `harness.*`
    (from the recorder's summary lines), `csv.<column>.mean|p95|max|per_day` (every numeric column of
    `perf_record_*.csv`), `waterfall.*` (full tier) and `rusage.*` (wall, CPU, peak memory).
-   Run `python3 tools/perf/perf_change_check.py history` to see earlier records. A claim such as
-   "economy market stage is cheaper" becomes `--claim 'household_market.*_ms'`.
+   Take exact names from `metrics[].metric` in an earlier `report.json` (`history` lists the
+   records), not from the CSV header alone: the summary lines carry values the CSV does not. For
+   example economy memory is `result.economy_memory_bytes`, while `rusage.maxrss_mb` is the whole
+   process and moves far less. A claim such as "economy market stage is cheaper" becomes
+   `--claim 'household_market.*_ms'`.
 
 2. **Run the comparison** from the repository root:
 
@@ -64,7 +67,7 @@ Tools: `godot` 4.6 on PATH or `--godot`/`$GODOT_BIN`; `scons` on PATH or `--scon
    |---|---|---|---|
    | `pass` | 0 | Results unchanged, every claimed metric improved, no headline metric regressed | Report it as below |
    | `needs_human` | 2 | A claim matched no metric or did not improve, or a headline metric regressed beyond noise | Stop. Report the reasons and the report; do not reword the claim to fit |
-   | `fail` | 1 | Daily results differ, a repeat check failed, a round was invalid or a build failed | Stop. A result difference is a correctness bug, not a performance question; fix the root cause (AGENTS.md rule 1, rule 4) |
+   | `fail` | 1 | Daily results differ, a repeat check failed, a round was invalid or a build failed | Stop. A result difference is a correctness bug, not a performance question; fix the root cause (AGENTS.md rule 1, rule 4). An invalid round (for example the recorder's own `CSV row count mismatch`, exit 6) is reported with the commit it happened on; do not rerun until it passes |
    | `deferred` | 75 | The machine stayed busy | Run again later; never lower `--max-load` to get through |
 
 4. **Run the change's own targeted test** (for example a byte-for-byte fixture named in the PR)
