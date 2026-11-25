@@ -425,6 +425,18 @@ class Judgement(unittest.TestCase):
         self.assertEqual(pc.judge([], [], self.ROWS, [r"no_such_metric"])[0], "needs_human")
         self.assertEqual(pc.judge([], [], self.ROWS, [r"run_ms"])[0], "needs_human")
 
+    def test_refuses_pass_when_the_claim_is_unmeasured(self):
+        """Found by the first fresh-session run: a claim needing an open overlay has no headless metric."""
+        status, reasons = pc.judge([], [], self.ROWS, [], "needs an open overlay")
+        self.assertEqual(status, "needs_human")
+        self.assertEqual(reasons, ["claim not measured headlessly: needs an open overlay"])
+        self.assertEqual(pc.judge(["hash differs"], [], self.ROWS, [], "overlay")[0], "fail")
+        self.assertEqual(pc.judge([], ["round 1: fatal"], self.ROWS, [], "overlay")[0], "fail")
+        regressed = [self.ROWS[0], pc.compare_metric("result.run_ms", [10, 10], [14, 14])]
+        status, reasons = pc.judge([], [], regressed, [], "overlay")
+        self.assertEqual(status, "needs_human")
+        self.assertTrue(any("result.run_ms" in reason for reason in reasons))
+
     def test_refuses_pass_when_headline_regressed(self):
         for metric, base, head in (("result.run_ms", [10, 10], [14, 14]),
                                    ("rusage.maxrss_mb", [600, 600], [601, 601])):
@@ -525,6 +537,29 @@ class Assessment(unittest.TestCase):
             self.assertEqual(report["head"]["rounds"], 3)
             self.assertIn("base 4 rounds, head 3 rounds", (repo / "report.md").read_text())
 
+    def test_unmeasured_claim_still_checks_results_and_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            base = self.side(tmp, "a", {"ECONOMY": "1"}, [[], [], []])
+            head = self.side(tmp, "b", {"ECONOMY": "1"}, [[], [], []])
+            for saved in (base, head):
+                saved["identity"] = IDENTITY | saved["identity"]
+            args = pc.parse_args(["compare", "a", "b", "--unmeasured", "needs an open overlay", "--out", tmp])
+            args.started = pc.time.monotonic()
+            with mock.patch.object(pc, "ensure_records", return_value=[base, head]), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(pc.command_compare(args, repo, pc.Archive(repo)), pc.EXIT_HUMAN)
+            report = json.loads((repo / "report.json").read_text())
+            self.assertEqual(report["claims"], [])
+            self.assertEqual(report["unmeasured"], "needs an open overlay")
+            markdown = (repo / "report.md").read_text()
+            self.assertIn("daily per-domain hashes of base and head are identical", markdown)
+            self.assertIn("Claim not measured headlessly: needs an open overlay", markdown)
+            head["golden"]["candidate"] = self.side(tmp, "c", {"ECONOMY": "2"}, [])["golden"]["candidate"]
+            with mock.patch.object(pc, "ensure_records", return_value=[base, head]), \
+                 contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(pc.command_compare(args, repo, pc.Archive(repo)), pc.EXIT_FAIL)
+
 
 class BuildRecipe(unittest.TestCase):
     def test_builds_only_the_debug_target_the_headless_editor_loads(self):
@@ -590,6 +625,13 @@ class ArgumentChecks(unittest.TestCase):
             with self.subTest(flags=flags), contextlib.redirect_stderr(io.StringIO()) as stderr:
                 self.assertEqual(pc.main(["compare", "a", "b", *flags]), pc.EXIT_USAGE)
                 self.assertIn("--claim", stderr.getvalue())
+
+    def test_unmeasured_needs_a_reason_and_excludes_claims(self):
+        for flags in (["--unmeasured", ""], ["--unmeasured", "  "],
+                      ["--unmeasured", "overlay", "--claim", "run_ms"]):
+            with self.subTest(flags=flags), contextlib.redirect_stderr(io.StringIO()) as stderr:
+                self.assertEqual(pc.main(["compare", "a", "b", *flags]), pc.EXIT_USAGE)
+                self.assertIn("--unmeasured", stderr.getvalue())
 
     def test_history_starts_without_unix_fcntl(self):
         with mock.patch.dict(sys.modules, {"fcntl": None}), \

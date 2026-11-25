@@ -384,8 +384,12 @@ def cpu_idle() -> float | None:
 
 
 def judge(correctness: list[str], invalid_runs: list[str], rows: list[dict],
-          claims: list[str]) -> tuple[str, list[str]]:
-    """Overall status from facts: fail, needs_human or pass."""
+          claims: list[str], unmeasured: str | None = None) -> tuple[str, list[str]]:
+    """Overall status from facts: fail, needs_human or pass.
+
+    `unmeasured` says why the claimed gain cannot be measured headlessly. The results check and
+    the headline metrics are still judged, but such a run never passes: the claim needs a person.
+    """
     reasons = list(correctness) + list(invalid_runs)
     if reasons:
         return "fail", reasons
@@ -394,7 +398,10 @@ def judge(correctness: list[str], invalid_runs: list[str], rows: list[dict],
                if row["status"] in incomplete]
     if missing:
         return "fail", missing
-    human = [] if claims else ["no improvement claim supplied"]
+    if unmeasured is not None:
+        human = [f"claim not measured headlessly: {unmeasured}"]
+    else:
+        human = [] if claims else ["no improvement claim supplied"]
     regressions = ("regressed", "more_work")
     for pattern in claims:
         matched = [row for row in rows if re.search(pattern, row["metric"])]
@@ -962,6 +969,7 @@ def render_markdown(report: dict) -> str:
     lines += ["", "## Coverage", "",
               f"- {len(rows)} metrics compared: " + ", ".join(f"{v} {k}" for k, v in sorted(counts.items())),
               *(f"- Excluded from the statistics: {item}" for item in report.get("excluded_rounds", [])),
+              *([f"- Claim not measured headlessly: {report['unmeasured']}"] if report.get("unmeasured") else []),
               "- Not measured: windowed frame time and GPU work (needs an unlocked screen).",
               f"- Raw data: base `{base['path']}`, head `{head['path']}`"]
     if report["busy_samples"]:
@@ -972,7 +980,8 @@ def render_markdown(report: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def assess(base: dict, head: dict, claims: list[str], noise: float) -> dict:
+def assess(base: dict, head: dict, claims: list[str], noise: float,
+           unmeasured: str | None = None) -> dict:
     """Correctness is always checked; invalid rounds fail the check and never enter the statistics."""
     invalid = [f"{side} round {i}: {'; '.join(r['errors'])}"
                for side, record in (("base", base), ("head", head))
@@ -989,7 +998,7 @@ def assess(base: dict, head: dict, claims: list[str], noise: float) -> dict:
 
     rows = compare_rounds(valid_metrics(base), valid_metrics(head), noise)
     correctness = correctness_facts(base, head)
-    status, reasons = judge(correctness, invalid, rows, claims)
+    status, reasons = judge(correctness, invalid, rows, claims, unmeasured)
     return {"status": status, "reasons": reasons, "correctness": correctness, "rows": rows,
             "excluded_rounds": invalid}
 
@@ -997,7 +1006,7 @@ def assess(base: dict, head: dict, claims: list[str], noise: float) -> dict:
 def command_compare(args, repo: Path, archive: Archive) -> int:
     busy = []
     base, head = ensure_records(repo, archive, [args.base, args.head], args, busy)
-    verdict = assess(base, head, args.claim, args.noise)
+    verdict = assess(base, head, args.claim, args.noise, args.unmeasured)
     status, reasons, correctness, rows = (verdict[key] for key in ("status", "reasons", "correctness", "rows"))
     def side(record):
         return {"commit": record["identity"]["commit"], "subject": record.get("subject"),
@@ -1006,7 +1015,7 @@ def command_compare(args, repo: Path, archive: Archive) -> int:
                 "path": record.get("path"), "load_consistency": record.get("load_consistency")}
     report = {"status": status, "reasons": reasons, "base": side(base), "head": side(head),
               "scenario": args.scenario, "tier": args.tier, "requested_rounds": args.rounds, "noise": args.noise,
-              "claims": args.claim, "machine": head["identity"]["machine_label"],
+              "claims": args.claim, "unmeasured": args.unmeasured, "machine": head["identity"]["machine_label"],
               "toolchain": head["identity"]["toolchain_label"], "correctness": correctness,
               "busy_samples": busy, "metrics": rows, "excluded_rounds": verdict["excluded_rounds"],
               "elapsed_s": round(time.monotonic() - args.started), "budget_min": args.budget,
@@ -1061,8 +1070,12 @@ def parse_args(argv: list[str]):
         else:
             p.add_argument("base")
             p.add_argument("head")
-            p.add_argument("--claim", action="append", required=True,
-                           help="regex of a metric the change claims to improve (repeatable)")
+            what = p.add_mutually_exclusive_group(required=True)
+            what.add_argument("--claim", action="append",
+                              help="regex of a metric the change claims to improve (repeatable)")
+            what.add_argument("--unmeasured", metavar="REASON",
+                              help="the claimed gain has no headless metric (say why); still checks "
+                                   "the daily results and headline metrics, and never passes")
             p.add_argument("--noise", type=float, default=NOISE)
             p.add_argument("--out", help="report directory (default: inside the archive)")
         p.add_argument("--tier", choices=TIERS, default="quick")
@@ -1079,6 +1092,9 @@ def parse_args(argv: list[str]):
     h.add_argument("--commit")
     args = parser.parse_args(argv)
     if args.command == "compare":
+        if args.unmeasured is not None and not args.unmeasured.strip():
+            parser.error("--unmeasured needs a reason")
+        args.claim = args.claim or []
         for pattern in args.claim:
             if not pattern.strip():
                 parser.error("--claim must be a nonempty regex")
