@@ -516,11 +516,15 @@ def toolchain_identity(godot: str) -> dict:
     return {"toolchain": hashlib.sha256(label.encode()).hexdigest()[:16], "toolchain_label": label}
 
 
-def competing_processes(ps_output: str, mine: int, min_cpu: float = COMPETING_CPU) -> list[str]:
-    """Busy Godot, build or link processes that are not ours (an idle editor does not count)."""
+def competing_processes(ps_output: str, mine: int, min_cpu: float = COMPETING_CPU,
+                        executables: dict[int, str] | None = None) -> list[str]:
+    """Busy Godot, build or link processes that are not ours (an idle editor does not count).
+    The program is taken from `executables` (`ps -o comm=`), so a path with spaces stays whole;
+    a process missing from it falls back to the first word of its command line."""
+    executables = executables or {}
     found = []
     for pid, cpu, command in busy_processes(ps_output, mine, min_cpu):
-        executable = command.split()[0]
+        executable = executables.get(pid) or command.split()[0]
         if COMPETING.search(executable + " "):
             found.append(f"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu")
     return found
@@ -619,9 +623,9 @@ def wait_for_quiet_machine(args, log: list) -> dict:
         load1 = os.getloadavg()[0]
         idle = cpu_idle()
         cpus = os.cpu_count() or 0
-        table, mine = process_table(), os.getpid()
-        competing = competing_processes(table, mine)
-        busiest = [] if competing else busiest_processes(table, mine, parse_executables(executable_table()))
+        table, executables, mine = process_table(), parse_executables(executable_table()), os.getpid()
+        competing = competing_processes(table, mine, executables=executables)
+        busiest = [] if competing else busiest_processes(table, mine, executables)
         reasons = load_gate(idle, competing, args.min_idle, busiest)
         sample = {"at": now(), "cpu_idle": None if idle is None else round(idle, 3),
                   "load1": round(load1, 2), "cpus": cpus, "busy": reasons}

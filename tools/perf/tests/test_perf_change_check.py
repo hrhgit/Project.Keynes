@@ -365,6 +365,20 @@ class MachineLoadGate(unittest.TestCase):
         found = pc.competing_processes(table, mine=500)
         self.assertEqual([entry.split()[0] for entry in found], ["10", "12"])
 
+    def test_competing_build_is_found_when_its_path_has_a_space(self):
+        table = "\n".join([
+            "  15     1  90.0 /Users/me/My Tools/scons -j8",
+            "  16     1  85.0 /Applications/Godot Engine.app/Contents/MacOS/Godot --headless",
+            "  17     1  99.0 /usr/bin/python3 /Users/me/My Tools/godot",
+        ])
+        names = pc.parse_executables("\n".join([
+            "15 /Users/me/My Tools/scons",
+            "16 /Applications/Godot Engine.app/Contents/MacOS/Godot",
+            "17 /usr/bin/python3",
+        ]))
+        self.assertEqual(pc.competing_processes(table, mine=500, executables=names),
+                         ["15 scons 90% cpu", "16 Godot 85% cpu"])
+
     def test_busiest_names_any_busy_process_busiest_first_but_not_ours(self):
         table = "\n".join([
             "  20     1  40.0 /usr/bin/python3 tools/x.py",
