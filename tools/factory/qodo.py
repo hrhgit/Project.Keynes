@@ -25,7 +25,7 @@ def _parse(out: str) -> dict | None:
 def local_review(qodo: str, workdir: str, repo: str, base: str, context_file: str, timeout_min: int) -> dict:
     """Review staged, unstaged and untracked changes against `base`. Returns a summary dict.
 
-    `repo` is passed explicitly: the work tree's origin is the upstream, which is not connected to Qodo.
+    `repo` is passed explicitly rather than read from the work tree's remotes.
     """
     r = sh([qodo, "review", "--repo", repo, "--base", base,
             "--context-file", context_file, "--json"],

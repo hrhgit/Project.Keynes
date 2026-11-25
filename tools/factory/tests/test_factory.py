@@ -262,5 +262,16 @@ class GuardListTest(unittest.TestCase):
         self.assertIn("check_size_ratchet.py", checks.static_guards(str(root), ".github/workflows/runtime-checks.yml"))
 
 
+class ConfigKeysTest(unittest.TestCase):
+    def test_every_top_level_config_key_is_read_by_the_factory(self):
+        # A key nothing reads looks like a setting but changes nothing.
+        factory = Path(__file__).resolve().parents[1]
+        source = "\n".join(f.read_text() for f in [*factory.glob("*.py"), *factory.glob("*.sh")])
+        unread = [key for key in load_config()
+                  if f'cfg["{key}"]' not in source and f"cfg['{key}']" not in source
+                  and f'cfg.get("{key}"' not in source and f"cfg.get('{key}'" not in source]
+        self.assertEqual(unread, [])
+
+
 if __name__ == "__main__":
     unittest.main()
