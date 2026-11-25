@@ -88,6 +88,13 @@ class QualityGateTest(unittest.TestCase):
             with self.subTest(level=level):
                 self.assertEqual(judge(facts(findings=[finding(level)])).verdict, "NEEDS_HUMAN")
 
+    def test_a_closed_finding_with_an_unknown_level_goes_to_a_person(self):
+        # The merge path in watch_prs.py stops on these; the done report must not call them READY.
+        for status in ("implemented", "dismissed"):
+            for level in ("urgent", "", None):
+                with self.subTest(status=status, level=level):
+                    self.assertEqual(judge(facts(findings=[finding(level, status)])).verdict, "NEEDS_HUMAN")
+
     def test_a_stalled_loop_stops_instead_of_reporting_done(self):
         v = judge(facts(findings=[finding("action_required")], review_stalled=True))
         self.assertEqual(v.verdict, "NEEDS_HUMAN")

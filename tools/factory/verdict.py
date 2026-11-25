@@ -126,7 +126,8 @@ def judge(f: Facts) -> Verdict:
         human.append("the plan asked for the macOS runtime check, but no native sources changed, so it did not run")
     if f.ci_state == "error":
         human.append("the CI state could not be read")
-    unknown = unknown_findings(f.findings)
+    # Same check as the merge path (watch_prs.decide): a closed finding must still carry a known level.
+    unknown = unknown_findings(f.findings, require_level=True)
     if unknown:
         human.append("findings with an unknown status or action_level: " + ", ".join(unknown))
     blocking = [x for x in f.findings if classify(x) == "blocking"]

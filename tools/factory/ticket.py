@@ -25,6 +25,12 @@ def section(body: str, titles: tuple[str, ...]) -> list[str] | None:
     return None
 
 
+def heading_count(body: str, titles: tuple[str, ...]) -> int:
+    """How many `## <title>` headings with one of these titles the body has."""
+    return sum(1 for line in (body or "").splitlines()
+               if (m := HEADING.match(line)) and m.group(1).strip().lower() in titles)
+
+
 def criteria(body: str) -> list[str]:
     """Checkbox (`- [ ] x`) or numbered (`1. x`) items under the acceptance-criteria heading."""
     lines = section(body, CRITERIA_TITLES) or []
@@ -40,6 +46,11 @@ def gate(title: str, body: str, labels: list[str], skip_labels: list[str]) -> li
         errors.append("the ticket has no '## Acceptance criteria' (or '## 验收标准') section")
     elif not criteria(body):
         errors.append("the acceptance-criteria section has no checkbox or numbered items")
+    from perf import parse_claim_section  # perf reads sections with this module's parser
+    try:
+        parse_claim_section(body)
+    except ValueError as e:
+        errors.append(str(e))
     blocked = sorted(set(labels) & set(skip_labels))
     if blocked:
         errors.append("the ticket carries " + ", ".join(blocked))
