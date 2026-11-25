@@ -21,8 +21,9 @@ def pr(**kw):
     return {"number": 7, "headRefOid": HEAD, "isDraft": False, "isCrossRepository": False, "labels": [], **kw}
 
 
-def review(status="completed", sha=HEAD, findings=None):
-    return {"review_session": {"status": status, "commit_sha": sha}, "findings": findings or []}
+def review(status="completed", sha=HEAD, findings=None, complete=True):
+    return {"review_session": {"status": status, "commit_sha": sha, "review_complete": complete},
+            "findings": findings or []}
 
 
 def finding(i, level="action_required", status="pending"):
@@ -148,6 +149,14 @@ class MergeDecision(unittest.TestCase):
         for r in (review(sha="older-head"), review(status="started"), {"review_session": None}):
             self.assertEqual(self.d(r=r).action, "skip")
         self.assertEqual(self.d(r=review(status="failed")).action, "stop")
+
+    def test_completed_review_that_qodo_did_not_finish_never_merges(self):
+        # PR 69: status "completed", review_effort "skip", review_complete false, no findings.
+        for complete in (False, None, "true", 1):
+            with self.subTest(review_complete=complete):
+                d = self.d(r=review(complete=complete))
+                self.assertEqual(d.action, "stop")
+                self.assertIn("review_complete", d.reason)
 
     def test_unknown_finding_fields_and_missing_list_stop_merge(self):
         items = [finding("status", status="unknown"), finding("open", level="unknown"),

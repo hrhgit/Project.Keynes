@@ -18,7 +18,7 @@ HEAD = "abc123"
 
 
 def ready(**kw) -> Facts:
-    base = dict(head=HEAD, checks_sha=HEAD, review_status="completed", review_sha=HEAD,
+    base = dict(head=HEAD, checks_sha=HEAD, review_status="completed", review_complete=True, review_sha=HEAD,
                 ci_state="success", findings=[])
     base.update(kw)
     return Facts(**base)
@@ -44,6 +44,14 @@ class VerdictTest(unittest.TestCase):
 
     def test_review_still_running_is_not_done(self):
         self.assertEqual(judge(ready(review_status="started")).verdict, "NOT_DONE")
+
+    def test_review_qodo_skipped_as_trivial_is_not_done(self):
+        # PR 69 merged on such a review: status "completed", review_effort "skip", no findings.
+        for complete in (False, None):
+            with self.subTest(review_complete=complete):
+                v = judge(ready(review_complete=complete))
+                self.assertEqual(v.verdict, "NOT_DONE")
+                self.assertTrue(any("review_complete" in r for r in v.reasons))
 
     def test_checks_on_another_commit_are_not_done(self):
         self.assertEqual(judge(ready(checks_sha="old")).verdict, "NOT_DONE")

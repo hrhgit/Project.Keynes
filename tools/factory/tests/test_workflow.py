@@ -37,7 +37,7 @@ PR = {"number": 7, "headRefOid": HEAD, "headRefName": "issue", "title": "Example
 
 
 def review(*findings):
-    return {"review_session": {"status": "completed", "commit_sha": HEAD}, "findings": list(findings)}
+    return {"review_session": {"status": "completed", "commit_sha": HEAD, "review_complete": True}, "findings": list(findings)}
 
 
 class TempFactory(unittest.TestCase):
@@ -215,7 +215,7 @@ class IssueWorkflowTest(TempFactory):
         run = self.make_run()
         run.pr = {"url": "https://example.invalid/pr/7"}
         run.facts.head = HEAD
-        review = {"review_session": {"status": "completed", "commit_sha": HEAD}, "findings": [FINDING]}
+        review = {"review_session": {"status": "completed", "commit_sha": HEAD, "review_complete": True}, "findings": [FINDING]}
         with (patch("qodo.wait_pr_review", return_value=review), patch.object(run, "wait_ci", return_value="success"),
               patch.object(run, "fix", return_value=True), patch("work.dirty", return_value=True),
               patch("work.changed", return_value=["edit.gd", ".github/new.yml"]),

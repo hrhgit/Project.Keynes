@@ -25,7 +25,7 @@ SEVERITIES = [
 
 
 def facts(**kw) -> Facts:
-    base = dict(head=HEAD, checks_sha=HEAD, review_status="completed", review_sha=HEAD,
+    base = dict(head=HEAD, checks_sha=HEAD, review_status="completed", review_complete=True, review_sha=HEAD,
                 ci_state="success", findings=[])
     base.update(kw)
     return Facts(**base)
@@ -74,7 +74,9 @@ class QualityGateTest(unittest.TestCase):
     def test_refuses_done_without_a_review_of_the_head(self):
         for name, kw in (("older commit", dict(review_sha="old")), ("still running", dict(review_status="started")),
                          ("skipped", dict(review_status="skipped")), ("failed", dict(review_status="failed")),
-                         ("none", dict(review_status=None, review_sha=None))):
+                         ("none", dict(review_status=None, review_sha=None)),
+                         ("completed but skipped as trivial", dict(review_complete=False)),
+                         ("completeness unknown", dict(review_complete=None))):
             with self.subTest(review=name):
                 self.assertEqual(judge(facts(**kw)).verdict, "NOT_DONE")
 

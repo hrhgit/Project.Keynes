@@ -67,6 +67,7 @@ class Facts(NativeFacts):
     local_blocking: list[str] = field(default_factory=list)
     local_review_incomplete: bool = False
     review_status: str | None = None
+    review_complete: bool | None = None  # Qodo's review_complete; false when it skipped the change as trivial
     review_sha: str | None = None
     findings: list[dict] = field(default_factory=list)
     review_rounds: int = 0
@@ -149,6 +150,8 @@ def judge(f: Facts) -> Verdict:
         missing.append(f"the Qodo review is {f.review_status}")
     elif f.review_sha != f.head:
         missing.append("the Qodo review is of an older commit")
+    elif f.review_complete is not True:
+        missing.append("Qodo did not complete its review of the head (review_complete is not true)")
     if f.ci_state in (None, "pending"):
         missing.append("CI has not finished on the PR head")
     if missing:
