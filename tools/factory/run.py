@@ -126,7 +126,8 @@ class Run:
         for attempt in range(1, self.cfg["limits"]["implementAttempts"] + 1):
             prompt = agent.render("implement", number=str(self.number), title=issue["title"],
                                   body=issue["body"] or "", criteria=crit, plan=plan,
-                                  feedback=f"Problems from the previous attempt:\n\n{feedback}" if feedback else "")
+                                  feedback=f"Problems from the previous attempt:\n\n{feedback}" if feedback else "",
+                                  review_rules=agent.review_rules())
             out = agent.codex(self.cfg, self.workdir, prompt, self.path(f"implement-{attempt}.md"), writable=True)
             self.record.setdefault("reports", []).append(out["report"][-4000:])
             if not out["ok"]:

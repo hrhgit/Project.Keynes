@@ -304,5 +304,40 @@ class ConfigKeysTest(unittest.TestCase):
                              ['# load_config()["upstream"]'])
         self.assertEqual(reads, set())
 
+
+class ReviewRulesPromptTest(unittest.TestCase):
+    """The implement prompt carries every review-only Qodo rule, so the coding agent sees them before Qodo does."""
+
+    def render_implement(self) -> str:
+        return agent.render("implement", number="1", title="t", body="b", criteria="- c", plan="p", feedback="",
+                            review_rules=agent.review_rules())
+
+    def test_implement_prompt_names_every_rule_in_the_rules_file(self):
+        import json
+        rules = json.loads(agent.REVIEW_RULES.read_text(encoding="utf-8"))["rules"]
+        prompt = self.render_implement()
+        self.assertNotIn("{review_rules}", prompt)
+        for rule in rules:
+            with self.subTest(rule=rule["name"]):
+                self.assertIn(rule["name"], prompt)
+        self.assertIn("errors fail loudly instead of falling back silently", prompt)
+
+    def test_a_rules_file_without_usable_rules_is_refused(self):
+        bad = {
+            "no rules key": '{"scope": "x"}',
+            "empty list": '{"rules": []}',
+            "rule without content": '{"rules": [{"name": "Keynes: a rule"}]}',
+            "rule with blank name": '{"rules": [{"name": " ", "content": "text"}]}',
+            "rules not a list": '{"rules": "Keynes: a rule"}',
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            for case, text in bad.items():
+                with self.subTest(case=case):
+                    path = Path(tmp) / "rules.json"
+                    path.write_text(text, encoding="utf-8")
+                    with self.assertRaises(ValueError):
+                        agent.review_rules(path)
+
+
 if __name__ == "__main__":
     unittest.main()

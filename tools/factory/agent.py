@@ -9,11 +9,34 @@ from common import FACTORY, godot_environment, sh
 from ticket import section
 
 
+REVIEW_RULES = FACTORY.parents[1] / "docs" / "factory" / "qodo-rules.json"
+
+
 def render(name: str, **values: str) -> str:
     text = (FACTORY / "prompts" / f"{name}.md").read_text(encoding="utf-8")
     for key, value in values.items():
         text = text.replace("{" + key + "}", value)
     return text
+
+
+def review_rules(path: Path = REVIEW_RULES) -> str:
+    """The rules only Qodo review enforces, as a Markdown list for the implement prompt.
+
+    Raises ValueError when the file has no rules or a rule lacks a name or content, so the agent never
+    runs with a silently empty rule list.
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
+    rules = data.get("rules") if isinstance(data, dict) else None
+    if not isinstance(rules, list) or not rules:
+        raise ValueError(f"{path}: no rules")
+    lines = []
+    for i, rule in enumerate(rules):
+        name = rule.get("name") if isinstance(rule, dict) else None
+        content = rule.get("content") if isinstance(rule, dict) else None
+        if not isinstance(name, str) or not name.strip() or not isinstance(content, str) or not content.strip():
+            raise ValueError(f"{path}: rule {i} has no name or content")
+        lines.append(f"- **{name.strip()}** {' '.join(content.split())}")
+    return "\n".join(lines)
 
 
 def codex(cfg: dict, workdir: str, prompt: str, report: str, writable: bool, *, session: str | None = None) -> dict:

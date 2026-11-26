@@ -40,3 +40,5 @@
 | 关口、解析器、白名单和校验器要用它们必须拒绝的输入来测 | AGENTS.md 规则 6 | 测试：`tools/factory/tests/test_gates_refuse.py`（名字像关口的函数没登记拒绝用例就失败）；Qodo 规则“gates are tested with inputs they must refuse” |
 
 合计 34 条规则：至少有一项护栏或测试的 20 条（其中“前台只读”一条，护栏只管到原生绑定访问）；只靠 Qodo 规则的 7 条；靠工厂关卡或提示词的 5 条（“找根因”一条另有 Qodo 规则）；只有文字说明的 2 条。
+
+只靠 Qodo 规则的那几条，评审在 PR 上才会指出。工厂实现提示词里的规则清单由 `agent.review_rules()` 从 [qodo-rules.json](qodo-rules.json) 生成，Codex 写代码前就能看到每一条；`ReviewRulesPromptTest` 检查每条规则名都在渲染后的提示词里，规则文件为空或缺名字、内容时工厂直接报错。这只是把规则送到写代码的一方，不算强制，上面的分类不变。
