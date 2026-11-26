@@ -1,6 +1,5 @@
 {
   "repo": "hrhgit/Project.Keynes",
-  "upstream": "HkingAuditore/Project.Keynes",
   "base": "master",
   "remote": "fork",
   "home": "~/.keynes-factory",
