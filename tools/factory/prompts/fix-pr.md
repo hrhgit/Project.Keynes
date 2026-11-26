@@ -18,4 +18,8 @@ Do not commit, branch, push or stash. Do not loosen assertions, lengthen timeout
 Leave `.github/`, `tools/factory/`, `tools/ci/`, `.qodo/`, `gdext/godot-cpp/` and `gdext/rebuild.sh` to a person. Leave changes under `Project/project-keynes/addons/dots_ext/bin/` to a person. The factory builds and checks the macOS libraries locally when native source changes.
 A finding that asks for the Linux, Windows, Android or Web libraries to be rebuilt, or for export or `.gdextension` library selection to change, is outside what one ticket does: dispute it with that reason and change nothing for it.
 
+Qodo reviews the pull request against these project rules (`docs/factory/qodo-rules.json`). No static check enforces them, so the change must meet them:
+
+{review_rules}
+
 Finish with a short report: one line per finding id saying fixed (and how) or disputed (and why).

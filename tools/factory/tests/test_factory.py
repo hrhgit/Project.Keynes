@@ -10,6 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import agent  # noqa: E402
+from common import FACTORY  # noqa: E402
 import checks  # noqa: E402
 from common import load_config  # noqa: E402
 from run import claimable  # noqa: E402
@@ -303,6 +304,63 @@ class ConfigKeysTest(unittest.TestCase):
         reads = config_reads(['# cfg["upstream"] is gone\nnote = \'cfg["upstream"]\'\ncfg["upstream"] = 1'],
                              ['# load_config()["upstream"]'])
         self.assertEqual(reads, set())
+
+
+class ReviewRulesPromptTest(unittest.TestCase):
+    """Every prompt that lets Codex write code carries every review-only Qodo rule, text and examples included,
+    so the agent sees them before Qodo does."""
+
+    def rules(self):
+        import json
+        return json.loads(agent.REVIEW_RULES.read_text(encoding="utf-8"))["rules"]
+
+    def code_prompts(self):
+        names = sorted(p.stem for p in (FACTORY / "prompts").glob("*.md"))
+        return [n for n in names if n not in agent.PROMPTS_WITHOUT_RULES]
+
+    def test_every_code_writing_prompt_carries_every_rule_with_its_text_and_examples(self):
+        names = self.code_prompts()
+        self.assertGreaterEqual(set(names), {"implement", "fix-review", "fix-pr", "fix-checks", "fix-update",
+                                             "resolve-conflicts"})
+        for name in names:
+            prompt = agent.render(name)
+            flat = " ".join(prompt.split())
+            self.assertNotIn("{review_rules}", prompt, name)
+            for rule in self.rules():
+                with self.subTest(prompt=name, rule=rule["name"]):
+                    self.assertIn(rule["name"], prompt)
+                    self.assertIn(" ".join(rule["content"].split()), flat)
+                    for key in ("good_examples", "bad_examples"):
+                        for line in rule.get(key, "").splitlines():
+                            if line.strip():
+                                self.assertIn(line, prompt)
+        self.assertIn("errors fail loudly instead of falling back silently", agent.render("implement"))
+
+    def test_only_listed_prompts_go_without_rules(self):
+        for name, reason in agent.PROMPTS_WITHOUT_RULES.items():
+            with self.subTest(prompt=name):
+                self.assertTrue(reason.strip())
+                text = (FACTORY / "prompts" / f"{name}.md").read_text(encoding="utf-8")
+                self.assertNotIn("{review_rules}", text)
+                self.assertNotIn("{review_rules}", agent.render(name))
+
+    def test_a_rules_file_without_usable_rules_is_refused(self):
+        bad = {
+            "no rules key": '{"scope": "x"}',
+            "empty list": '{"rules": []}',
+            "rule without content": '{"rules": [{"name": "Keynes: a rule"}]}',
+            "rule with blank name": '{"rules": [{"name": " ", "content": "text"}]}',
+            "rules not a list": '{"rules": "Keynes: a rule"}',
+            "rule not an object": '{"rules": ["Keynes: a rule"]}',
+            "examples not text": '{"rules": [{"name": "n", "content": "c", "bad_examples": ["x"]}]}',
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            for case, text in bad.items():
+                with self.subTest(case=case):
+                    path = Path(tmp) / "rules.json"
+                    path.write_text(text, encoding="utf-8")
+                    with self.assertRaises(ValueError):
+                        agent.review_rules(path)
 
 if __name__ == "__main__":
     unittest.main()

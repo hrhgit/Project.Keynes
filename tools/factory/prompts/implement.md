@@ -19,6 +19,10 @@ Rules for this run:
 - Add or update tests that prove each acceptance criterion.
 - If a person must decide something before you can continue, write the question to `.factory-question.md` in the repository root and stop.
 
+Qodo reviews the pull request against these project rules (`docs/factory/qodo-rules.json`). No static check enforces them, so write the change to meet them from the start:
+
+{review_rules}
+
 {feedback}
 
 Finish with a short report: what you changed and why, which tests prove each criterion, and anything you could not verify.

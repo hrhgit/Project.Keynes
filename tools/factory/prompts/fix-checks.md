@@ -10,4 +10,8 @@ Do not commit, branch, push or stash. Do not edit `.factory-disagree.md`. Do not
 
 Leave `.github/`, `tools/factory/`, `tools/ci/`, `.qodo/`, `gdext/godot-cpp/` and `gdext/rebuild.sh` to a person. Leave changes under `Project/project-keynes/addons/dots_ext/bin/` to a person. The factory builds and checks the macOS libraries locally when native source changes.
 
+Qodo reviews the pull request against these project rules (`docs/factory/qodo-rules.json`). No static check enforces them, so the change must meet them:
+
+{review_rules}
+
 Finish with a short report: one line per failed check saying what caused it and what you changed.
