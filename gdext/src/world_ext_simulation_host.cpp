@@ -1385,19 +1385,6 @@ Dictionary DCWorldExt::poll_runtime_commit(int64_t after_generation, bool take_d
     if (publication) {
         out["display_dirty_cells"] = publication->changed_cells;
         out["display_class_cells"] = publication->changed_classes;
-        if (commit.day_tail && !commit.day_tail->cell_luts.transition_age.empty()) {
-            const auto &model = commit.day_tail->cell_luts;
-            const auto pack = [](const std::vector<uint8_t> &bytes) {
-                PackedByteArray result;
-                if (!bytes.empty() && result.resize(bytes.size()) == OK)
-                    std::memcpy(result.ptrw(), bytes.data(), bytes.size());
-                return result;
-            };
-            Dictionary frame;
-            frame["transition_age"] = pack(model.transition_age);
-            frame["previous_vitality"] = pack(model.previous_vitality);
-            out["cell_lut_frame"] = frame;
-        }
         out["days"] = publication->records;
         out["notice_history"] = publication->notices;
         if (!publication->construction_receipts.is_empty())
@@ -1410,8 +1397,62 @@ Dictionary DCWorldExt::poll_runtime_commit(int64_t after_generation, bool take_d
     return out;
 }
 
-void DCWorldExt::finish_runtime_display_frame() {
+int64_t DCWorldExt::finish_runtime_display_frame(bool keep_for_map) {
+    int64_t publication_id = 0;
+    // Pin the accepted day after the shared display fields have been installed.
+    // A same-day receipt after a restart must not replace a pending map frame.
+    if (keep_for_map && _runtime_display_commit.day_tail &&
+        _runtime_display_commit.header.committed_day == _climate_writeback_applied_day) {
+        _runtime_map_display_commit = std::move(_runtime_display_commit);
+        publication_id = ++_runtime_map_display_id;
+    }
     _runtime_display_commit = {};
+    return publication_id;
+}
+
+Dictionary DCWorldExt::read_runtime_map_lut_frame(Object *map, int64_t publication_id,
+        int64_t day, int64_t generation, int cell_count, bool measure_copy) const {
+    const auto fail = [](const char *reason) {
+        Dictionary failure;
+        failure["reason"] = reason;
+        return failure;
+    };
+    const auto &commit = _runtime_map_display_commit;
+    if (publication_id <= 0) return fail("map_lut_display_not_installed");
+    if (!commit.day_tail) return fail("map_lut_publication_unavailable");
+    if (!map || map != _map_data) return fail("map_lut_map_mismatch");
+    if (publication_id != _runtime_map_display_id) return fail("map_lut_publication_mismatch");
+    if (day != commit.header.committed_day) return fail("map_lut_day_mismatch");
+    if (generation <= 0 || static_cast<uint64_t>(generation) != commit.header.generation)
+        return fail("map_lut_generation_mismatch");
+    if (_climate_writeback_applied_day >= 0 && _climate_writeback_applied_day != day)
+        return fail("map_lut_climate_day_mismatch");
+    if (cell_count <= 0 || cell_count != _native_world_cell_count)
+        return fail("map_lut_cell_count_mismatch");
+
+    const auto &model = commit.day_tail->cell_luts;
+    const auto count = static_cast<size_t>(cell_count);
+    if (model.transition_age.size() != count || model.previous_vitality.size() != count)
+        return fail("map_lut_column_size_mismatch");
+
+    Dictionary frame;
+    using Clock = std::chrono::steady_clock;
+    const auto started = measure_copy ? Clock::now() : Clock::time_point{};
+    PackedByteArray ages, vitalities;
+    if (ages.resize(cell_count) != OK || vitalities.resize(cell_count) != OK)
+        return fail("map_lut_allocation_failed");
+    std::memcpy(ages.ptrw(), model.transition_age.data(), count);
+    std::memcpy(vitalities.ptrw(), model.previous_vitality.data(), count);
+    if (measure_copy)
+        frame["copy_ns"] = static_cast<int64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - started).count());
+    frame["transition_age"] = ages;
+    frame["previous_vitality"] = vitalities;
+    return frame;
+}
+
+void DCWorldExt::clear_runtime_map_lut_frame() {
+    _runtime_map_display_commit = {};
 }
 
 Dictionary DCWorldExt::request_runtime_stop(bool preserve_day_boundary) {

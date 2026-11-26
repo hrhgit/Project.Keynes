@@ -624,6 +624,8 @@ func uses_worker_day_commits() -> bool:
 func reset_presentation() -> void:
 	publication_reader.reset()
 	_presentation.reset_worker_views()
+	if _generator != null:
+		_generator._get_map_runtime_bridge().clear_runtime_map_lut_frame()
 	presentation_reset.emit()
 
 func ui_worker_day() -> int:
@@ -817,6 +819,14 @@ func _service_worker_map_presentation(frame_started_usec: int) -> void:
 	_sched_proc_country_visual_ms += _sched_elapsed_ms(country_started_usec)
 
 func _publish_worker_map(update: Dictionary, day: int, started_usec: int) -> bool:
+	if _generator != null and update.has("map_lut_publication_id"):
+		var frame: Dictionary = _generator._get_map_runtime_bridge().read_runtime_map_lut_frame(
+			_current_map, int(update.map_lut_publication_id), day, int(update.map_lut_generation))
+		if frame.has("reason"):
+			if not _presentation._map_updates.needs_recovery:
+				push_error("[worker-map] Day %d publication failed: %s" % [day, frame.reason])
+			return false
+		update["cell_lut_frame"] = frame
 	# Publish textures before the vision-dependent layers and weather read them.
 	var result := _generator.publish_worker_climate_visuals(false, update) \
 		if _generator != null else {"reason": "missing_generator"}

@@ -70,9 +70,14 @@ void DCWorldExt::_bind_runtime_methods() {
                          &DCWorldExt::submit_runtime_command);
     ClassDB::bind_method(D_METHOD("poll_runtime_receipts", "max_items"),
                          &DCWorldExt::poll_runtime_receipts, DEFVAL(128));
-    ClassDB::bind_method(D_METHOD("finish_runtime_display_frame"), &DCWorldExt::finish_runtime_display_frame);
+    ClassDB::bind_method(D_METHOD("finish_runtime_display_frame", "keep_for_map"),
+                         &DCWorldExt::finish_runtime_display_frame, DEFVAL(false));
     ClassDB::bind_method(D_METHOD("poll_runtime_commit", "after_generation", "take_days"),
                          &DCWorldExt::poll_runtime_commit, DEFVAL(0), DEFVAL(false));
+    ClassDB::bind_method(D_METHOD("read_runtime_map_lut_frame", "map", "publication_id", "day", "generation",
+                                 "cell_count", "measure_copy"),
+                         &DCWorldExt::read_runtime_map_lut_frame, DEFVAL(false));
+    ClassDB::bind_method(D_METHOD("clear_runtime_map_lut_frame"), &DCWorldExt::clear_runtime_map_lut_frame);
     ClassDB::bind_method(D_METHOD("profile_runtime_save_window", "active"), &DCWorldExt::profile_runtime_save_window);
     ClassDB::bind_method(D_METHOD("request_runtime_save", "request_id"),
                          &DCWorldExt::request_runtime_save);

@@ -139,8 +139,10 @@ func _consume_runtime_commit_if_ready(host, report_override: Dictionary = {}) ->
 	if ideology != null:
 		ideology.drain_receipts()
 	host.simulation_committed.emit(from_day, host._runtime_commit_day, host._runtime_commit_generation)
-	ext.finish_runtime_display_frame()
-	if not whole_graph:
+	if whole_graph:
+		commit["map_lut_publication_id"] = ext.finish_runtime_display_frame(bool(vision.get("ok", false)))
+	else:
+		ext.finish_runtime_display_frame()
 		# This path publishes the installed map directly, without a queued worker texture.
 		host.map_texture_published.emit(commit_day)
 	host._presentation.queue_worker_commit(from_day,

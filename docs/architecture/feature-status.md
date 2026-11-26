@@ -76,6 +76,69 @@ PR #74 审查回归中，旧实现把尚未绘制的视野当成未探索，丢�
 两种情况各取 225 帧，窗口绘制的 CPU 耗时中位数分别为 0.144 ms 和 0.137 ms。
 Metal 接口在这次测量中没有返回可用的 GPU 耗时。原始记录见 `composite/`。
 
+## 地图按需读取生态贴图数据（#83，2026-11-26）
+
+改前基线 `62ba798d6` 经 `GameFlow` 启动正式玩家场景。Godot 4.6.3，种子
+`20260718`，60×40 格、四国、高画质、60 帧档、50×。无窗口探针在领到第 40 日后
+开始占用每帧预算，直到领到第 55 日。第 41–55 日逐帧领取 15 批结果，地图贴图一直停在
+第 40 日，贴图准备和提交次数都是零。原生复制处记录了 15 对 2,400 字节的数组，
+共 72,000 字节。分配与复制合计 55.416 微秒，单次中位数 2.667 微秒，
+P95 为 16.917 微秒，范围 1.375–16.917 微秒。记录保存在
+`/private/tmp/keynes83-replay.4a3CtW/baseline-headless.jsonl` 及其 `.days` 文件。
+
+`DCWorldExt::poll_runtime_commit()` 在领取记录和回执时就为 `transition_age`、
+`previous_vitality` 分配并复制整列。两列只供生态贴图使用，帧预算直到
+`apply_pending_worker_map()` 才检查。地块分类也供详情面板使用，需随领取安装。
+macOS 的窗口启动在进入游戏前失败，以上时长只代表这次无窗口复现。
+
+改后用相同的正式场景复现。第 41–55 日仍逐帧领取 15 批，地图贴图停在第 40 日，
+两列的读取次数和复制字节都是零。恢复时最新已领取到第 56 日，一次读取 4,800 字节
+并应用第 56 日的贴图。旧版忙帧、改后正常帧和改后忙帧三次运行的第 1–75 日
+业务摘要、命令生效日及回执顺序完全相同。逐帧、逐日记录及对照汇总保存在
+`/private/tmp/keynes83-replay.4a3CtW/`，汇总为 `headless-comparison.json`。
+
+`player_map_publication_test.gd` 以每 100 ms 领取一次、5× 推进到正式玩家待答点。
+积压的第 2–20 日照常交付 19 天的记录，贴图列复制为零。后台已经获准推进到第 21 日，
+仍停在第 20 日等玩家选择。同局暂停并重启执行器后，只读取一次第 20 日，最终贴图字节
+与每日刷新的版本相同。用例还覆盖了错误发布身份、落后画面的选格视野和详情、
+积压期间保存、读档和换局清理。`cell_lut_incremental_test.gd` 在不同日分别改变
+两个地块，逐字节比较合并更新和每日更新。`simulation_presentation_coalescing_test.gd`
+验证视野变化的同帧优先规则，`independent_presentation_test.gd` 验证普通面板的独立刷新。
+
+macOS arm64 调试版和发布版均在临时副本构建。普通和表外推进的逐日校验在改前、
+改后各跑三轮，均与改前首轮一致。`check_replay_matrix.py` 的四组存档续跑通过。
+地图贴图测试通过 72 项，游戏设置通过 34 项，天气表通过 111 项并跳过两项图形读回。
+架构检查和 98 项性能工具测试通过。已导入的副本通过 12 项运行回归及正式存档往返，
+包括读档后处理待答剧情和继续一个完整经济结算周期。单独的编辑器导入检查遇到
+Godot 的 ObjectDB 快照目录错误。运行回归详见原始记录目录下的 `regression-runtime.log`。
+
+在已导入的项目副本复现无窗口路径。改前在 `poll_runtime_commit()` 的两次数组分配与
+`memcpy` 外计时，将耗时以纳秒写入 `cell_lut_frame.copy_ns`。改前改后使用同一份探针。
+补丁样本是原始记录目录下的
+`baseline-copy-timing.patch`。每次运行使用独立的存档目录。
+
+```sh
+PK_SAVE_DIR="$saves" godot --headless --path "$project" \
+  --script res://tests/game/player_scene_handoff_probe.gd -- \
+  --fps=60 --speed=50 --through=75 --answer-story --command-log \
+  --overload --simulate-frames --frames="$trace"
+```
+
+窗口对照由同一探针以 1600×960、高画质、开垂直同步和 60 帧档运行。两种负载各三组交替运行。
+统计两列读取次数、字节、分配与复制时长、派遣按钮点击到首个面板可见帧的时间、
+地图实际出图间隔、日提交速率和出图时落后天数。
+
+```sh
+python3 tools/perf/run_rendered_player_handoff.py "$base_project" "$candidate_project" \
+  --output "$normal_output" --fps 60 --map-reads
+python3 tools/perf/run_rendered_player_handoff.py "$base_project" "$candidate_project" \
+  --output "$busy_output" --fps 60 --map-reads --overload --expect-pacing
+```
+
+macOS 的 `open` 对两组测量及 `independent_presentation_window_test.gd` 都返回
+`kLSNoExecutableErr`；直接启动报窗口服务连接错误，桌面工具拒绝访问 Godot。
+可见窗口的样本量为 0，点击反馈、实际出图间隔、日提交速率及屏幕地图落后天数均未测得。
+
 ## 按帧率推迟地图更新（#63，2026-11-24）
 
 ### 改前取证
