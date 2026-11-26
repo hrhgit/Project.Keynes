@@ -2,7 +2,7 @@
 
 [PR 87](https://github.com/hrhgit/Project.Keynes/pull/87) changes `tools/factory/config.json`, `tools/factory/qodo.py` and `tools/factory/tests/test_factory.py`. The prediction in `retest-predictions.md` (committed before the run) was: the guard matches, no Qodo approved label.
 
-**Result: the prediction failed, and the guard as Qodo stores it cannot hold one path while labelling the rest of the repository.** Every run is listed below, including mine that broke things.
+**Result.** With the guard as the web app stores it, the prediction failed: one form never matched the path, the other stopped all evaluation in the repository. A third form, a bare path pattern written to the settings API, did what the prediction said (state C below). Every run is listed, including mine that broke things.
 
 ## Guard states tried
 
@@ -12,10 +12,11 @@ The workspace guard is stored as `merge_automation.guards`. The web app writes "
 |---|---|---|---|
 | A | `[]` | `hrhgit/Project.Keynes:tools/factory/**` | At 12:41 UTC I removed the repository entry in the guards panel, reading it as a whole-repository guard. The panel then showed no guard, but this path entry stayed stored. |
 | B | `hrhgit/project.keynes` | `hrhgit/Project.Keynes:tools/factory/**` | Re-added in the guards panel at about 23:02 (the panel's own save). |
+| C | `[]` | `tools/factory/**` | Written to `PATCH /config/v1/settings` at 00:11:00 on 2026-11-26. |
 
 ## What Qodo did in each state
 
-Qodo PR Triage timeline and GitHub issue events (all times UTC, 2026-11-25):
+Qodo PR Triage timeline and GitHub issue events (UTC; rows from 22:30 to 23:45:50 are on 2026-11-25, rows from 00:11 on are on 2026-11-26):
 
 | Time | State | PR | Trigger | Qodo record | GitHub |
 |---|---|---|---|---|---|
@@ -27,11 +28,15 @@ Qodo PR Triage timeline and GitHub issue events (all times UTC, 2026-11-25):
 | 23:44:10 | A (set for this test) | – | – | – | – |
 | 23:44:59 | A | 89 | reopen | approve / approved_clean; both workflows `matched`; guard `unmatched` | 23:45:02 labelled |
 | 23:45:50 | B (restored) | – | – | – | – |
+| 00:11:00 | C | – | – | – | – |
+| 00:11:44 | C | 87 (inside) | reopen | `held_back`: surface / surfaced; both workflows `matched`; guard **`matched`**; label action skipped | no label |
+| 00:12:48 | C | 89 (outside) | reopen | approve / approved_clean; both workflows `matched`; guard `unmatched` | 00:12:51 labelled (after the routine reconciliation removal at 00:12:43) |
 
 ## What this shows
 
 - In state A the path entry never matched, so PR 87 was labelled like any clean PR.
 - In state B no PR in the repository was evaluated at all, the control PR 89 included. PR 87 had no label, but there was no evaluation behind it, so the missing label is not the guard holding PR 87.
 - Nothing else changed between the runs: repository `output_mode: label_only`, both workflows enabled, workspace settings untouched (checked by reading the settings before and after each change).
+- In state C the same clean-review conditions gave opposite outcomes by path: PR 87 (`tools/factory/**`) was held back with the guard matched, PR 89 (`docs/`, `tools/ci/`) was labelled with the guard unmatched.
 
-So far I have not found a stored guard that labels PR 89 and holds PR 87. The guard is restored to state B. In that state Qodo evaluates no PR in this repository, so no new label is added anywhere (PR 89 keeps the one it got at 23:45:02 in state A). PR 87 waits for me to review and merge it.
+State C is the guard now in force. Two limits: a bare pattern applies to every repository in the workspace, and the guards panel shows no entry for it (checked after a page reload at 00:13), so saving from that panel could overwrite it; the stored setting is the thing to check. PR 87 waits for me to review and merge it.
