@@ -1,0 +1,60 @@
+{
+  "status": "fail",
+  "reasons": [
+    "base round 3: godot exit=6; result rows=51 expected 50; perf csv has 51 data rows, expected 50",
+    "incompatible recorder methods: unversioned:fdcd453dd9e3 vs day_records_worker_v1"
+  ],
+  "base": {
+    "commit": "c81ebf8718785ecc0da30bf3d039698a018c1209",
+    "subject": "Merge pull request #76 from hrhgit/factory/perf-merge-gate",
+    "created": "2026-11-26T06:19:32Z",
+    "reused": false,
+    "rounds": 3,
+    "path": "~/.keynes-perf/records/c81ebf871878/days50_foreign_count3_height40_seed20260718_speed50_width60/20261125-221857-fd50095c6e657082",
+    "load_consistency": null
+  },
+  "head": {
+    "commit": "62ba798d6a8572185a8c318e1a7abe2485bc3930",
+    "subject": "Merge pull request #85 from hrhgit/agent/issue-82",
+    "created": "2026-11-26T06:20:37Z",
+    "reused": false,
+    "rounds": 3,
+    "path": "~/.keynes-perf/records/62ba798d6a85/days50_foreign_count3_height40_seed20260718_speed50_width60/20261125-222005-fd50095c6e657082",
+    "load_consistency": null
+  },
+  "scenario": {
+    "days": 50,
+    "speed": 50,
+    "seed": 20260718,
+    "width": 60,
+    "height": 40,
+    "foreign_count": 3
+  },
+  "tier": "quick",
+  "requested_rounds": 3,
+  "noise": 0.15,
+  "claims": [],
+  "unmeasured": "PR 85 claims no speedup; this run only checks what a comparison across the recorder change reports",
+  "machine": "Mac14,2 Apple M2 8 cpus 24 GiB",
+  "toolchain": "godot 4.6.3.stable.official.7d41c59c4; Apple clang version 21.0.0 (clang-2100.3.34.2); Darwin 27.2.0",
+  "correctness": [],
+  "busy_samples": [
+    {
+      "at": "2026-11-26T06:22:11Z",
+      "cpu_idle": 0.437,
+      "load1": 4.1,
+      "cpus": 8,
+      "busy": [
+        "cpu 44% idle, below 50%"
+      ]
+    }
+  ],
+  "metrics": [],
+  "excluded_rounds": [
+    "base round 3: godot exit=6; result rows=51 expected 50; perf csv has 51 data rows, expected 50"
+  ],
+  "elapsed_s": 259,
+  "budget_min": 0.0,
+  "created": "2026-11-26T06:23:16Z",
+  "method_version": 3
+}

@@ -4,11 +4,11 @@
    "id": "notice",
    "kind": "notice",
    "title": "What to decide",
-   "lede": "One decision to check, one coverage gap to keep visible.",
+   "lede": "One unplanned decision to check, one coverage gap to keep visible.",
    "items": [
     {
-     "text": "The row check now fails on a gap in the dates, not only on a short count. Confirm this is the guard the ticket asked to keep.",
-     "beat": "exit6-choice"
+     "text": "To answer a Qodo finding, the agent changed the shared perf comparison tool, which the plan kept out of scope. A comparison whose base predates this PR now gives no metric rows and asks a person. Decide whether that is the right trade.",
+     "beat": "method-choice"
     },
     {
      "text": "Qodo's review of the final merge commit reports status completed but review_complete=false, so zero open findings is not a complete review.",
@@ -79,17 +79,6 @@
    ]
   },
   {
-   "id": "exit6-choice",
-   "kind": "question",
-   "title": "Is the stricter exit 6 the right guard?",
-   "lede": "Before this change exit 6 meant only a short row count. Now a CSV with the right number of rows but a missing day also fails.",
-   "ask": "Accept the date-order check as the guard the ticket asked to keep, or ask for the count-only check back?",
-   "options": [
-    "Accept: a gap in the dates is a lost row even when the count matches",
-    "Request the count-only check"
-   ]
-  },
-  {
    "id": "scope",
    "kind": "scope",
    "title": "Ticket acceptance criteria",
@@ -114,12 +103,24 @@
      "why": "None of the four forbidden paths is touched, but the diff also changes tools/perf/perf_change_check.py, two docs/architecture files and an ideology test, which are not the recorder or its tests."
     }
    ]
+  },
+  {
+   "id": "method-choice",
+   "kind": "question",
+   "title": "Refuse comparisons across the recorder change?",
+   "lede": "The recorder now times days from worker commit stamps, not the main-thread clock. Qodo flagged that a base-before/head-after comparison would report a throughput change that comes only from the new method. The agent made the comparison tool refuse such pairs.",
+   "ask": "Accept that any comparison spanning PR 85 returns needs_human with no metric rows, or ask for a different handling (for example re-measuring the base with the new recorder)?",
+   "options": [
+    "Accept: no numbers is better than numbers that mean different things",
+    "Request a different handling",
+    "Ask the owner how perf PRs branched before PR 85 should be judged"
+   ]
   }
  ],
  "prs": {
   "hrhgit/Project.Keynes#85": {
-   "summary": "Fixes issue 82: the headless performance recorder writes one row per published day and the runner rejects a CSV with a short count or a gap in the dates. This review follows one decision (the exit 6 guard). perf_change_check.py, perf_recorder_graph.gd, the docs and the other headless runner changes were not read in depth; their lines stay outside the layers.",
-   "risk": "Low for game behavior (test and tooling code only; native_changed=false). The main consequence is for performance comparisons: a CSV that used to pass on count alone can now fail on date order.",
+   "summary": "Fixes issue 82: the headless performance recorder writes one row per published day and the runner rejects a CSV with a short count or a gap in the dates. After Qodo's first review, the agent also changed the shared comparison tool tools/perf/perf_change_check.py so that runs recorded with different recorder methods are never compared metric by metric. This review follows that decision. The docs, perf_recorder_graph.gd and the other runner changes were not read in depth; their lines stay outside the layers.",
+   "risk": "Low for game behavior (test and tooling code only; native_changed=false). The consequence is for the factory's perf merge gate: a perf PR whose merge base predates PR 85 gets needs_human instead of a metric comparison, and archived method-2 records are no longer reused.",
    "layers": [
     {
      "id": "capture",
@@ -171,9 +172,91 @@
      "depends_on": [
       "check"
      ]
+    },
+    {
+     "id": "method",
+     "title": "Recorder method in the comparison tool",
+     "summary": "The decision under review: METHOD_VERSION 3, a recorder_method per run, and assess() refusing to compare different methods.",
+     "ranges": [
+      {
+       "path": "tools/perf/perf_change_check.py",
+       "from": 45,
+       "to": 45,
+       "side": "new"
+      },
+      {
+       "path": "tools/perf/perf_change_check.py",
+       "from": 111,
+       "to": 141,
+       "side": "new"
+      },
+      {
+       "path": "tools/perf/perf_change_check.py",
+       "from": 840,
+       "to": 848,
+       "side": "new"
+      },
+      {
+       "path": "tools/perf/perf_change_check.py",
+       "from": 1052,
+       "to": 1071,
+       "side": "new"
+      },
+      {
+       "path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+       "from": 556,
+       "to": 564,
+       "side": "new"
+      },
+      {
+       "path": "tools/perf/tests/test_perf_change_check.py",
+       "from": 571,
+       "to": 597,
+       "side": "new"
+      }
+     ],
+     "depends_on": [
+      "capture"
+     ]
     }
    ],
    "decisions": [
+    {
+     "id": "refuse-cross-method",
+     "status": "unplanned",
+     "source": "pr",
+     "kind": "technical",
+     "text": "The perf comparison refuses to compare runs recorded with different recorder methods: needs_human, no metric rows",
+     "plan": "The plan names only headless_perf_record.gd, perf_recorder.gd and perf_recorder_test.gd, says 'The benchmark requires numeric tick_idx, speed_multiplier, and t_sus_ms on every row', and step 4 says 'Verify the diff contains only recorder and test files.'",
+     "why": "Commit 2ba168376 ('address Qodo findings ...5844bc28...') answers Qodo's Medium finding 'Headline throughput changes meaning across this commit': throughput now comes from worker produced_at_us stamps instead of the main-thread clock, and archived records were keyed only by METHOD_VERSION = 2, so a base-before/head-after compare would report a change caused by the method. The agent bumped METHOD_VERSION to 3, made the runner print recorder_method, labels old scripts unversioned:<script hash>, and has assess() return needs_human when the two sides differ. It also makes t_sus_ms empty in the daily CSV (Qodo finding 2c087197: a fake zero).",
+     "effects": [
+      "contract"
+     ],
+     "notice": "A comparison whose base predates PR 85 still checks the daily result hashes but gives no metric rows and exits 2 (needs_human); the factory's merge gate stops on needs_human.",
+     "refs": [
+      "https://github.com/hrhgit/Project.Keynes/pull/85"
+     ],
+     "ev": [
+      {
+       "path": "tools/perf/perf_change_check.py",
+       "side": "new",
+       "from": 1052,
+       "to": 1071
+      },
+      {
+       "path": "tools/perf/perf_change_check.py",
+       "side": "new",
+       "from": 45,
+       "to": 45
+      },
+      {
+       "path": "tools/perf/tests/test_perf_change_check.py",
+       "side": "new",
+       "from": 571,
+       "to": 585
+      }
+     ]
+    },
     {
      "id": "exit6-date-order",
      "status": "planned",
@@ -185,7 +268,7 @@
      "effects": [
       "contract"
      ],
-     "notice": "A run that loses a day fails with 'CSV days must be ordered from N through M' instead of passing.",
+     "notice": "Context only in this review: a run that loses a day fails with 'CSV days must be ordered from N through M'.",
      "refs": [
       "https://github.com/hrhgit/Project.Keynes/issues/82"
      ],
@@ -206,19 +289,24 @@
     }
    ],
    "quality": {
-    "summary": "The focused recorder test passes at 2ba168376 (93 checks, 0 failures). A one-line mutation that drops the date check makes exactly one assertion fail, so the test guards the decision.",
+    "summary": "tools/perf unit tests pass at the merge commit (75 tests, OK). test_refuses_throughput_comparison_between_different_recorder_methods asserts needs_human, no rows and the 'incompatible recorder methods' reason. A real compare of base c81ebf871 against merge 62ba798d6 is the behavior check.",
     "tests": [
+     {
+      "path": "tools/perf/tests/test_perf_change_check.py",
+      "verdict": "fine",
+      "why": "Lines 571-585 build a base with unversioned:foreground and a head with day_records_worker_v1, double the head throughput, and assert needs_human with no rows, so a method change cannot pass as a speedup."
+     },
      {
       "path": "Project/project-keynes/tests/game/perf_recorder_test.gd",
       "verdict": "fine",
-      "why": "Listed because it is the proof for the decision under review: _test_missing_committed_day delivers days 6 and 8, then 9 after the window, and asserts exit 6 for both the expected count of 3 and a matching count of 2."
+      "why": "Context: the missing-day test that guards the exit 6 decision."
      }
     ]
    }
   }
  },
  "behavior": {
-  "headline": "Every published day gets a row, and a missing day fails the run.",
+  "headline": "Every published day gets a row; comparisons across the recorder change ask a person.",
   "capabilities": [
    {
     "id": "rows",
@@ -232,6 +320,14 @@
     "id": "guard",
     "title": "Fail on a missing day",
     "summary": "Exit 6 checks the dates, not only the count.",
+    "prs": [
+     "hrhgit/Project.Keynes#85"
+    ]
+   },
+   {
+    "id": "method",
+    "title": "Refuse cross-method comparisons",
+    "summary": "A base and head recorded with different methods give no metric rows.",
     "prs": [
      "hrhgit/Project.Keynes#85"
     ]
@@ -330,6 +426,55 @@
           "side": "new",
           "from": 368,
           "to": 383
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pr": "hrhgit/Project.Keynes#85",
+    "path": "tools/perf/perf_change_check.py",
+    "headline": "The comparison tool knows which recorder produced a run.",
+    "hunks": [
+     {
+      "cap": "method",
+      "title": "assess()",
+      "lines": [
+       {
+        "k": "~",
+        "kind": "behavior",
+        "text": "Different recorder methods on base and head: status needs_human, rows empty, reason 'incompatible recorder methods'. Daily result hashes are still compared.",
+        "ev": [
+         {
+          "side": "new",
+          "from": 1052,
+          "to": 1071
+         }
+        ]
+       },
+       {
+        "k": "~",
+        "kind": "behavior",
+        "text": "METHOD_VERSION goes from 2 to 3, so archived records made with method 2 are not reused.",
+        "ev": [
+         {
+          "side": "new",
+          "from": 45,
+          "to": 45
+         }
+        ]
+       },
+       {
+        "k": "+",
+        "kind": "behavior",
+        "text": "Scripts without a recorder_method marker are labelled unversioned:<sha256 of the runner script>.",
+        "ev": [
+         {
+          "side": "new",
+          "from": 840,
+          "to": 848
          }
         ]
        }

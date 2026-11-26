@@ -1,0 +1,15 @@
+estimated work 690s; may wait up to unlimited for a quiet machine
+measuring c81ebf871878 (no record)
+imported c81ebf871878 in 16s (cache from 2ba1683769f9)
+built c81ebf871878: compile 6s, total 34s
+measuring 62ba798d6a85 (no record)
+imported 62ba798d6a85 in 16s (cache from c81ebf871878)
+built 62ba798d6a85: compile 6s, total 31s
+round 1/3 c81ebf871878
+round 1/3 62ba798d6a85
+round 2/3 c81ebf871878
+round 2/3 62ba798d6a85
+round 3/3 c81ebf871878
+round 3/3 62ba798d6a85
+PERF_CHECK_RESULT={"status": "fail", "reasons": ["base round 3: godot exit=6; result rows=51 expected 50; perf csv has 51 data rows, expected 50", "incompatible recorder methods: unversioned:fdcd453dd9e3 vs day_records_worker_v1"], "report": "<scratch>/report/report.md"}
+exit=1

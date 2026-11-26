@@ -1,0 +1,101 @@
+test_archive_refuses_fewer_rounds_than_requested (tools.perf.tests.test_perf_change_check.ArchiveReuse.test_archive_refuses_fewer_rounds_than_requested) ... ok
+test_does_not_reuse_version_two_measurements (tools.perf.tests.test_perf_change_check.ArchiveReuse.test_does_not_reuse_version_two_measurements) ... ok
+test_refuses_any_identity_difference (tools.perf.tests.test_perf_change_check.ArchiveReuse.test_refuses_any_identity_difference) ... ok
+test_refuses_incomplete_invalid_missing_or_lower_tier (tools.perf.tests.test_perf_change_check.ArchiveReuse.test_refuses_incomplete_invalid_missing_or_lower_tier) ... ok
+test_reuses_identical_identity (tools.perf.tests.test_perf_change_check.ArchiveReuse.test_reuses_identical_identity) ... ok
+test_compare_requires_an_explicit_nonempty_claim (tools.perf.tests.test_perf_change_check.ArgumentChecks.test_compare_requires_an_explicit_nonempty_claim) ... ok
+test_history_starts_without_unix_fcntl (tools.perf.tests.test_perf_change_check.ArgumentChecks.test_history_starts_without_unix_fcntl) ... ok
+test_refuses_single_round_and_nonpositive_scenario (tools.perf.tests.test_perf_change_check.ArgumentChecks.test_refuses_single_round_and_nonpositive_scenario) ... usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: --rounds must be at least 2 so timings have a range
+usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: scenario values must be positive
+ok
+test_unmeasured_needs_a_reason (tools.perf.tests.test_perf_change_check.ArgumentChecks.test_unmeasured_needs_a_reason) ... ok
+test_invalid_rounds_are_left_out_of_the_statistics (tools.perf.tests.test_perf_change_check.Assessment.test_invalid_rounds_are_left_out_of_the_statistics) ... ok
+test_quick_comparison_can_reuse_a_full_tier_record (tools.perf.tests.test_perf_change_check.Assessment.test_quick_comparison_can_reuse_a_full_tier_record) ... ok
+test_refuses_a_record_with_mixed_or_missing_methods (tools.perf.tests.test_perf_change_check.Assessment.test_refuses_a_record_with_mixed_or_missing_methods) ... ok
+test_refuses_throughput_comparison_between_different_recorder_methods (tools.perf.tests.test_perf_change_check.Assessment.test_refuses_throughput_comparison_between_different_recorder_methods) ... ok
+test_report_uses_the_round_counts_from_the_records (tools.perf.tests.test_perf_change_check.Assessment.test_report_uses_the_round_counts_from_the_records) ... ok
+test_result_difference_is_reported_even_when_a_round_is_invalid (tools.perf.tests.test_perf_change_check.Assessment.test_result_difference_is_reported_even_when_a_round_is_invalid) ... ok
+test_unmeasured_claim_still_checks_results_and_is_reported (tools.perf.tests.test_perf_change_check.Assessment.test_unmeasured_claim_still_checks_results_and_is_reported) ... ok
+test_builds_only_the_debug_target_the_headless_editor_loads (tools.perf.tests.test_perf_change_check.BuildRecipe.test_builds_only_the_debug_target_the_headless_editor_loads) ... ok
+test_checked_in_libraries_of_other_platforms_do_not_count_as_built (tools.perf.tests.test_perf_change_check.BuildRecipe.test_checked_in_libraries_of_other_platforms_do_not_count_as_built) ... ok
+test_refuses_to_import_if_the_machine_became_busy_during_build (tools.perf.tests.test_perf_change_check.BuildRecipe.test_refuses_to_import_if_the_machine_became_busy_during_build) ... ok
+test_refuses_to_start_build_while_machine_is_busy (tools.perf.tests.test_perf_change_check.BuildRecipe.test_refuses_to_start_build_while_machine_is_busy) ... ok
+test_refuses_unknown_platform_or_architecture (tools.perf.tests.test_perf_change_check.BuildRecipe.test_refuses_unknown_platform_or_architecture) ... ok
+test_counters_become_per_day_increase_and_timings_get_tail (tools.perf.tests.test_perf_change_check.CsvSummaries.test_counters_become_per_day_increase_and_timings_get_tail) ... ok
+test_fewer_research_fallback_scans_satisfy_a_claim (tools.perf.tests.test_perf_change_check.CsvSummaries.test_fewer_research_fallback_scans_satisfy_a_claim) ... ok
+test_refuses_nonnumeric_populated_cells_in_a_numeric_column (tools.perf.tests.test_perf_change_check.CsvSummaries.test_refuses_nonnumeric_populated_cells_in_a_numeric_column) ... ok
+test_sparse_counters_use_elapsed_days_between_samples (tools.perf.tests.test_perf_change_check.CsvSummaries.test_sparse_counters_use_elapsed_days_between_samples) ... ok
+test_identical_results_pass (tools.perf.tests.test_perf_change_check.GoldenComparison.test_identical_results_pass) ... ok
+test_refuses_changed_hash_length_type_and_keys (tools.perf.tests.test_perf_change_check.GoldenComparison.test_refuses_changed_hash_length_type_and_keys) ... ok
+test_pass_when_claim_improves (tools.perf.tests.test_perf_change_check.Judgement.test_pass_when_claim_improves) ... ok
+test_refuses_pass_if_an_unclaimed_measurement_is_missing (tools.perf.tests.test_perf_change_check.Judgement.test_refuses_pass_if_an_unclaimed_measurement_is_missing) ... ok
+test_refuses_pass_when_any_metric_in_a_claim_regresses (tools.perf.tests.test_perf_change_check.Judgement.test_refuses_pass_when_any_metric_in_a_claim_regresses) ... ok
+test_refuses_pass_when_claim_missing_or_not_improved (tools.perf.tests.test_perf_change_check.Judgement.test_refuses_pass_when_claim_missing_or_not_improved) ... ok
+test_refuses_pass_when_headline_regressed (tools.perf.tests.test_perf_change_check.Judgement.test_refuses_pass_when_headline_regressed) ... ok
+test_refuses_pass_when_results_changed_or_runs_invalid (tools.perf.tests.test_perf_change_check.Judgement.test_refuses_pass_when_results_changed_or_runs_invalid) ... ok
+test_refuses_pass_when_the_claim_is_unmeasured (tools.perf.tests.test_perf_change_check.Judgement.test_refuses_pass_when_the_claim_is_unmeasured)
+Found by the first fresh-session run: a claim needing an open overlay has no headless metric. ... ok
+test_busy_godot_and_compilers_count_but_idle_editor_and_children_do_not (tools.perf.tests.test_perf_change_check.MachineLoadGate.test_busy_godot_and_compilers_count_but_idle_editor_and_children_do_not) ... ok
+test_proc_stat_idle_between_two_readings (tools.perf.tests.test_perf_change_check.MachineLoadGate.test_proc_stat_idle_between_two_readings) ... ok
+test_quiet_machine_goes (tools.perf.tests.test_perf_change_check.MachineLoadGate.test_quiet_machine_goes) ... ok
+test_refuses_busy_cpu_unknown_or_impossible_idle_and_competitors (tools.perf.tests.test_perf_change_check.MachineLoadGate.test_refuses_busy_cpu_unknown_or_impossible_idle_and_competitors) ... ok
+test_refuses_top_output_without_two_samples (tools.perf.tests.test_perf_change_check.MachineLoadGate.test_refuses_top_output_without_two_samples) ... ok
+test_refuses_unreadable_or_non_advancing_proc_stat (tools.perf.tests.test_perf_change_check.MachineLoadGate.test_refuses_unreadable_or_non_advancing_proc_stat) ... ok
+test_top_idle_uses_the_last_sample_not_the_since_boot_one (tools.perf.tests.test_perf_change_check.MachineLoadGate.test_top_idle_uses_the_last_sample_not_the_since_boot_one) ... ok
+test_counters_compare_exactly (tools.perf.tests.test_perf_change_check.MetricClassification.test_counters_compare_exactly) ... ok
+test_gauges_without_a_direction_are_only_changed (tools.perf.tests.test_perf_change_check.MetricClassification.test_gauges_without_a_direction_are_only_changed) ... ok
+test_higher_is_better_for_throughput (tools.perf.tests.test_perf_change_check.MetricClassification.test_higher_is_better_for_throughput) ... ok
+test_improvement_needs_a_clear_gap (tools.perf.tests.test_perf_change_check.MetricClassification.test_improvement_needs_a_clear_gap) ... ok
+test_kinds (tools.perf.tests.test_perf_change_check.MetricClassification.test_kinds) ... ok
+test_memory_that_repeats_exactly_counts_as_less_or_more_work (tools.perf.tests.test_perf_change_check.MetricClassification.test_memory_that_repeats_exactly_counts_as_less_or_more_work) ... ok
+test_metric_missing_on_one_side (tools.perf.tests.test_perf_change_check.MetricClassification.test_metric_missing_on_one_side) ... ok
+test_refuses_exact_verdict_for_a_counter_that_varies (tools.perf.tests.test_perf_change_check.MetricClassification.test_refuses_exact_verdict_for_a_counter_that_varies) ... ok
+test_refuses_exact_verdict_for_memory_that_varies (tools.perf.tests.test_perf_change_check.MetricClassification.test_refuses_exact_verdict_for_memory_that_varies) ... ok
+test_refuses_improvement_inside_noise (tools.perf.tests.test_perf_change_check.MetricClassification.test_refuses_improvement_inside_noise) ... ok
+test_refuses_improvement_when_ranges_overlap (tools.perf.tests.test_perf_change_check.MetricClassification.test_refuses_improvement_when_ranges_overlap) ... ok
+test_refuses_timing_verdict_from_one_round (tools.perf.tests.test_perf_change_check.MetricClassification.test_refuses_timing_verdict_from_one_round) ... ok
+test_accepts_a_complete_run (tools.perf.tests.test_perf_change_check.PerfRunValidation.test_accepts_a_complete_run) ... ok
+test_day_format_refuses_fake_timings_and_a_gap_even_at_the_expected_count (tools.perf.tests.test_perf_change_check.PerfRunValidation.test_day_format_refuses_fake_timings_and_a_gap_even_at_the_expected_count) ... ok
+test_new_recorder_uses_only_measured_daily_intervals (tools.perf.tests.test_perf_change_check.PerfRunValidation.test_new_recorder_uses_only_measured_daily_intervals) ... ok
+test_perf_round_rejects_missing_required_column_and_corrupt_optional_cells (tools.perf.tests.test_perf_change_check.PerfRunValidation.test_perf_round_rejects_missing_required_column_and_corrupt_optional_cells) ... ok
+test_perf_round_uses_observed_samples_for_optional_metrics (tools.perf.tests.test_perf_change_check.PerfRunValidation.test_perf_round_uses_observed_samples_for_optional_metrics) ... ok
+test_refuses_each_broken_fact (tools.perf.tests.test_perf_change_check.PerfRunValidation.test_refuses_each_broken_fact) ... ok
+test_refuses_required_column_with_no_numeric_values (tools.perf.tests.test_perf_change_check.PerfRunValidation.test_refuses_required_column_with_no_numeric_values) ... ok
+test_refuses_required_columns_missing_with_the_correct_row_count (tools.perf.tests.test_perf_change_check.PerfRunValidation.test_refuses_required_columns_missing_with_the_correct_row_count) ... ok
+test_unversioned_recorders_use_their_own_source_identity (tools.perf.tests.test_perf_change_check.PerfRunValidation.test_unversioned_recorders_use_their_own_source_identity) ... ok
+test_zero_warmup_allows_only_the_first_interval_to_be_absent (tools.perf.tests.test_perf_change_check.PerfRunValidation.test_zero_warmup_allows_only_the_first_interval_to_be_absent) ... ok
+test_reads_single_line (tools.perf.tests.test_perf_change_check.ResultLineParsing.test_reads_single_line) ... ok
+test_refuses_missing_duplicate_empty_and_repeated_keys (tools.perf.tests.test_perf_change_check.ResultLineParsing.test_refuses_missing_duplicate_empty_and_repeated_keys) ... ok
+test_allowance_is_what_the_work_leaves_and_never_negative (tools.perf.tests.test_perf_change_check.TimeBudget.test_allowance_is_what_the_work_leaves_and_never_negative) ... ok
+test_estimate_counts_builds_only_for_unbuilt_worktrees (tools.perf.tests.test_perf_change_check.TimeBudget.test_estimate_counts_builds_only_for_unbuilt_worktrees) ... ok
+test_last_round_over_budget_cannot_complete_a_record (tools.perf.tests.test_perf_change_check.TimeBudget.test_last_round_over_budget_cannot_complete_a_record) ... estimated work 330s; may wait up to 0s for a quiet machine
+measuring aaaaaaaaaaaa (no record)
+round 1/2 aaaaaaaaaaaa
+round 2/2 aaaaaaaaaaaa
+ok
+test_quiet_machine_runs_without_wait_allowance_if_budget_remains (tools.perf.tests.test_perf_change_check.TimeBudget.test_quiet_machine_runs_without_wait_allowance_if_budget_remains) ... ok
+test_refuses_a_quiet_sample_that_finishes_after_the_budget (tools.perf.tests.test_perf_change_check.TimeBudget.test_refuses_a_quiet_sample_that_finishes_after_the_budget) ... ok
+test_refuses_negative_budget_and_impossible_idle_floor (tools.perf.tests.test_perf_change_check.TimeBudget.test_refuses_negative_budget_and_impossible_idle_floor) ... usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: --min-idle must be in (0, 1]
+usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: --min-idle must be in (0, 1]
+ok
+test_refuses_to_sample_after_the_run_budget_expires (tools.perf.tests.test_perf_change_check.TimeBudget.test_refuses_to_sample_after_the_run_budget_expires) ... ok
+test_refuses_to_wait_once_the_allowance_is_spent (tools.perf.tests.test_perf_change_check.TimeBudget.test_refuses_to_wait_once_the_allowance_is_spent) ... ok
+test_wont_sleep_past_the_run_budget_with_waiting_allowance_left (tools.perf.tests.test_perf_change_check.TimeBudget.test_wont_sleep_past_the_run_budget_with_waiting_allowance_left) ... ok
+test_zero_budget_is_unlimited (tools.perf.tests.test_perf_change_check.TimeBudget.test_zero_budget_is_unlimited) ... ok
+
+----------------------------------------------------------------------
+Ran 75 tests in 0.047s
+
+OK

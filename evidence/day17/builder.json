@@ -28,7 +28,7 @@
      "name": "_run",
      "qual": "HeadlessPerf._run",
      "kind": "method",
-     "purpose": "Runs the measured days, exports the CSV, calls _check_csv and returns 6 with a count or date-order message.",
+     "purpose": "Runs the measured days, exports the CSV, calls _check_csv and returns 6 with a count or date-order message. Prints recorder_method=day_records_worker_v1 (or day_records_main_v1 with zero warmup) in the result line.",
      "start": 49,
      "end": 741,
      "ostart": 45,
@@ -82,9 +82,146 @@
     }
    ],
    "status": "modified"
+  },
+  {
+   "pr": "hrhgit/Project.Keynes#85",
+   "path": "tools/perf/perf_change_check.py",
+   "purpose": "Shared perf comparison tool used by the factory's merge gate; now records and compares the recorder method.",
+   "status": "modified",
+   "methods": [
+    {
+     "name": "validate_day_csv",
+     "qual": "validate_day_csv",
+     "kind": "function",
+     "purpose": "Checks the daily CSV: method matches the warmup clock, ordered days, t_sus_ms empty, commit stamps increasing.",
+     "start": 111,
+     "end": 141,
+     "change": "added",
+     "add": 31,
+     "del": 0
+    },
+    {
+     "name": "validate_perf_run",
+     "qual": "validate_perf_run",
+     "kind": "function",
+     "purpose": "Rejects unknown recorder methods and routes daily CSVs to validate_day_csv.",
+     "start": 144,
+     "end": 195,
+     "ostart": 108,
+     "oend": 154,
+     "change": "modified",
+     "add": 6,
+     "del": 1
+    },
+    {
+     "name": "perf_round",
+     "qual": "perf_round",
+     "kind": "function",
+     "purpose": "Stores each round's recorder_method; a script with no marker becomes unversioned:<sha256 of the runner>.",
+     "start": 787,
+     "end": 850,
+     "ostart": 744,
+     "oend": 798,
+     "change": "modified",
+     "add": 11,
+     "del": 1
+    },
+    {
+     "name": "assess",
+     "qual": "assess",
+     "kind": "function",
+     "purpose": "Different methods on base and head: needs_human, no metric rows, reason 'incompatible recorder methods'; result hashes still compared.",
+     "start": 1035,
+     "end": 1071,
+     "ostart": 983,
+     "oend": 1003,
+     "change": "modified",
+     "add": 19,
+     "del": 2
+    }
+   ]
+  },
+  {
+   "pr": "hrhgit/Project.Keynes#85",
+   "path": "tools/perf/tests/test_perf_change_check.py",
+   "purpose": "Unit tests for the comparison tool.",
+   "status": "modified",
+   "methods": [
+    {
+     "name": "test_refuses_throughput_comparison_between_different_recorder_methods",
+     "qual": "Assessment.test_refuses_throughput_comparison_between_different_recorder_methods",
+     "kind": "method",
+     "purpose": "Head throughput doubled but methods differ: needs_human, rows empty.",
+     "start": 571,
+     "end": 585,
+     "change": "added",
+     "add": 15,
+     "del": 0
+    },
+    {
+     "name": "test_refuses_a_record_with_mixed_or_missing_methods",
+     "qual": "Assessment.test_refuses_a_record_with_mixed_or_missing_methods",
+     "kind": "method",
+     "purpose": "Mixed or missing methods within one side: fail.",
+     "start": 587,
+     "end": 597,
+     "change": "added",
+     "add": 11,
+     "del": 0
+    }
+   ]
   }
  ],
  "flows": [
+  {
+   "title": "A base before PR 85 meets a head after it",
+   "trigger": {
+    "kind": "cli",
+    "label": "perf_change_check.py compare BASE HEAD (the factory's merge gate runs this)"
+   },
+   "steps": [
+    {
+     "pr": "hrhgit/Project.Keynes#85",
+     "repo": "hrhgit/Project.Keynes",
+     "path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+     "name": "_run",
+     "depth": 0,
+     "line": 556,
+     "via": "head's runner prints recorder_method=day_records_worker_v1"
+    },
+    {
+     "pr": "hrhgit/Project.Keynes#85",
+     "repo": "hrhgit/Project.Keynes",
+     "path": "tools/perf/perf_change_check.py",
+     "name": "perf_round",
+     "depth": 0,
+     "line": 840,
+     "via": "base's older runner prints no marker, so the tool labels it unversioned:<script hash>"
+    },
+    {
+     "pr": "hrhgit/Project.Keynes#85",
+     "repo": "hrhgit/Project.Keynes",
+     "path": "tools/perf/perf_change_check.py",
+     "name": "assess",
+     "depth": 0,
+     "line": 1061,
+     "via": "methods differ: rows = [], status needs_human, reason 'incompatible recorder methods'"
+    },
+    {
+     "pr": "hrhgit/Project.Keynes#85",
+     "repo": "hrhgit/Project.Keynes",
+     "path": "tools/perf/tests/test_perf_change_check.py",
+     "name": "test_refuses_throughput_comparison_between_different_recorder_methods",
+     "depth": 1,
+     "line": 571,
+     "via": "unit test pins the refusal"
+    }
+   ],
+   "outcome": {
+    "kind": "cli",
+    "label": "exit 2 (needs_human), report with no metric rows"
+   }
+  },
   {
    "title": "A missing day reaches exit 6",
    "trigger": {

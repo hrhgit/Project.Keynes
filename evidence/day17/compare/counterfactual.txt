@@ -1,0 +1,12 @@
+methods: base ['unversioned:fdcd453dd9e3'] head ['day_records_worker_v1']
+== with the refusal (as merged): status=fail rows=0
+  reason: base round 3: godot exit=6; result rows=51 expected 50; perf csv has 51 data rows, expected 50
+  reason: incompatible recorder methods: unversioned:fdcd453dd9e3 vs day_records_worker_v1
+== without it (same method assumed): status=fail rows=413
+  reason: base round 3: godot exit=6; result rows=51 expected 50; perf csv has 51 data rows, expected 50
+   {"metric": "auth.authoritative_days_per_second", "base": [81.124873, 65.405261], "head": [80.411837, 96.674588, 83.626024], "change": 0.14141742339497232}
+   {"metric": "harness.adjusted_days_per_second", "base": [81.124873, 65.405261], "head": [80.411837, 96.674588, 83.626024], "change": 0.14141742339497232}
+   {"metric": "result.generation_ms", "base": [10845.2, 12634.1], "head": [11251.7, 9615.0, 9765.0], "change": -0.168203481364436}
+   {"metric": "result.run_ms", "base": [1516.9, 1680.9], "head": [729.1, 631.2, 729.3], "change": -0.543998999312027}
+   {"metric": "rusage.cpu_s", "base": [13.106998999999998, 14.427767], "head": [12.387333, 11.535515, 11.343631], "change": -0.16211272687045888}
+   {"metric": "rusage.maxrss_mb", "base": [985.234375, 988.25], "head": [983.015625, 981.25, 979.359375], "change": -0.005565980222164161}
