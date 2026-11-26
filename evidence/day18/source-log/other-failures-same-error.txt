@@ -1,0 +1,12 @@
+job-138989652795: 2026-11-25T04:58:57.8152779Z     raise ImportError('Start directory is not importable: %r' % start_dir)
+job-138989652795: 2026-11-25T04:58:57.8153250Z ImportError: Start directory is not importable: 'tools/perf/tests'
+job-138989652795: 2026-11-25T04:58:57.8210381Z ##[error]Process completed with exit code 1.
+job-138966541649: 2026-11-25T03:56:11.0311786Z     raise ImportError('Start directory is not importable: %r' % start_dir)
+job-138966541649: 2026-11-25T03:56:11.0312181Z ImportError: Start directory is not importable: 'tools/perf/tests'
+job-138966541649: 2026-11-25T03:56:11.0360129Z ##[error]Process completed with exit code 1.
+job-138924216580: 2026-11-25T02:07:03.5650253Z     raise ImportError('Start directory is not importable: %r' % start_dir)
+job-138924216580: 2026-11-25T02:07:03.5650721Z ImportError: Start directory is not importable: 'tools/perf/tests'
+job-138924216580: 2026-11-25T02:07:03.5713933Z ##[error]Process completed with exit code 1.
+job-138939110615: 2026-11-25T02:44:11.1022013Z     raise ImportError('Start directory is not importable: %r' % start_dir)
+job-138939110615: 2026-11-25T02:44:11.1022495Z ImportError: Start directory is not importable: 'tools/perf/tests'
+job-138939110615: 2026-11-25T02:44:11.1082879Z ##[error]Process completed with exit code 1.

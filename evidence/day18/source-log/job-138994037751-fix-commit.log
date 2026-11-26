@@ -1,0 +1,771 @@
+﻿2026-11-25T05:10:07.1189062Z Current runner version: '2.338.2'
+2026-11-25T05:10:07.1210109Z ##[group]Runner Image Provisioner
+2026-11-25T05:10:07.1210801Z Hosted Compute Agent
+2026-11-25T05:10:07.1211201Z Version: 20261111.635
+2026-11-25T05:10:07.1211660Z Commit: b8a594ea514ff44cadb5342986c68b1eac6e22ed
+2026-11-25T05:10:07.1212155Z Build Date: 2026-11-11T01:49:01Z
+2026-11-25T05:10:07.1212659Z Worker ID: {b1473275-e3a9-4c76-982f-a9d4a2aa51f3}
+2026-11-25T05:10:07.1213172Z Region: centralus
+2026-11-25T05:10:07.1213548Z Cloud: Azure
+2026-11-25T05:10:07.1213978Z ##[endgroup]
+2026-11-25T05:10:07.1214938Z ##[group]Operating System
+2026-11-25T05:10:07.1215332Z Ubuntu
+2026-11-25T05:10:07.1215695Z 26.04.1
+2026-11-25T05:10:07.1216065Z LTS
+2026-11-25T05:10:07.1216423Z ##[endgroup]
+2026-11-25T05:10:07.1216852Z ##[group]Runner Image
+2026-11-25T05:10:07.1217311Z Image: ubuntu-26.04
+2026-11-25T05:10:07.1217710Z Version: 20261116.202.1
+2026-11-25T05:10:07.1218562Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261116.202/images/ubuntu/Ubuntu2604-Readme.md
+2026-11-25T05:10:07.1219611Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261116.202
+2026-11-25T05:10:07.1220236Z ##[endgroup]
+2026-11-25T05:10:07.1221028Z ##[group]GITHUB_TOKEN Permissions
+2026-11-25T05:10:07.1222524Z Contents: read
+2026-11-25T05:10:07.1222945Z Metadata: read
+2026-11-25T05:10:07.1223352Z ##[endgroup]
+2026-11-25T05:10:07.1224815Z Secret source: Actions
+2026-11-25T05:10:07.1225426Z Cache mode: write
+2026-11-25T05:10:07.1226194Z Prepare workflow directory
+2026-11-25T05:10:07.1473558Z Prepare all required actions
+2026-11-25T05:10:07.1507963Z Getting action download info
+2026-11-25T05:10:07.3559072Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+2026-11-25T05:10:07.4275594Z Download action repository 'actions/setup-python@v5' (SHA:a26af69be951a213d495a4c3e4e4022e16d87065)
+2026-11-25T05:10:07.5840099Z Complete job name: architecture-guards
+2026-11-25T05:10:07.6409288Z ##[group]Run actions/checkout@v4
+2026-11-25T05:10:07.6409753Z with:
+2026-11-25T05:10:07.6409999Z   sparse-checkout-cone-mode: false
+2026-11-25T05:10:07.6410952Z   sparse-checkout: /tools/ci/
+/tools/factory/
+/tools/perf/
+/gdext/src/
+/gdext/tests/
+/Project/project-keynes/**/*.gd
+/Project/project-keynes/data/native_binding_manifest.json
+/.*/skills/
+/docs/architecture/
+/docs/plans/
+/docs/factory/
+/AGENTS.md
+/.github/workflows/
+
+2026-11-25T05:10:07.6411916Z   repository: hrhgit/Project.Keynes
+2026-11-25T05:10:07.6414175Z   token: ***
+2026-11-25T05:10:07.6414405Z   ssh-strict: true
+2026-11-25T05:10:07.6414643Z   ssh-user: git
+2026-11-25T05:10:07.6414886Z   persist-credentials: true
+2026-11-25T05:10:07.6415147Z   clean: true
+2026-11-25T05:10:07.6415373Z   fetch-depth: 1
+2026-11-25T05:10:07.6415606Z   fetch-tags: false
+2026-11-25T05:10:07.6415847Z   show-progress: true
+2026-11-25T05:10:07.6416093Z   lfs: false
+2026-11-25T05:10:07.6416319Z   submodules: false
+2026-11-25T05:10:07.6416599Z   set-safe-directory: true
+2026-11-25T05:10:07.6416879Z   allow-unsafe-pr-checkout: false
+2026-11-25T05:10:07.6417232Z ##[endgroup]
+2026-11-25T05:10:07.9349430Z Syncing repository: hrhgit/Project.Keynes
+2026-11-25T05:10:07.9350758Z ##[group]Getting Git version info
+2026-11-25T05:10:07.9351174Z Working directory is '/home/runner/work/Project.Keynes/Project.Keynes'
+2026-11-25T05:10:07.9351732Z [command]/usr/bin/git version
+2026-11-25T05:10:07.9403380Z git version 2.56.1
+2026-11-25T05:10:07.9415523Z ##[endgroup]
+2026-11-25T05:10:07.9425587Z Temporarily overriding HOME='/home/runner/work/_temp/6e90b477-2863-494b-8fcc-89a98bdf301f' before making global git config changes
+2026-11-25T05:10:07.9426780Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-25T05:10:07.9429394Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Project.Keynes/Project.Keynes
+2026-11-25T05:10:07.9536144Z Deleting the contents of '/home/runner/work/Project.Keynes/Project.Keynes'
+2026-11-25T05:10:07.9538508Z ##[group]Initializing the repository
+2026-11-25T05:10:07.9542868Z [command]/usr/bin/git init /home/runner/work/Project.Keynes/Project.Keynes
+2026-11-25T05:10:07.9713073Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-25T05:10:07.9713770Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-25T05:10:07.9714266Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-25T05:10:07.9714682Z hint: call:
+2026-11-25T05:10:07.9714897Z hint:
+2026-11-25T05:10:07.9715197Z hint: 	git config --global init.defaultBranch <name>
+2026-11-25T05:10:07.9715523Z hint:
+2026-11-25T05:10:07.9715832Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-25T05:10:07.9716313Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-25T05:10:07.9716702Z hint:
+2026-11-25T05:10:07.9716925Z hint: 	git branch -m <name>
+2026-11-25T05:10:07.9717231Z hint:
+2026-11-25T05:10:07.9717566Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-25T05:10:07.9721647Z Initialized empty Git repository in /home/runner/work/Project.Keynes/Project.Keynes/.git/
+2026-11-25T05:10:07.9732699Z [command]/usr/bin/git remote add origin https://github.com/hrhgit/Project.Keynes
+2026-11-25T05:10:07.9780231Z ##[endgroup]
+2026-11-25T05:10:07.9780852Z ##[group]Disabling automatic garbage collection
+2026-11-25T05:10:07.9783275Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-25T05:10:07.9815795Z ##[endgroup]
+2026-11-25T05:10:07.9816738Z ##[group]Setting up auth
+2026-11-25T05:10:07.9822521Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-25T05:10:07.9852611Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-25T05:10:08.0240887Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-25T05:10:08.0267235Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-25T05:10:08.0484070Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-25T05:10:08.0512843Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-25T05:10:08.0735964Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-25T05:10:08.0770970Z ##[endgroup]
+2026-11-25T05:10:08.0771509Z ##[group]Fetching the repository
+2026-11-25T05:10:08.0777360Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --filter=blob:none --depth=1 origin +790e3c731c32bcf2d82d99bb5b7d14c937143e6c:refs/remotes/pull/75/merge
+2026-11-25T05:10:08.4852064Z From https://github.com/hrhgit/Project.Keynes
+2026-11-25T05:10:08.4852703Z  * [new ref]         790e3c731c32bcf2d82d99bb5b7d14c937143e6c -> pull/75/merge
+2026-11-25T05:10:08.4856132Z ##[endgroup]
+2026-11-25T05:10:08.4856813Z ##[group]Determining the checkout info
+2026-11-25T05:10:08.4858324Z ##[endgroup]
+2026-11-25T05:10:08.4858742Z ##[group]Setting up sparse checkout
+2026-11-25T05:10:08.4862932Z [command]/usr/bin/git config core.sparseCheckout true
+2026-11-25T05:10:08.4894399Z [command]/usr/bin/git rev-parse --git-path info/sparse-checkout
+2026-11-25T05:10:08.4913429Z .git/info/sparse-checkout
+2026-11-25T05:10:08.4919280Z ##[endgroup]
+2026-11-25T05:10:08.4919896Z ##[group]Checking out the ref
+2026-11-25T05:10:08.4922412Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/75/merge
+2026-11-25T05:10:13.2214109Z Updating files:   0% (1/2919)
+2026-11-25T05:10:13.2237927Z Updating files:   1% (30/2919)
+2026-11-25T05:10:13.2263878Z Updating files:   2% (59/2919)
+2026-11-25T05:10:13.2290508Z Updating files:   3% (88/2919)
+2026-11-25T05:10:13.2317707Z Updating files:   4% (117/2919)
+2026-11-25T05:10:13.2343220Z Updating files:   5% (146/2919)
+2026-11-25T05:10:13.2371693Z Updating files:   6% (176/2919)
+2026-11-25T05:10:13.2393985Z Updating files:   7% (205/2919)
+2026-11-25T05:10:13.2413193Z Updating files:   8% (234/2919)
+2026-11-25T05:10:13.2434488Z Updating files:   9% (263/2919)
+2026-11-25T05:10:13.2454204Z Updating files:  10% (292/2919)
+2026-11-25T05:10:13.2472921Z Updating files:  11% (322/2919)
+2026-11-25T05:10:13.2493400Z Updating files:  12% (351/2919)
+2026-11-25T05:10:13.2512046Z Updating files:  13% (380/2919)
+2026-11-25T05:10:13.2532005Z Updating files:  14% (409/2919)
+2026-11-25T05:10:13.2551239Z Updating files:  15% (438/2919)
+2026-11-25T05:10:13.2571371Z Updating files:  16% (468/2919)
+2026-11-25T05:10:13.2590725Z Updating files:  17% (497/2919)
+2026-11-25T05:10:13.2611724Z Updating files:  18% (526/2919)
+2026-11-25T05:10:13.5051416Z Updating files:  19% (555/2919)
+2026-11-25T05:10:13.5065313Z Updating files:  20% (584/2919)
+2026-11-25T05:10:13.5082905Z Updating files:  21% (613/2919)
+2026-11-25T05:10:13.5104113Z Updating files:  22% (643/2919)
+2026-11-25T05:10:13.5119320Z Updating files:  23% (672/2919)
+2026-11-25T05:10:13.5136477Z Updating files:  24% (701/2919)
+2026-11-25T05:10:13.5154570Z Updating files:  25% (730/2919)
+2026-11-25T05:10:13.5177865Z Updating files:  26% (759/2919)
+2026-11-25T05:10:13.5196106Z Updating files:  27% (789/2919)
+2026-11-25T05:10:13.5218372Z Updating files:  28% (818/2919)
+2026-11-25T05:10:13.5238161Z Updating files:  29% (847/2919)
+2026-11-25T05:10:13.5260693Z Updating files:  30% (876/2919)
+2026-11-25T05:10:13.5284617Z Updating files:  31% (905/2919)
+2026-11-25T05:10:13.5303866Z Updating files:  32% (935/2919)
+2026-11-25T05:10:13.5325748Z Updating files:  33% (964/2919)
+2026-11-25T05:10:13.5357120Z Updating files:  34% (993/2919)
+2026-11-25T05:10:13.5376595Z Updating files:  35% (1022/2919)
+2026-11-25T05:10:13.5405712Z Updating files:  36% (1051/2919)
+2026-11-25T05:10:13.5419558Z Updating files:  37% (1081/2919)
+2026-11-25T05:10:13.5434687Z Updating files:  38% (1110/2919)
+2026-11-25T05:10:13.5452811Z Updating files:  39% (1139/2919)
+2026-11-25T05:10:13.5471435Z Updating files:  40% (1168/2919)
+2026-11-25T05:10:13.5488172Z Updating files:  41% (1197/2919)
+2026-11-25T05:10:13.5505504Z Updating files:  42% (1226/2919)
+2026-11-25T05:10:13.5531397Z Updating files:  43% (1256/2919)
+2026-11-25T05:10:13.5554112Z Updating files:  44% (1285/2919)
+2026-11-25T05:10:13.5580549Z Updating files:  45% (1314/2919)
+2026-11-25T05:10:13.5596094Z Updating files:  46% (1343/2919)
+2026-11-25T05:10:13.5612533Z Updating files:  47% (1372/2919)
+2026-11-25T05:10:13.5627829Z Updating files:  48% (1402/2919)
+2026-11-25T05:10:13.5631647Z Updating files:  48% (1424/2919)
+2026-11-25T05:10:13.5647790Z Updating files:  49% (1431/2919)
+2026-11-25T05:10:13.5669089Z Updating files:  50% (1460/2919)
+2026-11-25T05:10:13.5686016Z Updating files:  51% (1489/2919)
+2026-11-25T05:10:13.5701451Z Updating files:  52% (1518/2919)
+2026-11-25T05:10:13.5728297Z Updating files:  53% (1548/2919)
+2026-11-25T05:10:13.5748312Z Updating files:  54% (1577/2919)
+2026-11-25T05:10:13.5777225Z Updating files:  55% (1606/2919)
+2026-11-25T05:10:13.5814678Z Updating files:  56% (1635/2919)
+2026-11-25T05:10:13.5836327Z Updating files:  57% (1664/2919)
+2026-11-25T05:10:13.5851072Z Updating files:  58% (1694/2919)
+2026-11-25T05:10:13.5864518Z Updating files:  59% (1723/2919)
+2026-11-25T05:10:13.5877678Z Updating files:  60% (1752/2919)
+2026-11-25T05:10:13.5890320Z Updating files:  61% (1781/2919)
+2026-11-25T05:10:13.5904712Z Updating files:  62% (1810/2919)
+2026-11-25T05:10:13.5917126Z Updating files:  63% (1839/2919)
+2026-11-25T05:10:13.5931370Z Updating files:  64% (1869/2919)
+2026-11-25T05:10:13.5947058Z Updating files:  65% (1898/2919)
+2026-11-25T05:10:13.5962475Z Updating files:  66% (1927/2919)
+2026-11-25T05:10:13.5981354Z Updating files:  67% (1956/2919)
+2026-11-25T05:10:13.6002015Z Updating files:  68% (1985/2919)
+2026-11-25T05:10:13.6023621Z Updating files:  69% (2015/2919)
+2026-11-25T05:10:13.6041272Z Updating files:  70% (2044/2919)
+2026-11-25T05:10:13.6055708Z Updating files:  71% (2073/2919)
+2026-11-25T05:10:13.6085846Z Updating files:  72% (2102/2919)
+2026-11-25T05:10:13.6130942Z Updating files:  73% (2131/2919)
+2026-11-25T05:10:13.6167300Z Updating files:  74% (2161/2919)
+2026-11-25T05:10:13.6185153Z Updating files:  75% (2190/2919)
+2026-11-25T05:10:13.6206092Z Updating files:  76% (2219/2919)
+2026-11-25T05:10:13.6222857Z Updating files:  77% (2248/2919)
+2026-11-25T05:10:13.6260716Z Updating files:  78% (2277/2919)
+2026-11-25T05:10:13.6294005Z Updating files:  79% (2307/2919)
+2026-11-25T05:10:13.6326231Z Updating files:  80% (2336/2919)
+2026-11-25T05:10:13.6356139Z Updating files:  81% (2365/2919)
+2026-11-25T05:10:13.6384486Z Updating files:  82% (2394/2919)
+2026-11-25T05:10:13.6407090Z Updating files:  83% (2423/2919)
+2026-11-25T05:10:13.6430219Z Updating files:  84% (2452/2919)
+2026-11-25T05:10:13.6455678Z Updating files:  85% (2482/2919)
+2026-11-25T05:10:13.6478711Z Updating files:  86% (2511/2919)
+2026-11-25T05:10:13.6495150Z Updating files:  87% (2540/2919)
+2026-11-25T05:10:13.6523681Z Updating files:  88% (2569/2919)
+2026-11-25T05:10:13.6546066Z Updating files:  89% (2598/2919)
+2026-11-25T05:10:13.6567465Z Updating files:  90% (2628/2919)
+2026-11-25T05:10:13.6588124Z Updating files:  91% (2657/2919)
+2026-11-25T05:10:13.6608386Z Updating files:  92% (2686/2919)
+2026-11-25T05:10:13.6641019Z Updating files:  93% (2715/2919)
+2026-11-25T05:10:13.6682454Z Updating files:  94% (2744/2919)
+2026-11-25T05:10:13.6711408Z Updating files:  95% (2774/2919)
+2026-11-25T05:10:13.6722232Z Updating files:  96% (2803/2919)
+2026-11-25T05:10:13.6734771Z Updating files:  97% (2832/2919)
+2026-11-25T05:10:13.6745524Z Updating files:  98% (2861/2919)
+2026-11-25T05:10:13.6764085Z Updating files:  99% (2890/2919)
+2026-11-25T05:10:13.6764349Z Updating files: 100% (2919/2919)
+2026-11-25T05:10:13.6764914Z Updating files: 100% (2919/2919), done.
+2026-11-25T05:10:13.6836528Z Note: switching to 'refs/remotes/pull/75/merge'.
+2026-11-25T05:10:13.6836679Z 
+2026-11-25T05:10:13.6836823Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-25T05:10:13.6837126Z changes and commit them, and you can discard any commits you make in this
+2026-11-25T05:10:13.6837421Z state without impacting any branches by switching back to a branch.
+2026-11-25T05:10:13.6900725Z 
+2026-11-25T05:10:13.6901010Z If you want to create a new branch to retain commits you create, you may
+2026-11-25T05:10:13.6901544Z do so (now or later) by using -c with the switch command. Example:
+2026-11-25T05:10:13.6901828Z 
+2026-11-25T05:10:13.6901998Z   git switch -c <new-branch-name>
+2026-11-25T05:10:13.6902196Z 
+2026-11-25T05:10:13.6902336Z Or undo this operation with:
+2026-11-25T05:10:13.6902503Z 
+2026-11-25T05:10:13.6902624Z   git switch -
+2026-11-25T05:10:13.6902747Z 
+2026-11-25T05:10:13.6903024Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-25T05:10:13.6903212Z 
+2026-11-25T05:10:13.6903430Z HEAD is now at 790e3c7 Merge b71345d39f94151b227f4087ed1c71369249f632 into a5f5564e2c09768e475b68c61e48e74b503efd3f
+2026-11-25T05:10:13.6904517Z ##[endgroup]
+2026-11-25T05:10:13.6904933Z [command]/usr/bin/git log -1 --format=%H
+2026-11-25T05:10:13.6925513Z 790e3c731c32bcf2d82d99bb5b7d14c937143e6c
+2026-11-25T05:10:13.7162703Z ##[group]Run actions/setup-python@v5
+2026-11-25T05:10:13.7162915Z with:
+2026-11-25T05:10:13.7163061Z   python-version: 3.12
+2026-11-25T05:10:13.7163231Z   check-latest: false
+2026-11-25T05:10:13.7164831Z   token: ***
+2026-11-25T05:10:13.7164976Z   update-environment: true
+2026-11-25T05:10:13.7165141Z   allow-prereleases: false
+2026-11-25T05:10:13.7165300Z   freethreaded: false
+2026-11-25T05:10:13.7165453Z ##[endgroup]
+2026-11-25T05:10:13.8086035Z ##[group]Installed versions
+2026-11-25T05:10:13.8167958Z (node:2204) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-25T05:10:13.8169356Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-25T05:10:13.8177161Z Successfully set up CPython (3.12.16)
+2026-11-25T05:10:13.8180299Z ##[endgroup]
+2026-11-25T05:10:13.8329501Z ##[group]Run status=0
+2026-11-25T05:10:13.8329873Z status=0
+2026-11-25T05:10:13.8330274Z for guard in check_size_ratchet.py check_cpp_deps.py check_cross_domain_inventory.py \
+2026-11-25T05:10:13.8330837Z     check_runtime_advancers.py check_runtime_switches.py check_committed_views.py \
+2026-11-25T05:10:13.8331358Z     check_save_contracts.py check_module_contracts.py check_resolve_apply.py \
+2026-11-25T05:10:13.8332119Z     check_module_api.py check_skill_mirrors.py check_module_map.py world_ext_bindings.py check_world_ext_bindings.py check_script_native_access.py test_architecture_guards.py \
+2026-11-25T05:10:13.8332882Z     test_regression_evidence.py test_runtime_load_consistency.py; do
+2026-11-25T05:10:13.8333293Z   echo "::group::$guard"
+2026-11-25T05:10:13.8333665Z   python "$guard" || { status=1; echo "::error::$guard failed"; }
+2026-11-25T05:10:13.8334070Z   echo "::endgroup::"
+2026-11-25T05:10:13.8334315Z done
+2026-11-25T05:10:13.8334537Z exit $status
+2026-11-25T05:10:13.8394185Z shell: /usr/bin/bash -e {0}
+2026-11-25T05:10:13.8394454Z env:
+2026-11-25T05:10:13.8394668Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:13.8394955Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib/pkgconfig
+2026-11-25T05:10:13.8395225Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:13.8395467Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:13.8395796Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:13.8396044Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib
+2026-11-25T05:10:13.8396259Z ##[endgroup]
+2026-11-25T05:10:13.8470031Z ##[group]check_size_ratchet.py
+2026-11-25T05:10:14.0799040Z size ratchet: 1419 files, 0 violations, 0 growth warnings
+2026-11-25T05:10:14.0853172Z ##[endgroup]
+2026-11-25T05:10:14.0853546Z ##[group]check_cpp_deps.py
+2026-11-25T05:10:22.6308186Z Country direct writes remaining: 0
+2026-11-25T05:10:22.6308828Z C++ dependencies: 603 reference keys (429 debt keys), header_exposed=483, total=2159, 0 violations
+2026-11-25T05:10:22.6379027Z ##[endgroup]
+2026-11-25T05:10:22.6379468Z ##[group]check_cross_domain_inventory.py
+2026-11-25T05:10:22.6537454Z cross-domain inventory: 30 pairs, 0 violations
+2026-11-25T05:10:22.6561820Z ##[endgroup]
+2026-11-25T05:10:22.6562266Z ##[group]check_runtime_advancers.py
+2026-11-25T05:10:22.6779736Z runtime advancers: 8 entries, 2 fields, 0 catchup methods, 0 violations
+2026-11-25T05:10:22.6807184Z ##[endgroup]
+2026-11-25T05:10:22.6807583Z ##[group]check_runtime_switches.py
+2026-11-25T05:10:23.4667269Z Runtime switches: {"switches": 97, "reads": 152, "fault_names": 46, "fault_calls": 27, "raw_reads": 0, "unregistered_dynamic": 0}; 0 violations
+2026-11-25T05:10:23.4721754Z ##[endgroup]
+2026-11-25T05:10:23.4722336Z ##[group]check_committed_views.py
+2026-11-25T05:10:23.4994365Z committed views: 9 guarded edges, 0 violations
+2026-11-25T05:10:23.5032210Z ##[endgroup]
+2026-11-25T05:10:23.5032593Z ##[group]check_save_contracts.py
+2026-11-25T05:10:23.5269668Z save contracts: 2 script owners + 12 C++ domains, 0 violations
+2026-11-25T05:10:23.5310543Z ##[endgroup]
+2026-11-25T05:10:23.5310950Z ##[group]check_module_contracts.py
+2026-11-25T05:10:23.5679736Z module contracts: 12 modules, 9 reviewed reads, 0 violations
+2026-11-25T05:10:23.5727272Z ##[endgroup]
+2026-11-25T05:10:23.5727850Z ##[group]check_resolve_apply.py
+2026-11-25T05:10:23.7506435Z Resolve/Apply: 3 queues, 3 Apply surfaces, 0 violations
+2026-11-25T05:10:23.7560026Z ##[endgroup]
+2026-11-25T05:10:23.7560594Z ##[group]check_module_api.py
+2026-11-25T05:10:24.4046743Z module API: 4 modules (country: 0 legacy, 35 roots; economy: 0 legacy, 40 roots; military: 0 legacy, 4 roots; modifier: 0 legacy, 10 roots), 7 shared contract headers, 0 violations
+2026-11-25T05:10:24.4100681Z ##[endgroup]
+2026-11-25T05:10:24.4101197Z ##[group]check_skill_mirrors.py
+2026-11-25T05:10:24.4670253Z skill mirrors: 37 skills, 0 drifting files, 0 violations
+2026-11-25T05:10:24.4725875Z ##[endgroup]
+2026-11-25T05:10:24.4726238Z ##[group]check_module_map.py
+2026-11-25T05:10:24.5007252Z module map: 0 violations
+2026-11-25T05:10:24.5052626Z ##[endgroup]
+2026-11-25T05:10:24.6119572Z world_ext bindings: 671 (economy 117, country 95, runtime 85, climate 76, core 49, effect 39, modifier 37, military 36, ideology 31, trigger 24, visual 23, generation 19, events 17, demo 16, bake_encoders 7); 0 problems
+2026-11-25T05:10:24.6120433Z ##[group]world_ext_bindings.py
+2026-11-25T05:10:24.6186178Z ##[endgroup]
+2026-11-25T05:10:24.6186606Z ##[group]check_world_ext_bindings.py
+2026-11-25T05:10:24.7318347Z world_ext binding guard: 15 modules; 0 problems
+2026-11-25T05:10:24.7364511Z ##[endgroup]
+2026-11-25T05:10:24.7364958Z ##[group]check_script_native_access.py
+2026-11-25T05:10:28.6720540Z can tighten baseline: Project/project-keynes/scripts/game/map_runtime_bridge.gd: economy: 4 -> 3
+2026-11-25T05:10:28.6721028Z can tighten baseline: Project/project-keynes/scripts/game/world_runtime_daily_adapter_part1.gd: economy: 1 -> 0
+2026-11-25T05:10:28.6721420Z can tighten baseline: Project/project-keynes/scripts/game/world_runtime_daily_adapter_part2.gd: ideology: 2 -> 0
+2026-11-25T05:10:28.6721802Z can tighten baseline: Project/project-keynes/scripts/game/world_runtime_generation_adapter.gd: ideology: 1 -> 0
+2026-11-25T05:10:28.6722182Z can tighten baseline: Project/project-keynes/scripts/geography/map_generation/terrain_gen.gd: core: 3 -> 2
+2026-11-25T05:10:28.6722516Z can tighten baseline: Project/project-keynes/scripts/main/debug_tools.gd: core: 16 -> 0
+2026-11-25T05:10:28.6722884Z can tighten baseline: Project/project-keynes/scripts/simulation/systems/bio_occupancy_daily_system.gd: visual: 1 -> 0
+2026-11-25T05:10:28.6723259Z can tighten baseline: Project/project-keynes/scripts/ui/tile_data_recorder.gd: demo: 1 -> 0
+2026-11-25T05:10:28.6723645Z script native access guard: 797 scripts; 765 native references; 28 files / 50 file-module pairs / 113 cross-module references; 0 problems
+2026-11-25T05:10:28.6986978Z ##[endgroup]
+2026-11-25T05:10:28.6987775Z ##[group]test_architecture_guards.py
+2026-11-25T05:10:34.7800113Z runtime control wakeup: PASS (32 controlled wait transitions)
+2026-11-25T05:10:40.6954244Z ..................................................
+2026-11-25T05:10:40.6954628Z ----------------------------------------------------------------------
+2026-11-25T05:10:40.6955070Z Ran 50 tests in 11.904s
+2026-11-25T05:10:40.6955201Z 
+2026-11-25T05:10:40.6955339Z OK
+2026-11-25T05:10:40.7061920Z ##[endgroup]
+2026-11-25T05:10:40.7062569Z ##[group]test_regression_evidence.py
+2026-11-25T05:10:40.8853445Z ..............
+2026-11-25T05:10:40.8853811Z ----------------------------------------------------------------------
+2026-11-25T05:10:40.8854160Z Ran 14 tests in 0.005s
+2026-11-25T05:10:40.8854286Z 
+2026-11-25T05:10:40.8854354Z OK
+2026-11-25T05:10:40.8988787Z ##[endgroup]
+2026-11-25T05:10:40.8989989Z ##[group]test_runtime_load_consistency.py
+2026-11-25T05:10:40.9627331Z ........
+2026-11-25T05:10:40.9627615Z ----------------------------------------------------------------------
+2026-11-25T05:10:40.9627837Z Ran 8 tests in 0.006s
+2026-11-25T05:10:40.9627917Z 
+2026-11-25T05:10:40.9627962Z OK
+2026-11-25T05:10:40.9744299Z ##[endgroup]
+2026-11-25T05:10:40.9783304Z ##[group]Run sudo apt-get install -y -qq zsh >/dev/null
+2026-11-25T05:10:40.9783546Z sudo apt-get install -y -qq zsh >/dev/null
+2026-11-25T05:10:40.9783751Z python -m unittest discover -s tools/factory/tests -v
+2026-11-25T05:10:40.9812882Z shell: /usr/bin/bash -e {0}
+2026-11-25T05:10:40.9813017Z env:
+2026-11-25T05:10:40.9813172Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:40.9813411Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib/pkgconfig
+2026-11-25T05:10:40.9813782Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:40.9813985Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:40.9814189Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:40.9814394Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib
+2026-11-25T05:10:40.9814570Z ##[endgroup]
+2026-11-25T05:10:45.6298187Z 
+2026-11-25T05:10:45.6299013Z Running kernel seems to be up-to-date.
+2026-11-25T05:10:45.6299232Z 
+2026-11-25T05:10:45.6299316Z Restarting services...
+2026-11-25T05:10:45.6371644Z 
+2026-11-25T05:10:45.6372071Z Service restarts being deferred:
+2026-11-25T05:10:45.6375295Z  systemctl restart hosted-compute-agent.service
+2026-11-25T05:10:45.6375491Z 
+2026-11-25T05:10:45.6376209Z No containers need to be restarted.
+2026-11-25T05:10:45.6376390Z 
+2026-11-25T05:10:45.6376503Z No user sessions are running outdated binaries.
+2026-11-25T05:10:45.6376673Z 
+2026-11-25T05:10:45.6376852Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+2026-11-25T05:10:46.5798219Z test_takes_ready_tickets_oldest_first_and_skips_held_ones (test_factory.ClaimTest.test_takes_ready_tickets_oldest_first_and_skips_held_ones) ... ok
+2026-11-25T05:10:46.5799196Z test_id_is_exact_even_when_evidence_mentions_another_id (test_factory.DisputeTest.test_id_is_exact_even_when_evidence_mentions_another_id) ... ok
+2026-11-25T05:10:46.5799935Z test_lists_all_malformed_and_unknown_lines (test_factory.DisputeTest.test_lists_all_malformed_and_unknown_lines) ... ok
+2026-11-25T05:10:46.5803863Z test_reads_workflow_loop (test_factory.GuardListTest.test_reads_workflow_loop) ... ok
+2026-11-25T05:10:46.5809621Z test_real_workflow_has_guards (test_factory.GuardListTest.test_real_workflow_has_guards) ... ok
+2026-11-25T05:10:46.5810467Z test_checks_the_factory_already_runs_are_not_rejected (test_factory.PlanTest.test_checks_the_factory_already_runs_are_not_rejected) ... ok
+2026-11-25T05:10:46.5811437Z test_extra_checks_accept_python_prefix_and_focused_tests (test_factory.PlanTest.test_extra_checks_accept_python_prefix_and_focused_tests) ... ok
+2026-11-25T05:10:46.5812084Z test_extra_checks_are_allowlisted (test_factory.PlanTest.test_extra_checks_are_allowlisted) ... ok
+2026-11-25T05:10:46.5813219Z test_native_check_line_cannot_carry_another_command (test_factory.PlanTest.test_native_check_line_cannot_carry_another_command) ... ok
+2026-11-25T05:10:46.5813756Z test_questions (test_factory.PlanTest.test_questions) ... ok
+2026-11-25T05:10:46.5814331Z test_requested_native_check_that_did_not_run_needs_a_person (test_factory.PlanTest.test_requested_native_check_that_did_not_run_needs_a_person) ... ok
+2026-11-25T05:10:46.5814895Z test_sections (test_factory.PlanTest.test_sections) ... ok
+2026-11-25T05:10:46.5815251Z test_chinese_heading (test_factory.TicketTest.test_chinese_heading) ... ok
+2026-11-25T05:10:46.5815742Z test_criteria_checkbox_and_numbered (test_factory.TicketTest.test_criteria_checkbox_and_numbered) ... ok
+2026-11-25T05:10:46.5816171Z test_gate (test_factory.TicketTest.test_gate) ... ok
+2026-11-25T05:10:46.5816822Z test_touching (test_factory.TicketTest.test_touching) ... ok
+2026-11-25T05:10:46.5817575Z test_checks_on_another_commit_are_not_done (test_factory.VerdictTest.test_checks_on_another_commit_are_not_done) ... ok
+2026-11-25T05:10:46.5818117Z test_ci_failure_needs_fix (test_factory.VerdictTest.test_ci_failure_needs_fix) ... ok
+2026-11-25T05:10:46.5819388Z test_ci_pending_is_not_done (test_factory.VerdictTest.test_ci_pending_is_not_done) ... ok
+2026-11-25T05:10:46.5820198Z test_ci_read_error_needs_human_even_with_missing_evidence (test_factory.VerdictTest.test_ci_read_error_needs_human_even_with_missing_evidence) ... ok
+2026-11-25T05:10:46.5821079Z test_closed_findings_do_not_block (test_factory.VerdictTest.test_closed_findings_do_not_block) ... ok
+2026-11-25T05:10:46.5821790Z test_each_open_status_blocks (test_factory.VerdictTest.test_each_open_status_blocks) ... ok
+2026-11-25T05:10:46.5822634Z test_human_reasons_win (test_factory.VerdictTest.test_human_reasons_win) ... ok
+2026-11-25T05:10:46.5823209Z test_informational_is_listed_not_blocking (test_factory.VerdictTest.test_informational_is_listed_not_blocking) ... ok
+2026-11-25T05:10:46.5823889Z test_master_failures_alone_do_not_need_a_person (test_factory.VerdictTest.test_master_failures_alone_do_not_need_a_person) ... ok
+2026-11-25T05:10:46.5824469Z test_native_change_needs_rebuild_and_runtime_evidence (test_factory.VerdictTest.test_native_change_needs_rebuild_and_runtime_evidence) ... ok
+2026-11-25T05:10:46.5824854Z test_new_failures_need_fix (test_factory.VerdictTest.test_new_failures_need_fix) ... ok
+2026-11-25T05:10:46.5825152Z test_ready_needs_every_fact (test_factory.VerdictTest.test_ready_needs_every_fact) ... ok
+2026-11-25T05:10:46.5825544Z test_rejected_check_needs_human_even_with_other_evidence (test_factory.VerdictTest.test_rejected_check_needs_human_even_with_other_evidence) ... ok
+2026-11-25T05:10:46.5825988Z test_review_of_older_commit_is_not_done (test_factory.VerdictTest.test_review_of_older_commit_is_not_done) ... ok
+2026-11-25T05:10:46.5826366Z test_review_still_running_is_not_done (test_factory.VerdictTest.test_review_still_running_is_not_done) ... ok
+2026-11-25T05:10:46.5826727Z test_round_limit_reached_needs_human (test_factory.VerdictTest.test_round_limit_reached_needs_human) ... ok
+2026-11-25T05:10:46.5827130Z test_unknown_or_missing_action_level_needs_human (test_factory.VerdictTest.test_unknown_or_missing_action_level_needs_human) ... ok
+2026-11-25T05:10:46.5827514Z test_unknown_status_needs_human (test_factory.VerdictTest.test_unknown_status_needs_human) ... ok
+2026-11-25T05:10:46.6143249Z test_every_gate_function_is_registered (test_gates_refuse.GatesRefuse.test_every_gate_function_is_registered) ... ok
+2026-11-25T05:10:46.6173589Z test_every_gate_refuses_its_bad_inputs (test_gates_refuse.GatesRefuse.test_every_gate_refuses_its_bad_inputs) ... ok
+2026-11-25T05:10:46.6182615Z test_rule_text_matches_the_evidence_and_names_this_test (test_gates_refuse.GatesRefuse.test_rule_text_matches_the_evidence_and_names_this_test) ... ok
+2026-11-25T05:10:46.6213822Z test_missing_native_scripts_or_directories_stop_before_commands (test_native.NativePreflightTest.test_missing_native_scripts_or_directories_stop_before_commands) ... ok
+2026-11-25T05:10:46.6792976Z test_failed_import_skips_probes_and_never_publishes (test_native.NativeWorkflowTest.test_failed_import_skips_probes_and_never_publishes) ... ok
+2026-11-25T05:10:46.7990053Z test_failed_rebuild_skips_import_and_probes_and_never_publishes (test_native.NativeWorkflowTest.test_failed_rebuild_skips_import_and_probes_and_never_publishes) ... ok
+2026-11-25T05:10:46.8680471Z test_force_added_dylib_stops_both_fix_modes (test_native.NativeWorkflowTest.test_force_added_dylib_stops_both_fix_modes) ... ok
+2026-11-25T05:10:46.9770024Z test_native_build_import_probes_commit_and_push_in_both_modes (test_native.NativeWorkflowTest.test_native_build_import_probes_commit_and_push_in_both_modes) ... ok
+2026-11-25T05:10:47.0716385Z test_non_native_change_leaves_ignored_build_outputs_local (test_native.NativeWorkflowTest.test_non_native_change_leaves_ignored_build_outputs_local) ... ok
+2026-11-25T05:10:47.1434564Z test_non_native_issue_review_fix_keeps_previously_committed_libraries (test_native.NativeWorkflowTest.test_non_native_issue_review_fix_keeps_previously_committed_libraries) ... ok
+2026-11-25T05:10:47.2300082Z test_one_failed_probe_still_runs_both_and_never_publishes (test_native.NativeWorkflowTest.test_one_failed_probe_still_runs_both_and_never_publishes) ... ok
+2026-11-25T05:10:47.3049756Z test_replaced_library_after_probe_stops_both_modes (test_native.NativeWorkflowTest.test_replaced_library_after_probe_stops_both_modes) ... ok
+2026-11-25T05:10:47.3707849Z test_submodule_stops_both_modes_without_rebuilding (test_native.NativeWorkflowTest.test_submodule_stops_both_modes_without_rebuilding) ... ok
+2026-11-25T05:10:47.4144065Z test_unchanged_build_bytes_do_not_block_a_source_commit (test_native.NativeWorkflowTest.test_unchanged_build_bytes_do_not_block_a_source_commit) ... ok
+2026-11-25T05:10:47.4833925Z test_unexpected_binary_stops_both_modes (test_native.NativeWorkflowTest.test_unexpected_binary_stops_both_modes) ... ok
+2026-11-25T05:10:47.4834778Z test_a_settled_blocking_finding_does_not_block (test_quality_gate.QualityGateTest.test_a_settled_blocking_finding_does_not_block) ... ok
+2026-11-25T05:10:47.4835659Z test_a_stalled_loop_stops_instead_of_reporting_done (test_quality_gate.QualityGateTest.test_a_stalled_loop_stops_instead_of_reporting_done) ... ok
+2026-11-25T05:10:47.4836412Z test_code_names_the_tested_blocking_levels (test_quality_gate.QualityGateTest.test_code_names_the_tested_blocking_levels) ... ok
+2026-11-25T05:10:47.4837173Z test_every_blocking_level_stops_a_done_report (test_quality_gate.QualityGateTest.test_every_blocking_level_stops_a_done_report) ... ok
+2026-11-25T05:10:47.4837925Z test_page_names_the_tested_severities (test_quality_gate.QualityGateTest.test_page_names_the_tested_severities) ... ok
+2026-11-25T05:10:47.4838731Z test_refuses_done_when_checks_did_not_run_on_the_head (test_quality_gate.QualityGateTest.test_refuses_done_when_checks_did_not_run_on_the_head) ... ok
+2026-11-25T05:10:47.4839640Z test_refuses_done_without_a_review_of_the_head (test_quality_gate.QualityGateTest.test_refuses_done_without_a_review_of_the_head) ... ok
+2026-11-25T05:10:47.4840401Z test_reported_levels_reach_a_person_not_dropped (test_quality_gate.QualityGateTest.test_reported_levels_reach_a_person_not_dropped) ... ok
+2026-11-25T05:10:47.4841260Z test_unknown_level_goes_to_a_person_and_is_never_ready (test_quality_gate.QualityGateTest.test_unknown_level_goes_to_a_person_and_is_never_ready) ... ok
+2026-11-25T05:10:47.4841964Z test_a_person_pushing_resets_rounds (test_watch.Decide.test_a_person_pushing_resets_rounds) ... ok
+2026-11-25T05:10:47.4842515Z test_closed_findings_do_not_block (test_watch.Decide.test_closed_findings_do_not_block) ... ok
+2026-11-25T05:10:47.4843969Z test_disputed_findings_are_left_to_a_person (test_watch.Decide.test_disputed_findings_are_left_to_a_person) ... ok
+2026-11-25T05:10:47.4844717Z test_does_not_retry_where_it_stopped (test_watch.Decide.test_does_not_retry_where_it_stopped) ... ok
+2026-11-25T05:10:47.4845407Z test_failed_review_stops (test_watch.Decide.test_failed_review_stops) ... ok
+2026-11-25T05:10:47.4846331Z test_fix_on_blocking_findings_at_head (test_watch.Decide.test_fix_on_blocking_findings_at_head) ... ok
+2026-11-25T05:10:47.4848277Z test_missing_or_unknown_action_level_stops_before_fixing_other_findings (test_watch.Decide.test_missing_or_unknown_action_level_stops_before_fixing_other_findings) ... ok
+2026-11-25T05:10:47.4859728Z test_old_attempt_is_skipped_if_a_person_restores_that_head (test_watch.Decide.test_old_attempt_is_skipped_if_a_person_restores_that_head) ... ok
+2026-11-25T05:10:47.4860360Z test_recommended_level_also_blocks (test_watch.Decide.test_recommended_level_also_blocks) ... ok
+2026-11-25T05:10:47.4860854Z test_round_limit_after_own_fixes (test_watch.Decide.test_round_limit_after_own_fixes) ... ok
+2026-11-25T05:10:47.4861372Z test_same_findings_after_own_fix_stops (test_watch.Decide.test_same_findings_after_own_fix_stops) ... ok
+2026-11-25T05:10:47.4861913Z test_skips_draft_cross_repo_and_labels (test_watch.Decide.test_skips_draft_cross_repo_and_labels) ... ok
+2026-11-25T05:10:47.4862479Z test_skips_issue_branches_until_handed_over (test_watch.Decide.test_skips_issue_branches_until_handed_over) ... ok
+2026-11-25T05:10:47.4863319Z test_waits_for_review_of_head (test_watch.Decide.test_waits_for_review_of_head) ... ok
+2026-11-25T05:10:47.4863899Z test_label_delete_errors_other_than_404_are_recorded (test_watch.LabelAPI.test_label_delete_errors_other_than_404_are_recorded) ... ok
+2026-11-25T05:10:47.4864558Z test_relabel_uses_rest_and_ignores_delete_404 (test_watch.LabelAPI.test_relabel_uses_rest_and_ignores_delete_404) ... ok
+2026-11-25T05:10:47.4865172Z test_ci_requires_evidence_for_same_head (test_watch.MergeDecision.test_ci_requires_evidence_for_same_head) ... ok
+2026-11-25T05:10:47.4866057Z test_conflict_update_does_not_retry_an_already_attempted_factory_head (test_watch.MergeDecision.test_conflict_update_does_not_retry_an_already_attempted_factory_head) ... ok
+2026-11-25T05:10:47.4866852Z test_conflict_update_respects_skip_conditions (test_watch.MergeDecision.test_conflict_update_respects_skip_conditions) ... ok
+2026-11-25T05:10:47.4867556Z test_conflicting_head_updates_without_review_or_ci (test_watch.MergeDecision.test_conflicting_head_updates_without_review_or_ci) ... ok
+2026-11-25T05:10:47.4868206Z test_disabled_auto_merge_skips_clean_pr (test_watch.MergeDecision.test_disabled_auto_merge_skips_clean_pr) ... ok
+2026-11-25T05:10:47.4870132Z test_draft_cross_repo_and_each_skip_label_prevent_merge (test_watch.MergeDecision.test_draft_cross_repo_and_each_skip_label_prevent_merge) ... ok
+2026-11-25T05:10:47.4875846Z test_each_workflow_and_check_conclusion_must_be_success (test_watch.MergeDecision.test_each_workflow_and_check_conclusion_must_be_success) ... ok
+2026-11-25T05:10:47.4877376Z test_factory_labels_and_no_auto_merge_prevent_merge (test_watch.MergeDecision.test_factory_labels_and_no_auto_merge_prevent_merge) ... ok
+2026-11-25T05:10:47.4878346Z test_failed_ci_query_stops (test_watch.MergeDecision.test_failed_ci_query_stops) ... ok
+2026-11-25T05:10:47.4879415Z test_merges_clean_head_with_green_ci_and_lists_information (test_watch.MergeDecision.test_merges_clean_head_with_green_ci_and_lists_information) ... ok
+2026-11-25T05:10:47.4882817Z test_missing_or_incomplete_workflows_and_checks_wait (test_watch.MergeDecision.test_missing_or_incomplete_workflows_and_checks_wait) ... ok
+2026-11-25T05:10:47.4884792Z test_open_blocking_findings_prevent_merge_even_if_disputed (test_watch.MergeDecision.test_open_blocking_findings_prevent_merge_even_if_disputed) ... ok
+2026-11-25T05:10:47.4886654Z test_unknown_finding_fields_and_missing_list_stop_merge (test_watch.MergeDecision.test_unknown_finding_fields_and_missing_list_stop_merge) ... ok
+2026-11-25T05:10:47.4887891Z test_unknown_mergeability_waits (test_watch.MergeDecision.test_unknown_mergeability_waits) ... ok
+2026-11-25T05:10:47.4889806Z test_waits_for_completed_review_of_current_head (test_watch.MergeDecision.test_waits_for_completed_review_of_current_head) ... ok
+2026-11-25T05:10:47.4890598Z test_workflow_is_required_and_a_completed_check_query_may_be_empty (test_watch.MergeDecision.test_workflow_is_required_and_a_completed_check_query_may_be_empty) ... ok
+2026-11-25T05:10:47.4903707Z test_binary_additions_and_modifications_require_a_person (test_watch.MergeWorkflow.test_binary_additions_and_modifications_require_a_person) ... ok
+2026-11-25T05:10:47.4911451Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.4911842Z {"pr": 7, "action": "skip", "reason": "has a label that blocks auto-merge"}
+2026-11-25T05:10:47.4916103Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.4916532Z {"pr": 7, "action": "skip", "reason": "has a label that blocks auto-merge"}
+2026-11-25T05:10:47.4920691Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.4921098Z {"pr": 7, "action": "skip", "reason": "the PR labels changed before merge"}
+2026-11-25T05:10:47.4926003Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.4926376Z {"pr": 7, "action": "skip", "reason": "the PR head changed before merge"}
+2026-11-25T05:10:47.4931781Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.4932151Z {"pr": 7, "action": "skip", "reason": "GitHub reports merge conflicts"}
+2026-11-25T05:10:47.4936782Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.4937154Z {"pr": 7, "action": "skip", "reason": "the PR base changed before merge"}
+2026-11-25T05:10:47.4943446Z test_changes_in_pr_state_before_merge_are_recorded_as_skips (test_watch.MergeWorkflow.test_changes_in_pr_state_before_merge_are_recorded_as_skips) ... ok
+2026-11-25T05:10:47.4949619Z {"pr": 7, "action": "stop", "reason": "the CI state could not be read"}
+2026-11-25T05:10:47.4955213Z test_ci_query_error_labels_pr_without_attempting_merge (test_watch.MergeWorkflow.test_ci_query_error_labels_pr_without_attempting_merge) ... ok
+2026-11-25T05:10:47.4961128Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.4965792Z test_closed_after_merge_stops_with_not_merged (test_watch.MergeWorkflow.test_closed_after_merge_stops_with_not_merged) ... ok
+2026-11-25T05:10:47.4970437Z {"pr": 7, "action": "skip", "reason": "no open blocking findings at the head"}
+2026-11-25T05:10:47.4971486Z test_disabled_auto_merge_does_not_query_ci_or_write (test_watch.MergeWorkflow.test_disabled_auto_merge_does_not_query_ci_or_write) ... ok
+2026-11-25T05:10:47.4977188Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.4978266Z test_dry_run_reads_evidence_without_writes (test_watch.MergeWorkflow.test_dry_run_reads_evidence_without_writes) ... ok
+2026-11-25T05:10:47.4983533Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.4991863Z test_failed_help_label_add_saves_stop_and_blocks_next_tick (test_watch.MergeWorkflow.test_failed_help_label_add_saves_stop_and_blocks_next_tick) ... ok
+2026-11-25T05:10:47.4996792Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5002690Z test_failed_merge_command_labels_pr_and_records_error (test_watch.MergeWorkflow.test_failed_merge_command_labels_pr_and_records_error) ... ok
+2026-11-25T05:10:47.5010361Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5017159Z test_failed_native_checks_keep_source_only_pr_from_merging (test_watch.MergeWorkflow.test_failed_native_checks_keep_source_only_pr_from_merging) ... ok
+2026-11-25T05:10:47.5033555Z test_failed_or_incomplete_changed_files_query_skips (test_watch.MergeWorkflow.test_failed_or_incomplete_changed_files_query_skips) ... ok
+2026-11-25T05:10:47.5046143Z test_failed_pr_reread_skips_without_merging (test_watch.MergeWorkflow.test_failed_pr_reread_skips_without_merging) ... ok
+2026-11-25T05:10:47.5056818Z test_latest_failed_workflow_or_check_still_blocks (test_watch.MergeWorkflow.test_latest_failed_workflow_or_check_still_blocks) ... ok
+2026-11-25T05:10:47.5063745Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5068285Z test_legacy_queue_marker_does_not_block_merging (test_watch.MergeWorkflow.test_legacy_queue_marker_does_not_block_merging) ... ok
+2026-11-25T05:10:47.5074035Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5078687Z test_merged_at_a_different_head_stops_with_not_merged (test_watch.MergeWorkflow.test_merged_at_a_different_head_stops_with_not_merged) ... ok
+2026-11-25T05:10:47.5084181Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5089550Z test_merges_with_head_guard_and_records_ci_and_review_evidence (test_watch.MergeWorkflow.test_merges_with_head_guard_and_records_ci_and_review_evidence) ... ok
+2026-11-25T05:10:47.5098101Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5104006Z test_native_changes_without_libraries_merge_after_local_checks (test_watch.MergeWorkflow.test_native_changes_without_libraries_merge_after_local_checks) ... ok
+2026-11-25T05:10:47.5110077Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5114444Z test_open_after_merge_stops_with_not_merged (test_watch.MergeWorkflow.test_open_after_merge_stops_with_not_merged) ... ok
+2026-11-25T05:10:47.5120630Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5124351Z test_passed_reruns_replace_failed_ci_attempts (test_watch.MergeWorkflow.test_passed_reruns_replace_failed_ci_attempts) ... ok
+2026-11-25T05:10:47.5130330Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5130745Z {"pr": 7, "action": "skip", "reason": "has a label that blocks auto-merge"}
+2026-11-25T05:10:47.5132388Z {"pr": 8, "action": "skip", "reason": "has a skip label"}
+2026-11-25T05:10:47.5134326Z test_preflight_skip_allows_tick_to_consider_next_pr (test_watch.MergeWorkflow.test_preflight_skip_allows_tick_to_consider_next_pr) ... ok
+2026-11-25T05:10:47.5152390Z test_protected_paths_require_a_person_even_when_renamed (test_watch.MergeWorkflow.test_protected_paths_require_a_person_even_when_renamed) ... ok
+2026-11-25T05:10:47.5157509Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5164356Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5170675Z test_removing_help_label_allows_same_head_to_retry (test_watch.MergeWorkflow.test_removing_help_label_allows_same_head_to_retry) ... ok
+2026-11-25T05:10:47.5175989Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5180663Z test_successful_merge_with_failed_follow_up_still_comments_and_records_merged (test_watch.MergeWorkflow.test_successful_merge_with_failed_follow_up_still_comments_and_records_merged) ... ok
+2026-11-25T05:10:47.5191297Z {"pr": 8, "action": "skip", "reason": "the issue runner has not handed this PR over"}
+2026-11-25T05:10:47.5192215Z test_unhanded_issue_pr_costs_no_review_lookup (test_watch.MergeWorkflow.test_unhanded_issue_pr_costs_no_review_lookup) ... ok
+2026-11-25T05:10:47.5197596Z {"pr": 7, "action": "merge", "reason": "clean Qodo review and successful CI on the head"}
+2026-11-25T05:10:47.5202318Z test_working_label_removal_failure_preserves_help_label_retry (test_watch.MergeWorkflow.test_working_label_removal_failure_preserves_help_label_retry) ... ok
+2026-11-25T05:10:47.5206582Z test_changed_includes_dirty_submodule_and_protected_nested_files (test_workflow.AdapterTest.test_changed_includes_dirty_submodule_and_protected_nested_files) ... ok
+2026-11-25T05:10:47.5211168Z test_ci_records_failure_from_either_query (test_workflow.AdapterTest.test_ci_records_failure_from_either_query) ... ok
+2026-11-25T05:10:47.5215360Z test_ci_requests_both_lists_for_the_head_sha (test_workflow.AdapterTest.test_ci_requests_both_lists_for_the_head_sha) ... ok
+2026-11-25T05:10:47.5233002Z test_ci_waits_for_actions_and_checks (test_workflow.AdapterTest.test_ci_waits_for_actions_and_checks) ... ok
+2026-11-25T05:10:47.5234002Z test_ensure_leaves_existing_checkout_for_prepare_to_reset (test_workflow.AdapterTest.test_ensure_leaves_existing_checkout_for_prepare_to_reset) ... ok
+2026-11-25T05:10:47.5234697Z test_local_review_reports_missing_open_finding_level (test_workflow.AdapterTest.test_local_review_reports_missing_open_finding_level) ... ok
+2026-11-25T05:10:47.5325247Z test_prepare_forces_submodule_checkout_and_cleans_inside (test_workflow.AdapterTest.test_prepare_forces_submodule_checkout_and_cleans_inside) ... ok
+2026-11-25T05:10:47.5336245Z test_rule_sync_attempts_remaining_rules_and_returns_failure (test_workflow.AdapterTest.test_rule_sync_attempts_remaining_rules_and_returns_failure) ... ok
+2026-11-25T05:10:47.7353302Z test_save_patch_includes_dirty_submodule_and_skips_clean_submodule (test_workflow.AdapterTest.test_save_patch_includes_dirty_submodule_and_skips_clean_submodule) ... ok
+2026-11-25T05:10:47.7480865Z test_save_patch_keeps_tracked_and_untracked_edits (test_workflow.AdapterTest.test_save_patch_keeps_tracked_and_untracked_edits) ... ok
+2026-11-25T05:10:47.7504410Z test_base_cache_retries_only_nonpassing_checks (test_workflow.ChecksTest.test_base_cache_retries_only_nonpassing_checks) ... ok
+2026-11-25T05:10:47.7514133Z test_missing_extra_script_raises_before_execution (test_workflow.ChecksTest.test_missing_extra_script_raises_before_execution) ... ok
+2026-11-25T05:10:47.7521371Z test_missing_regression_script_raises_before_execution (test_workflow.ChecksTest.test_missing_regression_script_raises_before_execution) ... ok
+2026-11-25T05:10:47.7528671Z test_missing_static_guard_raises_even_if_cached (test_workflow.ChecksTest.test_missing_static_guard_raises_even_if_cached) ... ok
+2026-11-25T05:10:47.7536818Z test_missing_unit_directory_or_script_raises_before_execution (test_workflow.ChecksTest.test_missing_unit_directory_or_script_raises_before_execution) ... ok
+2026-11-25T05:10:47.7547190Z test_regression_imports_even_when_godot_cache_exists (test_workflow.ChecksTest.test_regression_imports_even_when_godot_cache_exists) ... ok
+2026-11-25T05:10:47.7604380Z test_untracked_parent_provisions_local_libraries_even_with_cached_checks (test_workflow.ChecksTest.test_untracked_parent_provisions_local_libraries_even_with_cached_checks) ... ok
+2026-11-25T05:10:47.9455002Z test_agent_cannot_stage_conflict_instead_of_leaving_staging_to_factory (test_workflow.ConflictUpdateTest.test_agent_cannot_stage_conflict_instead_of_leaving_staging_to_factory) ... ok
+2026-11-25T05:10:48.2624805Z test_base_moved_by_factory_files_only_does_not_skip_the_push (test_workflow.ConflictUpdateTest.test_base_moved_by_factory_files_only_does_not_skip_the_push) ... ok
+2026-11-25T05:10:48.5363067Z test_base_moved_by_other_files_skips_the_push_and_allows_a_retry (test_workflow.ConflictUpdateTest.test_base_moved_by_other_files_skips_the_push_and_allows_a_retry) ... ok
+2026-11-25T05:10:48.8179951Z test_base_moved_on_the_remote_skips_the_push_even_if_github_metadata_did_not_move (test_workflow.ConflictUpdateTest.test_base_moved_on_the_remote_skips_the_push_even_if_github_metadata_did_not_move) ... ok
+2026-11-25T05:10:49.0552358Z test_check_already_failing_on_base_does_not_block_the_update (test_workflow.ConflictUpdateTest.test_check_already_failing_on_base_does_not_block_the_update) ... ok
+2026-11-25T05:10:49.2887809Z test_check_missing_on_one_parent_is_not_a_regression_from_both (test_workflow.ConflictUpdateTest.test_check_missing_on_one_parent_is_not_a_regression_from_both) ... ok
+2026-11-25T05:10:49.5386017Z test_check_that_passed_on_both_parents_and_cannot_be_repaired_blocks_the_update (test_workflow.ConflictUpdateTest.test_check_that_passed_on_both_parents_and_cannot_be_repaired_blocks_the_update) ... ok
+2026-11-25T05:10:49.7002744Z test_codex_cannot_delete_add_or_change_modes_outside_conflicts (test_workflow.ConflictUpdateTest.test_codex_cannot_delete_add_or_change_modes_outside_conflicts) ... ok
+2026-11-25T05:10:49.8748739Z test_codex_cannot_restore_a_cleanly_merged_file_to_the_pr_head (test_workflow.ConflictUpdateTest.test_codex_cannot_restore_a_cleanly_merged_file_to_the_pr_head) ... ok
+2026-11-25T05:10:50.1454049Z test_codex_repairs_a_check_that_fails_only_after_the_merge (test_workflow.ConflictUpdateTest.test_codex_repairs_a_check_that_fails_only_after_the_merge) ... ok
+2026-11-25T05:10:50.3169926Z test_factory_refuses_deletion_report_if_file_still_exists (test_workflow.ConflictUpdateTest.test_factory_refuses_deletion_report_if_file_still_exists) ... ok
+2026-11-25T05:10:50.5685348Z test_factory_stages_agent_resolution_without_agent_index_access (test_workflow.ConflictUpdateTest.test_factory_stages_agent_resolution_without_agent_index_access) ... ok
+2026-11-25T05:10:50.8387246Z test_factory_stages_declared_deletion (test_workflow.ConflictUpdateTest.test_factory_stages_declared_deletion) ... ok
+2026-11-25T05:10:50.9777923Z test_gitlink_conflict_outside_the_configured_protected_paths_aborts (test_workflow.ConflictUpdateTest.test_gitlink_conflict_outside_the_configured_protected_paths_aborts) ... ok
+2026-11-25T05:10:51.1888255Z test_head_changed_in_github_metadata_before_push_abandons_the_update (test_workflow.ConflictUpdateTest.test_head_changed_in_github_metadata_before_push_abandons_the_update) ... ok
+2026-11-25T05:10:51.3924103Z test_head_moving_during_checks_abandons_the_merge (test_workflow.ConflictUpdateTest.test_head_moving_during_checks_abandons_the_merge) ... ok
+2026-11-25T05:10:51.6090587Z test_label_added_before_push_abandons_the_update (test_workflow.ConflictUpdateTest.test_label_added_before_push_abandons_the_update) ... ok
+2026-11-25T05:10:51.8436903Z test_lease_protects_a_head_that_moves_after_the_last_check (test_workflow.ConflictUpdateTest.test_lease_protects_a_head_that_moves_after_the_last_check) ... ok
+2026-11-25T05:10:52.0295373Z test_leftover_marker_stops_before_staging (test_workflow.ConflictUpdateTest.test_leftover_marker_stops_before_staging) ... ok
+2026-11-25T05:10:52.1815641Z test_legacy_library_conflicts_go_to_a_person (test_workflow.ConflictUpdateTest.test_legacy_library_conflicts_go_to_a_person) ... ok
+2026-11-25T05:10:52.3470314Z test_missing_resolution_stops_even_when_the_working_file_has_no_markers (test_workflow.ConflictUpdateTest.test_missing_resolution_stops_even_when_the_working_file_has_no_markers) ... ok
+2026-11-25T05:10:52.5996821Z test_native_update_builds_without_staging_outputs (test_workflow.ConflictUpdateTest.test_native_update_builds_without_staging_outputs) ... ok
+2026-11-25T05:10:52.7525529Z test_protected_path_conflict_aborts_without_codex_or_push (test_workflow.ConflictUpdateTest.test_protected_path_conflict_aborts_without_codex_or_push) ... ok
+2026-11-25T05:10:52.9531469Z test_required_native_check_failure_blocks_without_a_baseline (test_workflow.ConflictUpdateTest.test_required_native_check_failure_blocks_without_a_baseline) ... ok
+2026-11-25T05:10:53.3215300Z test_same_conflict_after_an_update_stops_before_calling_codex_again (test_workflow.ConflictUpdateTest.test_same_conflict_after_an_update_stops_before_calling_codex_again) ... ok
+2026-11-25T05:10:53.5264356Z test_scope_is_rechecked_after_checks (test_workflow.ConflictUpdateTest.test_scope_is_rechecked_after_checks) ... ok
+2026-11-25T05:10:53.7624023Z test_stale_base_sha_in_github_metadata_does_not_skip_the_push (test_workflow.ConflictUpdateTest.test_stale_base_sha_in_github_metadata_does_not_skip_the_push) ... ok
+2026-11-25T05:10:54.0111144Z test_text_conflict_preserves_clean_upstream_changes_and_existing_failures (test_workflow.ConflictUpdateTest.test_text_conflict_preserves_clean_upstream_changes_and_existing_failures) ... ok
+2026-11-25T05:10:54.2300897Z test_unreadable_base_branch_refuses_the_push (test_workflow.ConflictUpdateTest.test_unreadable_base_branch_refuses_the_push) ... ok
+2026-11-25T05:10:54.4910977Z test_update_rebuilds_and_probes_libraries_removed_by_master (test_workflow.ConflictUpdateTest.test_update_rebuilds_and_probes_libraries_removed_by_master) ... ok
+2026-11-25T05:10:54.6912123Z test_update_refuses_unstaged_rebuild_of_tracked_dylib (test_workflow.ConflictUpdateTest.test_update_refuses_unstaged_rebuild_of_tracked_dylib) ... ok
+2026-11-25T05:10:54.9325989Z test_update_with_libraries_and_no_cpp_change_does_not_rebuild (test_workflow.ConflictUpdateTest.test_update_with_libraries_and_no_cpp_change_does_not_rebuild) ... ok
+2026-11-25T05:10:54.9333455Z test_reference_goes_after_update (test_workflow.EnsureTest.test_reference_goes_after_update) ... ok
+2026-11-25T05:10:54.9339352Z test_agent_disputes_are_settled_its_way (test_workflow.IssueWorkflowTest.test_agent_disputes_are_settled_its_way) ... ok
+2026-11-25T05:10:54.9348378Z test_ci_query_error_stops_polling_and_pr_fix (test_workflow.IssueWorkflowTest.test_ci_query_error_stops_polling_and_pr_fix) ... ok
+2026-11-25T05:10:54.9355623Z test_failed_dry_gate_leaves_labels_alone (test_workflow.IssueWorkflowTest.test_failed_dry_gate_leaves_labels_alone) ... ok
+2026-11-25T05:10:54.9363503Z test_failed_final_lookup_still_comments_relabels_and_records (test_workflow.IssueWorkflowTest.test_failed_final_lookup_still_comments_relabels_and_records) ... ok
+2026-11-25T05:10:54.9371887Z test_failed_gate_removes_trigger_and_adds_help (test_workflow.IssueWorkflowTest.test_failed_gate_removes_trigger_and_adds_help) ... ok
+2026-11-25T05:10:54.9380533Z test_failed_hand_off_leaves_a_way_to_retry (test_workflow.IssueWorkflowTest.test_failed_hand_off_leaves_a_way_to_retry) ... ok
+2026-11-25T05:10:54.9402701Z test_failed_implementation_stops_before_checks_review_or_publish (test_workflow.IssueWorkflowTest.test_failed_implementation_stops_before_checks_review_or_publish) ... ok
+2026-11-25T05:10:54.9412159Z test_failed_issue_review_fix_stops_before_checks_or_publish (test_workflow.IssueWorkflowTest.test_failed_issue_review_fix_stops_before_checks_or_publish) ... ok
+2026-11-25T05:10:54.9420013Z test_finish_finds_a_pr_that_create_pr_lost (test_workflow.IssueWorkflowTest.test_finish_finds_a_pr_that_create_pr_lost) ... ok
+2026-11-25T05:10:54.9432687Z test_go_runs_requested_checks_on_the_base_before_implementing (test_workflow.IssueWorkflowTest.test_go_runs_requested_checks_on_the_base_before_implementing) ... ok
+2026-11-25T05:10:54.9443396Z test_incomplete_local_review_is_recorded_and_in_pr_body (test_workflow.IssueWorkflowTest.test_incomplete_local_review_is_recorded_and_in_pr_body) ... ok
+2026-11-25T05:10:54.9454558Z test_initial_commit_also_rechecks_scope_after_checks (test_workflow.IssueWorkflowTest.test_initial_commit_also_rechecks_scope_after_checks) ... ok
+2026-11-25T05:10:54.9475802Z test_issue_pr_is_labelled_until_the_verdict (test_workflow.IssueWorkflowTest.test_issue_pr_is_labelled_until_the_verdict) ... ok
+2026-11-25T05:10:54.9486997Z test_issue_review_fix_stops_on_invalid_dispute_file (test_workflow.IssueWorkflowTest.test_issue_review_fix_stops_on_invalid_dispute_file) ... ok
+2026-11-25T05:10:54.9493790Z test_master_failures_still_block_a_push (test_workflow.IssueWorkflowTest.test_master_failures_still_block_a_push) ... ok
+2026-11-25T05:10:54.9574081Z test_missing_check_stops_issue_and_records_needs_human (test_workflow.IssueWorkflowTest.test_missing_check_stops_issue_and_records_needs_human) ... ok
+2026-11-25T05:10:54.9583074Z test_pr_fix_uses_same_commit_scope_gate (test_workflow.IssueWorkflowTest.test_pr_fix_uses_same_commit_scope_gate) ... ok
+2026-11-25T05:10:54.9600937Z test_rejected_plan_check_stops_before_implementation (test_workflow.IssueWorkflowTest.test_rejected_plan_check_stops_before_implementation) ... ok
+2026-11-25T05:10:54.9607095Z test_requested_check_that_fails_on_the_base_does_not_block_a_push (test_workflow.IssueWorkflowTest.test_requested_check_that_fails_on_the_base_does_not_block_a_push) ... ok
+2026-11-25T05:10:54.9616856Z test_scope_before_commit_catches_protected_paths_from_checks (test_workflow.IssueWorkflowTest.test_scope_before_commit_catches_protected_paths_from_checks) ... ok
+2026-11-25T05:10:55.0483673Z test_both_poll_jobs_run_at_the_same_time_in_separate_checkouts (test_workflow.PollScriptsTest.test_both_poll_jobs_run_at_the_same_time_in_separate_checkouts) ... ok
+2026-11-25T05:10:55.0490591Z test_existing_issue_run_does_not_block_the_pr_lane (test_workflow.PollScriptsTest.test_existing_issue_run_does_not_block_the_pr_lane) ... ok
+2026-11-25T05:10:55.2812392Z test_installer_pins_head_of_linked_worktree (test_workflow.PollScriptsTest.test_installer_pins_head_of_linked_worktree) ... ok
+2026-11-25T05:10:55.3135391Z test_installer_plist_carries_configured_python (test_workflow.PollScriptsTest.test_installer_plist_carries_configured_python) ... ok
+2026-11-25T05:10:55.3141348Z test_lane_locks_are_independent_and_same_lane_merges_serialize (test_workflow.PollScriptsTest.test_lane_locks_are_independent_and_same_lane_merges_serialize) ... ok
+2026-11-25T05:10:55.3150860Z test_old_pr_runner_blocks_issue_entry_before_it_touches_work (test_workflow.PollScriptsTest.test_old_pr_runner_blocks_issue_entry_before_it_touches_work) ... ok
+2026-11-25T05:10:55.4641866Z test_poll_distinguishes_unmerged_factory_from_broken_checkout (test_workflow.PollScriptsTest.test_poll_distinguishes_unmerged_factory_from_broken_checkout) ... ok
+2026-11-25T05:10:55.6306783Z test_remote_commands_hold_the_common_git_lock_from_either_worktree (test_workflow.PollScriptsTest.test_remote_commands_hold_the_common_git_lock_from_either_worktree) ... ok
+2026-11-25T05:10:55.6334514Z test_checks_that_keep_failing_stop_after_the_round_limit (test_workflow.WatchWorkflowTest.test_checks_that_keep_failing_stop_after_the_round_limit) ... ok
+2026-11-25T05:10:55.6340609Z test_codex_resume_continues_the_same_thread (test_workflow.WatchWorkflowTest.test_codex_resume_continues_the_same_thread) ... ok
+2026-11-25T05:10:55.6345200Z test_codex_without_thread_event_has_no_session (test_workflow.WatchWorkflowTest.test_codex_without_thread_event_has_no_session) ... ok
+2026-11-25T05:10:55.6367560Z test_disputed_findings_are_dismissed_and_the_head_can_merge (test_workflow.WatchWorkflowTest.test_disputed_findings_are_dismissed_and_the_head_can_merge) ... ok
+2026-11-25T05:10:55.6387950Z test_failed_check_fix_agent_stops_with_patch (test_workflow.WatchWorkflowTest.test_failed_check_fix_agent_stops_with_patch) ... ok
+2026-11-25T05:10:55.6429701Z test_failed_codex_saves_partial_patch_without_checks_or_publish (test_workflow.WatchWorkflowTest.test_failed_codex_saves_partial_patch_without_checks_or_publish) ... ok
+2026-11-25T05:10:55.6449418Z test_failed_dismissal_leaves_the_dispute_to_a_person (test_workflow.WatchWorkflowTest.test_failed_dismissal_leaves_the_dispute_to_a_person) ... ok
+2026-11-25T05:10:55.6470967Z test_failing_checks_go_back_to_codex_before_stopping (test_workflow.WatchWorkflowTest.test_failing_checks_go_back_to_codex_before_stopping) ... ok
+2026-11-25T05:10:55.6495917Z test_invalid_dispute_stops_pr_fix_before_checks (test_workflow.WatchWorkflowTest.test_invalid_dispute_stops_pr_fix_before_checks) ... ok
+2026-11-25T05:10:55.6527983Z test_missing_candidate_check_stops_pr_and_records_error_without_push (test_workflow.WatchWorkflowTest.test_missing_candidate_check_stops_pr_and_records_error_without_push) ... ok
+2026-11-25T05:10:55.6539320Z test_moved_head_clears_working_label_and_records_without_comment (test_workflow.WatchWorkflowTest.test_moved_head_clears_working_label_and_records_without_comment) ... ok
+2026-11-25T05:10:55.6581135Z test_partial_dispute_stops_and_names_undisputed_ids (test_workflow.WatchWorkflowTest.test_partial_dispute_stops_and_names_undisputed_ids) ... ok
+2026-11-25T05:10:55.6594869Z test_scope_rechecked_after_passing_checks (test_workflow.WatchWorkflowTest.test_scope_rechecked_after_passing_checks) ... ok
+2026-11-25T05:10:55.8060086Z test_ensure_from_sparse_runner_creates_full_checkout (test_workflow.WorktreeTest.test_ensure_from_sparse_runner_creates_full_checkout) ... ok
+2026-11-25T05:10:56.0105288Z test_prepare_rejects_incomplete_tree_after_submodule_update (test_workflow.WorktreeTest.test_prepare_rejects_incomplete_tree_after_submodule_update) ... ok
+2026-11-25T05:10:56.1972955Z test_prepare_repairs_existing_sparse_checkout (test_workflow.WorktreeTest.test_prepare_repairs_existing_sparse_checkout) ... ok
+2026-11-25T05:10:56.3988321Z test_prepare_repairs_existing_sparse_submodule (test_workflow.WorktreeTest.test_prepare_repairs_existing_sparse_submodule) ... ok
+2026-11-25T05:10:56.5701996Z test_prepare_repairs_sparse_index_even_when_config_is_off (test_workflow.WorktreeTest.test_prepare_repairs_sparse_index_even_when_config_is_off) ... ok
+2026-11-25T05:10:56.8281882Z test_rejects_missing_submodule_file_after_update (test_workflow.WorktreeTest.test_rejects_missing_submodule_file_after_update) ... ok
+2026-11-25T05:10:56.8282231Z 
+2026-11-25T05:10:56.8282343Z ----------------------------------------------------------------------
+2026-11-25T05:10:56.8282545Z Ran 211 tests in 10.249s
+2026-11-25T05:10:56.8282634Z 
+2026-11-25T05:10:56.8282694Z OK
+2026-11-25T05:10:56.8494066Z ##[group]Run python -m unittest discover -s tools/perf/tests -v
+2026-11-25T05:10:56.8494351Z python -m unittest discover -s tools/perf/tests -v
+2026-11-25T05:10:56.8520844Z shell: /usr/bin/bash -e {0}
+2026-11-25T05:10:56.8520979Z env:
+2026-11-25T05:10:56.8521125Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:56.8521358Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib/pkgconfig
+2026-11-25T05:10:56.8521592Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:56.8521795Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:56.8521999Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.16/x64
+2026-11-25T05:10:56.8522349Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.16/x64/lib
+2026-11-25T05:10:56.8522527Z ##[endgroup]
+2026-11-25T05:10:56.9408095Z test_applying_the_held_batch_separately_is_not_coalescing (test_analyze_player_handoff.DisplayPacingTraceTest.test_applying_the_held_batch_separately_is_not_coalescing) ... ok
+2026-11-25T05:10:56.9408819Z test_publishing_a_map_behind_the_receipts_is_not_recovery (test_analyze_player_handoff.DisplayPacingTraceTest.test_publishing_a_map_behind_the_receipts_is_not_recovery) ... ok
+2026-11-25T05:10:56.9409595Z test_receives_during_overload_merges_and_recovers (test_analyze_player_handoff.DisplayPacingTraceTest.test_receives_during_overload_merges_and_recovers) ... ok
+2026-11-25T05:10:56.9410141Z test_receiving_less_often_is_not_display_pacing (test_analyze_player_handoff.DisplayPacingTraceTest.test_receiving_less_often_is_not_display_pacing) ... ok
+2026-11-25T05:10:56.9419700Z test_draw_intervals_use_only_draws_within_the_exact_window (test_analyze_player_handoff.HandoffWindowTest.test_draw_intervals_use_only_draws_within_the_exact_window) ... ok
+2026-11-25T05:10:56.9420526Z test_exact_endpoints_allow_days_to_share_an_interior_frame (test_analyze_player_handoff.HandoffWindowTest.test_exact_endpoints_allow_days_to_share_an_interior_frame) ... ok
+2026-11-25T05:10:56.9421356Z test_map_metrics_require_age_for_each_draw (test_analyze_player_handoff.HandoffWindowTest.test_map_metrics_require_age_for_each_draw) ... ok
+2026-11-25T05:10:56.9422136Z test_map_metrics_use_only_the_matched_draw_window (test_analyze_player_handoff.HandoffWindowTest.test_map_metrics_use_only_the_matched_draw_window) ... ok
+2026-11-25T05:10:56.9422977Z test_rejects_skipped_first_day_even_with_daily_record (test_analyze_player_handoff.HandoffWindowTest.test_rejects_skipped_first_day_even_with_daily_record) ... ok
+2026-11-25T05:10:56.9423831Z test_rejects_skipped_last_day_even_with_daily_record (test_analyze_player_handoff.HandoffWindowTest.test_rejects_skipped_last_day_even_with_daily_record) ... ok
+2026-11-25T05:10:56.9424677Z test_rendered_window_rejects_a_headless_recording (test_analyze_player_handoff.HandoffWindowTest.test_rendered_window_rejects_a_headless_recording) ... ok
+2026-11-25T05:10:56.9425591Z test_keeps_a_real_draw_gap_when_the_window_stays_visible (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_keeps_a_real_draw_gap_when_the_window_stays_visible) ... ok
+2026-11-25T05:10:56.9426539Z test_pair_refuses_a_trace_running_at_the_wrong_cap (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_pair_refuses_a_trace_running_at_the_wrong_cap) ... ok
+2026-11-25T05:10:56.9427324Z test_pair_refuses_different_viewport_sizes (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_pair_refuses_different_viewport_sizes) ... ok
+2026-11-25T05:10:56.9428257Z test_pair_reports_draw_and_wait_timing_at_shared_boundaries (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_pair_reports_draw_and_wait_timing_at_shared_boundaries) ... ok
+2026-11-25T05:10:56.9429304Z test_pair_requires_completed_draws_on_both_sides (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_pair_requires_completed_draws_on_both_sides) ... ok
+2026-11-25T05:10:56.9430362Z test_rejects_headless_even_with_a_graphics_driver_name (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_rejects_headless_even_with_a_graphics_driver_name) ... ok
+2026-11-25T05:10:56.9431699Z test_rejects_hidden_window_even_if_callbacks_were_delivered (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_rejects_hidden_window_even_if_callbacks_were_delivered) ... ok
+2026-11-25T05:10:56.9435289Z test_requires_window_visibility_evidence (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_requires_window_visibility_evidence) ... ok
+2026-11-25T05:10:56.9444223Z test_macos_launch_failure_preserves_system_error (test_analyze_player_handoff.RenderedHandoffLaunchTest.test_macos_launch_failure_preserves_system_error) ... ok
+2026-11-25T05:10:56.9453319Z test_archive_refuses_fewer_rounds_than_requested (test_perf_change_check.ArchiveReuse.test_archive_refuses_fewer_rounds_than_requested) ... ok
+2026-11-25T05:10:56.9454042Z test_refuses_any_identity_difference (test_perf_change_check.ArchiveReuse.test_refuses_any_identity_difference) ... ok
+2026-11-25T05:10:56.9454765Z test_refuses_incomplete_invalid_missing_or_lower_tier (test_perf_change_check.ArchiveReuse.test_refuses_incomplete_invalid_missing_or_lower_tier) ... ok
+2026-11-25T05:10:56.9455458Z test_reuses_identical_identity (test_perf_change_check.ArchiveReuse.test_reuses_identical_identity) ... ok
+2026-11-25T05:10:56.9481817Z test_compare_requires_an_explicit_nonempty_claim (test_perf_change_check.ArgumentChecks.test_compare_requires_an_explicit_nonempty_claim) ... ok
+2026-11-25T05:10:56.9596627Z test_history_starts_without_unix_fcntl (test_perf_change_check.ArgumentChecks.test_history_starts_without_unix_fcntl) ... ok
+2026-11-25T05:10:56.9604302Z test_refuses_single_round_and_nonpositive_scenario (test_perf_change_check.ArgumentChecks.test_refuses_single_round_and_nonpositive_scenario) ... usage: python -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+2026-11-25T05:10:56.9605109Z                           [--scons SCONS]
+2026-11-25T05:10:56.9605353Z                           {measure,compare,history} ...
+2026-11-25T05:10:56.9605723Z python -m unittest: error: --rounds must be at least 2 so timings have a range
+2026-11-25T05:10:56.9610786Z usage: python -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+2026-11-25T05:10:56.9611106Z                           [--scons SCONS]
+2026-11-25T05:10:56.9611352Z                           {measure,compare,history} ...
+2026-11-25T05:10:56.9611661Z python -m unittest: error: scenario values must be positive
+2026-11-25T05:10:56.9611927Z ok
+2026-11-25T05:10:56.9624801Z test_unmeasured_needs_a_reason (test_perf_change_check.ArgumentChecks.test_unmeasured_needs_a_reason) ... ok
+2026-11-25T05:10:56.9628778Z test_invalid_rounds_are_left_out_of_the_statistics (test_perf_change_check.Assessment.test_invalid_rounds_are_left_out_of_the_statistics) ... ok
+2026-11-25T05:10:56.9632618Z test_quick_comparison_can_reuse_a_full_tier_record (test_perf_change_check.Assessment.test_quick_comparison_can_reuse_a_full_tier_record) ... ok
+2026-11-25T05:10:56.9655290Z test_report_uses_the_round_counts_from_the_records (test_perf_change_check.Assessment.test_report_uses_the_round_counts_from_the_records) ... ok
+2026-11-25T05:10:56.9658537Z test_result_difference_is_reported_even_when_a_round_is_invalid (test_perf_change_check.Assessment.test_result_difference_is_reported_even_when_a_round_is_invalid) ... ok
+2026-11-25T05:10:56.9682316Z test_unmeasured_claim_still_checks_results_and_is_reported (test_perf_change_check.Assessment.test_unmeasured_claim_still_checks_results_and_is_reported) ... ok
+2026-11-25T05:10:56.9683130Z test_builds_only_the_debug_target_the_headless_editor_loads (test_perf_change_check.BuildRecipe.test_builds_only_the_debug_target_the_headless_editor_loads) ... ok
+2026-11-25T05:10:56.9691392Z test_checked_in_libraries_of_other_platforms_do_not_count_as_built (test_perf_change_check.BuildRecipe.test_checked_in_libraries_of_other_platforms_do_not_count_as_built) ... ok
+2026-11-25T05:10:56.9701714Z test_refuses_to_import_if_the_machine_became_busy_during_build (test_perf_change_check.BuildRecipe.test_refuses_to_import_if_the_machine_became_busy_during_build) ... ok
+2026-11-25T05:10:56.9708253Z test_refuses_to_start_build_while_machine_is_busy (test_perf_change_check.BuildRecipe.test_refuses_to_start_build_while_machine_is_busy) ... ok
+2026-11-25T05:10:56.9709073Z test_refuses_unknown_platform_or_architecture (test_perf_change_check.BuildRecipe.test_refuses_unknown_platform_or_architecture) ... ok
+2026-11-25T05:10:56.9709855Z test_counters_become_per_day_increase_and_timings_get_tail (test_perf_change_check.CsvSummaries.test_counters_become_per_day_increase_and_timings_get_tail) ... ok
+2026-11-25T05:10:56.9711118Z test_fewer_research_fallback_scans_satisfy_a_claim (test_perf_change_check.CsvSummaries.test_fewer_research_fallback_scans_satisfy_a_claim) ... ok
+2026-11-25T05:10:56.9712066Z test_refuses_nonnumeric_populated_cells_in_a_numeric_column (test_perf_change_check.CsvSummaries.test_refuses_nonnumeric_populated_cells_in_a_numeric_column) ... ok
+2026-11-25T05:10:56.9712913Z test_sparse_counters_use_elapsed_days_between_samples (test_perf_change_check.CsvSummaries.test_sparse_counters_use_elapsed_days_between_samples) ... ok
+2026-11-25T05:10:56.9713599Z test_identical_results_pass (test_perf_change_check.GoldenComparison.test_identical_results_pass) ... ok
+2026-11-25T05:10:56.9714252Z test_refuses_changed_hash_length_type_and_keys (test_perf_change_check.GoldenComparison.test_refuses_changed_hash_length_type_and_keys) ... ok
+2026-11-25T05:10:56.9714896Z test_pass_when_claim_improves (test_perf_change_check.Judgement.test_pass_when_claim_improves) ... ok
+2026-11-25T05:10:56.9715567Z test_refuses_pass_if_an_unclaimed_measurement_is_missing (test_perf_change_check.Judgement.test_refuses_pass_if_an_unclaimed_measurement_is_missing) ... ok
+2026-11-25T05:10:56.9716366Z test_refuses_pass_when_any_metric_in_a_claim_regresses (test_perf_change_check.Judgement.test_refuses_pass_when_any_metric_in_a_claim_regresses) ... ok
+2026-11-25T05:10:56.9717153Z test_refuses_pass_when_claim_missing_or_not_improved (test_perf_change_check.Judgement.test_refuses_pass_when_claim_missing_or_not_improved) ... ok
+2026-11-25T05:10:56.9717864Z test_refuses_pass_when_headline_regressed (test_perf_change_check.Judgement.test_refuses_pass_when_headline_regressed) ... ok
+2026-11-25T05:10:56.9718587Z test_refuses_pass_when_results_changed_or_runs_invalid (test_perf_change_check.Judgement.test_refuses_pass_when_results_changed_or_runs_invalid) ... ok
+2026-11-25T05:10:56.9719314Z test_refuses_pass_when_the_claim_is_unmeasured (test_perf_change_check.Judgement.test_refuses_pass_when_the_claim_is_unmeasured)
+2026-11-25T05:10:56.9723751Z Found by the first fresh-session run: a claim needing an open overlay has no headless metric. ... ok
+2026-11-25T05:10:56.9724576Z test_busy_godot_and_compilers_count_but_idle_editor_and_children_do_not (test_perf_change_check.MachineLoadGate.test_busy_godot_and_compilers_count_but_idle_editor_and_children_do_not) ... ok
+2026-11-25T05:10:56.9725419Z test_proc_stat_idle_between_two_readings (test_perf_change_check.MachineLoadGate.test_proc_stat_idle_between_two_readings) ... ok
+2026-11-25T05:10:56.9726006Z test_quiet_machine_goes (test_perf_change_check.MachineLoadGate.test_quiet_machine_goes) ... ok
+2026-11-25T05:10:56.9726721Z test_refuses_busy_cpu_unknown_or_impossible_idle_and_competitors (test_perf_change_check.MachineLoadGate.test_refuses_busy_cpu_unknown_or_impossible_idle_and_competitors) ... ok
+2026-11-25T05:10:56.9727541Z test_refuses_top_output_without_two_samples (test_perf_change_check.MachineLoadGate.test_refuses_top_output_without_two_samples) ... ok
+2026-11-25T05:10:56.9728286Z test_refuses_unreadable_or_non_advancing_proc_stat (test_perf_change_check.MachineLoadGate.test_refuses_unreadable_or_non_advancing_proc_stat) ... ok
+2026-11-25T05:10:56.9729239Z test_top_idle_uses_the_last_sample_not_the_since_boot_one (test_perf_change_check.MachineLoadGate.test_top_idle_uses_the_last_sample_not_the_since_boot_one) ... ok
+2026-11-25T05:10:56.9730205Z test_counters_compare_exactly (test_perf_change_check.MetricClassification.test_counters_compare_exactly) ... ok
+2026-11-25T05:10:56.9730911Z test_gauges_without_a_direction_are_only_changed (test_perf_change_check.MetricClassification.test_gauges_without_a_direction_are_only_changed) ... ok
+2026-11-25T05:10:56.9731382Z test_higher_is_better_for_throughput (test_perf_change_check.MetricClassification.test_higher_is_better_for_throughput) ... ok
+2026-11-25T05:10:56.9731803Z test_improvement_needs_a_clear_gap (test_perf_change_check.MetricClassification.test_improvement_needs_a_clear_gap) ... ok
+2026-11-25T05:10:56.9732153Z test_kinds (test_perf_change_check.MetricClassification.test_kinds) ... ok
+2026-11-25T05:10:56.9732659Z test_memory_that_repeats_exactly_counts_as_less_or_more_work (test_perf_change_check.MetricClassification.test_memory_that_repeats_exactly_counts_as_less_or_more_work) ... ok
+2026-11-25T05:10:56.9733144Z test_metric_missing_on_one_side (test_perf_change_check.MetricClassification.test_metric_missing_on_one_side) ... ok
+2026-11-25T05:10:56.9733607Z test_refuses_exact_verdict_for_a_counter_that_varies (test_perf_change_check.MetricClassification.test_refuses_exact_verdict_for_a_counter_that_varies) ... ok
+2026-11-25T05:10:56.9734124Z test_refuses_exact_verdict_for_memory_that_varies (test_perf_change_check.MetricClassification.test_refuses_exact_verdict_for_memory_that_varies) ... ok
+2026-11-25T05:10:56.9734594Z test_refuses_improvement_inside_noise (test_perf_change_check.MetricClassification.test_refuses_improvement_inside_noise) ... ok
+2026-11-25T05:10:56.9735062Z test_refuses_improvement_when_ranges_overlap (test_perf_change_check.MetricClassification.test_refuses_improvement_when_ranges_overlap) ... ok
+2026-11-25T05:10:56.9735536Z test_refuses_timing_verdict_from_one_round (test_perf_change_check.MetricClassification.test_refuses_timing_verdict_from_one_round) ... ok
+2026-11-25T05:10:56.9735949Z test_accepts_a_complete_run (test_perf_change_check.PerfRunValidation.test_accepts_a_complete_run) ... ok
+2026-11-25T05:10:56.9782197Z test_perf_round_rejects_missing_required_column_and_corrupt_optional_cells (test_perf_change_check.PerfRunValidation.test_perf_round_rejects_missing_required_column_and_corrupt_optional_cells) ... ok
+2026-11-25T05:10:56.9789040Z test_perf_round_uses_observed_samples_for_optional_metrics (test_perf_change_check.PerfRunValidation.test_perf_round_uses_observed_samples_for_optional_metrics) ... ok
+2026-11-25T05:10:56.9793311Z test_refuses_each_broken_fact (test_perf_change_check.PerfRunValidation.test_refuses_each_broken_fact) ... ok
+2026-11-25T05:10:56.9794006Z test_refuses_required_column_with_no_numeric_values (test_perf_change_check.PerfRunValidation.test_refuses_required_column_with_no_numeric_values) ... ok
+2026-11-25T05:10:56.9795167Z test_refuses_required_columns_missing_with_the_correct_row_count (test_perf_change_check.PerfRunValidation.test_refuses_required_columns_missing_with_the_correct_row_count) ... ok
+2026-11-25T05:10:56.9795951Z test_reads_single_line (test_perf_change_check.ResultLineParsing.test_reads_single_line) ... ok
+2026-11-25T05:10:56.9796635Z test_refuses_missing_duplicate_empty_and_repeated_keys (test_perf_change_check.ResultLineParsing.test_refuses_missing_duplicate_empty_and_repeated_keys) ... ok
+2026-11-25T05:10:56.9797488Z test_allowance_is_what_the_work_leaves_and_never_negative (test_perf_change_check.TimeBudget.test_allowance_is_what_the_work_leaves_and_never_negative) ... ok
+2026-11-25T05:10:56.9798306Z test_estimate_counts_builds_only_for_unbuilt_worktrees (test_perf_change_check.TimeBudget.test_estimate_counts_builds_only_for_unbuilt_worktrees) ... ok
+2026-11-25T05:10:56.9803921Z estimated work 330s; may wait up to 0s for a quiet machine
+2026-11-25T05:10:56.9804248Z measuring aaaaaaaaaaaa (no record)
+2026-11-25T05:10:56.9808584Z round 1/2 aaaaaaaaaaaa
+2026-11-25T05:10:56.9812739Z test_last_round_over_budget_cannot_complete_a_record (test_perf_change_check.TimeBudget.test_last_round_over_budget_cannot_complete_a_record) ... ok
+2026-11-25T05:10:56.9815576Z test_quiet_machine_runs_without_wait_allowance_if_budget_remains (test_perf_change_check.TimeBudget.test_quiet_machine_runs_without_wait_allowance_if_budget_remains) ... ok
+2026-11-25T05:10:56.9818208Z test_refuses_a_quiet_sample_that_finishes_after_the_budget (test_perf_change_check.TimeBudget.test_refuses_a_quiet_sample_that_finishes_after_the_budget) ... ok
+2026-11-25T05:10:56.9819166Z round 2/2 aaaaaaaaaaaa
+2026-11-25T05:10:56.9845949Z test_refuses_negative_budget_and_impossible_idle_floor (test_perf_change_check.TimeBudget.test_refuses_negative_budget_and_impossible_idle_floor) ... usage: python -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+2026-11-25T05:10:56.9846657Z                           [--scons SCONS]
+2026-11-25T05:10:56.9847012Z                           {measure,compare,history} ...
+2026-11-25T05:10:56.9847298Z python -m unittest: error: --min-idle must be in (0, 1]
+2026-11-25T05:10:56.9852051Z usage: python -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+2026-11-25T05:10:56.9852364Z                           [--scons SCONS]
+2026-11-25T05:10:56.9852603Z                           {measure,compare,history} ...
+2026-11-25T05:10:56.9852882Z python -m unittest: error: --min-idle must be in (0, 1]
+2026-11-25T05:10:56.9853131Z ok
+2026-11-25T05:10:56.9855906Z test_refuses_to_sample_after_the_run_budget_expires (test_perf_change_check.TimeBudget.test_refuses_to_sample_after_the_run_budget_expires) ... ok
+2026-11-25T05:10:56.9859065Z test_refuses_to_wait_once_the_allowance_is_spent (test_perf_change_check.TimeBudget.test_refuses_to_wait_once_the_allowance_is_spent) ... ok
+2026-11-25T05:10:56.9862442Z test_wont_sleep_past_the_run_budget_with_waiting_allowance_left (test_perf_change_check.TimeBudget.test_wont_sleep_past_the_run_budget_with_waiting_allowance_left) ... ok
+2026-11-25T05:10:56.9864166Z test_zero_budget_is_unlimited (test_perf_change_check.TimeBudget.test_zero_budget_is_unlimited) ... ok
+2026-11-25T05:10:56.9864483Z 
+2026-11-25T05:10:56.9864613Z ----------------------------------------------------------------------
+2026-11-25T05:10:56.9864885Z Ran 88 tests in 0.046s
+2026-11-25T05:10:56.9865005Z 
+2026-11-25T05:10:56.9865073Z OK
+2026-11-25T05:10:57.0070110Z Post job cleanup.
+2026-11-25T05:10:57.0839190Z (node:9015) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+2026-11-25T05:10:57.0839604Z (Use `node --trace-deprecation ...` to show where the warning was created)
+2026-11-25T05:10:57.0990654Z Post job cleanup.
+2026-11-25T05:10:57.1556991Z [command]/usr/bin/git version
+2026-11-25T05:10:57.1592427Z git version 2.56.1
+2026-11-25T05:10:57.1616387Z Temporarily overriding HOME='/home/runner/work/_temp/264021f5-92f6-46da-8b1c-1164db39d4cb' before making global git config changes
+2026-11-25T05:10:57.1617168Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-25T05:10:57.1621350Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/Project.Keynes/Project.Keynes
+2026-11-25T05:10:57.1657079Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-25T05:10:57.1703336Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-25T05:10:57.4489206Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-25T05:10:57.4514076Z http.https://github.com/.extraheader
+2026-11-25T05:10:57.4522898Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-11-25T05:10:57.4554820Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-25T05:10:57.4799554Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-25T05:10:57.4828503Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-25T05:10:57.5236950Z Cleaning up orphan processes
+2026-11-25T05:10:57.5484272Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-python@v5. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

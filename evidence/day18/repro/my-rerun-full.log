@@ -1,0 +1,25 @@
+..........................usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: --rounds must be at least 2 so timings have a range
+usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: scenario values must be positive
+......................................................estimated work 330s; may wait up to 0s for a quiet machine
+measuring aaaaaaaaaaaa (no record)
+round 1/2 aaaaaaaaaaaa
+round 2/2 aaaaaaaaaaaa
+...usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: --min-idle must be in (0, 1]
+usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: --min-idle must be in (0, 1]
+.....
+----------------------------------------------------------------------
+Ran 88 tests in 0.061s
+
+OK

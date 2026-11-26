@@ -1,0 +1,39 @@
+{
+ "review_session": {
+  "status": "completed",
+  "commit_sha": "b71345d39f94151b227f4087ed1c71369249f632",
+  "review_complete": true
+ },
+ "finding": {
+  "id": "9f64a900-88dc-4881-9a61-271e2e9c66bd",
+  "title": "The new test step fails on every pull request",
+  "description": "The performance test step runs `unittest discover` against `tools/perf/tests`, but the job's sparse checkout does not include `tools/perf/`. On every pull request, the start directory is absent, so the step fails instead of running the tests.",
+  "category": "Correctness",
+  "action_level": "action_required",
+  "attribution_status": "implemented",
+  "git_sha": "1e600414ed76446f2261cc7e338e207fd80ddcdd",
+  "location": {
+   "file_path": ".github/workflows/runtime-checks.yml",
+   "start_line": 60,
+   "end_line": 60,
+   "side": "right",
+   "code_snippet": "+        run: python -m unittest discover -s tools/perf/tests -v"
+  },
+  "evidence": {
+   "citations": [
+    {
+     "source_type": "pr_branch_file",
+     "source": ".github/workflows/runtime-checks.yml[17-33]",
+     "citation": "    steps:\n      - uses: actions/checkout@v4\n        with:\n          # Text-only guards: sources, scripts and agent skills; no assets or binaries.\n          sparse-checkout-cone-mode: false\n          sparse-checkout: |\n            /tools/ci/\n            /tools/factory/\n            /gdext/src/\n            /gdext/tests/\n            /Project/project-keynes/**/*.gd\n            /Project/project-keynes/data/native_binding_manifest.json\n            /.*/skills/\n            /docs/architecture/\n            /docs/plans/\n            /docs/factory/\n            /AGENTS.md"
+    },
+    {
+     "source_type": "pr_branch_file",
+     "source": ".github/workflows/runtime-checks.yml[58-60]",
+     "citation": "      - name: Performance tool tests\n        if: success() || failure()\n        run: python -m unittest discover -s tools/perf/tests -v"
+    }
+   ],
+   "explanation": "The checkout includes `/tools/ci/` and `/tools/factory/`, but not `/tools/perf/`; the added step requires the missing directory."
+  }
+ },
+ "inline_comment": "https://github.com/hrhgit/Project.Keynes/pull/75#discussion_r4689311731 (posted 2026-11-25T02:08:43Z)"
+}

@@ -1,0 +1,114 @@
+test_applying_the_held_batch_separately_is_not_coalescing (test_analyze_player_handoff.DisplayPacingTraceTest.test_applying_the_held_batch_separately_is_not_coalescing) ... ok
+test_publishing_a_map_behind_the_receipts_is_not_recovery (test_analyze_player_handoff.DisplayPacingTraceTest.test_publishing_a_map_behind_the_receipts_is_not_recovery) ... ok
+test_receives_during_overload_merges_and_recovers (test_analyze_player_handoff.DisplayPacingTraceTest.test_receives_during_overload_merges_and_recovers) ... ok
+test_receiving_less_often_is_not_display_pacing (test_analyze_player_handoff.DisplayPacingTraceTest.test_receiving_less_often_is_not_display_pacing) ... ok
+test_draw_intervals_use_only_draws_within_the_exact_window (test_analyze_player_handoff.HandoffWindowTest.test_draw_intervals_use_only_draws_within_the_exact_window) ... ok
+test_exact_endpoints_allow_days_to_share_an_interior_frame (test_analyze_player_handoff.HandoffWindowTest.test_exact_endpoints_allow_days_to_share_an_interior_frame) ... ok
+test_map_metrics_require_age_for_each_draw (test_analyze_player_handoff.HandoffWindowTest.test_map_metrics_require_age_for_each_draw) ... ok
+test_map_metrics_use_only_the_matched_draw_window (test_analyze_player_handoff.HandoffWindowTest.test_map_metrics_use_only_the_matched_draw_window) ... ok
+test_rejects_skipped_first_day_even_with_daily_record (test_analyze_player_handoff.HandoffWindowTest.test_rejects_skipped_first_day_even_with_daily_record) ... ok
+test_rejects_skipped_last_day_even_with_daily_record (test_analyze_player_handoff.HandoffWindowTest.test_rejects_skipped_last_day_even_with_daily_record) ... ok
+test_rendered_window_rejects_a_headless_recording (test_analyze_player_handoff.HandoffWindowTest.test_rendered_window_rejects_a_headless_recording) ... ok
+test_keeps_a_real_draw_gap_when_the_window_stays_visible (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_keeps_a_real_draw_gap_when_the_window_stays_visible) ... ok
+test_pair_refuses_a_trace_running_at_the_wrong_cap (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_pair_refuses_a_trace_running_at_the_wrong_cap) ... ok
+test_pair_refuses_different_viewport_sizes (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_pair_refuses_different_viewport_sizes) ... ok
+test_pair_reports_draw_and_wait_timing_at_shared_boundaries (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_pair_reports_draw_and_wait_timing_at_shared_boundaries) ... ok
+test_pair_requires_completed_draws_on_both_sides (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_pair_requires_completed_draws_on_both_sides) ... ok
+test_rejects_headless_even_with_a_graphics_driver_name (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_rejects_headless_even_with_a_graphics_driver_name) ... ok
+test_rejects_hidden_window_even_if_callbacks_were_delivered (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_rejects_hidden_window_even_if_callbacks_were_delivered) ... ok
+test_requires_window_visibility_evidence (test_analyze_player_handoff.RenderedHandoffComparisonTest.test_requires_window_visibility_evidence) ... ok
+test_macos_launch_failure_preserves_system_error (test_analyze_player_handoff.RenderedHandoffLaunchTest.test_macos_launch_failure_preserves_system_error) ... ok
+test_archive_refuses_fewer_rounds_than_requested (test_perf_change_check.ArchiveReuse.test_archive_refuses_fewer_rounds_than_requested) ... ok
+test_refuses_any_identity_difference (test_perf_change_check.ArchiveReuse.test_refuses_any_identity_difference) ... ok
+test_refuses_incomplete_invalid_missing_or_lower_tier (test_perf_change_check.ArchiveReuse.test_refuses_incomplete_invalid_missing_or_lower_tier) ... ok
+test_reuses_identical_identity (test_perf_change_check.ArchiveReuse.test_reuses_identical_identity) ... ok
+test_compare_requires_an_explicit_nonempty_claim (test_perf_change_check.ArgumentChecks.test_compare_requires_an_explicit_nonempty_claim) ... ok
+test_history_starts_without_unix_fcntl (test_perf_change_check.ArgumentChecks.test_history_starts_without_unix_fcntl) ... ok
+test_refuses_single_round_and_nonpositive_scenario (test_perf_change_check.ArgumentChecks.test_refuses_single_round_and_nonpositive_scenario) ... usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: --rounds must be at least 2 so timings have a range
+usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: scenario values must be positive
+ok
+test_unmeasured_needs_a_reason_and_excludes_claims (test_perf_change_check.ArgumentChecks.test_unmeasured_needs_a_reason_and_excludes_claims) ... ok
+test_invalid_rounds_are_left_out_of_the_statistics (test_perf_change_check.Assessment.test_invalid_rounds_are_left_out_of_the_statistics) ... ok
+test_quick_comparison_can_reuse_a_full_tier_record (test_perf_change_check.Assessment.test_quick_comparison_can_reuse_a_full_tier_record) ... ok
+test_report_uses_the_round_counts_from_the_records (test_perf_change_check.Assessment.test_report_uses_the_round_counts_from_the_records) ... ok
+test_result_difference_is_reported_even_when_a_round_is_invalid (test_perf_change_check.Assessment.test_result_difference_is_reported_even_when_a_round_is_invalid) ... ok
+test_unmeasured_claim_still_checks_results_and_is_reported (test_perf_change_check.Assessment.test_unmeasured_claim_still_checks_results_and_is_reported) ... ok
+test_builds_only_the_debug_target_the_headless_editor_loads (test_perf_change_check.BuildRecipe.test_builds_only_the_debug_target_the_headless_editor_loads) ... ok
+test_checked_in_libraries_of_other_platforms_do_not_count_as_built (test_perf_change_check.BuildRecipe.test_checked_in_libraries_of_other_platforms_do_not_count_as_built) ... ok
+test_refuses_to_import_if_the_machine_became_busy_during_build (test_perf_change_check.BuildRecipe.test_refuses_to_import_if_the_machine_became_busy_during_build) ... ok
+test_refuses_to_start_build_while_machine_is_busy (test_perf_change_check.BuildRecipe.test_refuses_to_start_build_while_machine_is_busy) ... ok
+test_refuses_unknown_platform_or_architecture (test_perf_change_check.BuildRecipe.test_refuses_unknown_platform_or_architecture) ... ok
+test_counters_become_per_day_increase_and_timings_get_tail (test_perf_change_check.CsvSummaries.test_counters_become_per_day_increase_and_timings_get_tail) ... ok
+test_fewer_research_fallback_scans_satisfy_a_claim (test_perf_change_check.CsvSummaries.test_fewer_research_fallback_scans_satisfy_a_claim) ... ok
+test_refuses_nonnumeric_populated_cells_in_a_numeric_column (test_perf_change_check.CsvSummaries.test_refuses_nonnumeric_populated_cells_in_a_numeric_column) ... ok
+test_sparse_counters_use_elapsed_days_between_samples (test_perf_change_check.CsvSummaries.test_sparse_counters_use_elapsed_days_between_samples) ... ok
+test_identical_results_pass (test_perf_change_check.GoldenComparison.test_identical_results_pass) ... ok
+test_refuses_changed_hash_length_type_and_keys (test_perf_change_check.GoldenComparison.test_refuses_changed_hash_length_type_and_keys) ... ok
+test_pass_when_claim_improves (test_perf_change_check.Judgement.test_pass_when_claim_improves) ... ok
+test_refuses_pass_if_an_unclaimed_measurement_is_missing (test_perf_change_check.Judgement.test_refuses_pass_if_an_unclaimed_measurement_is_missing) ... ok
+test_refuses_pass_when_any_metric_in_a_claim_regresses (test_perf_change_check.Judgement.test_refuses_pass_when_any_metric_in_a_claim_regresses) ... ok
+test_refuses_pass_when_claim_missing_or_not_improved (test_perf_change_check.Judgement.test_refuses_pass_when_claim_missing_or_not_improved) ... ok
+test_refuses_pass_when_headline_regressed (test_perf_change_check.Judgement.test_refuses_pass_when_headline_regressed) ... ok
+test_refuses_pass_when_results_changed_or_runs_invalid (test_perf_change_check.Judgement.test_refuses_pass_when_results_changed_or_runs_invalid) ... ok
+test_refuses_pass_when_the_claim_is_unmeasured (test_perf_change_check.Judgement.test_refuses_pass_when_the_claim_is_unmeasured)
+Found by the first fresh-session run: a claim needing an open overlay has no headless metric. ... ok
+test_busy_godot_and_compilers_count_but_idle_editor_and_children_do_not (test_perf_change_check.MachineLoadGate.test_busy_godot_and_compilers_count_but_idle_editor_and_children_do_not) ... ok
+test_proc_stat_idle_between_two_readings (test_perf_change_check.MachineLoadGate.test_proc_stat_idle_between_two_readings) ... ok
+test_quiet_machine_goes (test_perf_change_check.MachineLoadGate.test_quiet_machine_goes) ... ok
+test_refuses_busy_cpu_unknown_or_impossible_idle_and_competitors (test_perf_change_check.MachineLoadGate.test_refuses_busy_cpu_unknown_or_impossible_idle_and_competitors) ... ok
+test_refuses_top_output_without_two_samples (test_perf_change_check.MachineLoadGate.test_refuses_top_output_without_two_samples) ... ok
+test_refuses_unreadable_or_non_advancing_proc_stat (test_perf_change_check.MachineLoadGate.test_refuses_unreadable_or_non_advancing_proc_stat) ... ok
+test_top_idle_uses_the_last_sample_not_the_since_boot_one (test_perf_change_check.MachineLoadGate.test_top_idle_uses_the_last_sample_not_the_since_boot_one) ... ok
+test_counters_compare_exactly (test_perf_change_check.MetricClassification.test_counters_compare_exactly) ... ok
+test_gauges_without_a_direction_are_only_changed (test_perf_change_check.MetricClassification.test_gauges_without_a_direction_are_only_changed) ... ok
+test_higher_is_better_for_throughput (test_perf_change_check.MetricClassification.test_higher_is_better_for_throughput) ... ok
+test_improvement_needs_a_clear_gap (test_perf_change_check.MetricClassification.test_improvement_needs_a_clear_gap) ... ok
+test_kinds (test_perf_change_check.MetricClassification.test_kinds) ... ok
+test_memory_that_repeats_exactly_counts_as_less_or_more_work (test_perf_change_check.MetricClassification.test_memory_that_repeats_exactly_counts_as_less_or_more_work) ... ok
+test_metric_missing_on_one_side (test_perf_change_check.MetricClassification.test_metric_missing_on_one_side) ... ok
+test_refuses_exact_verdict_for_a_counter_that_varies (test_perf_change_check.MetricClassification.test_refuses_exact_verdict_for_a_counter_that_varies) ... ok
+test_refuses_exact_verdict_for_memory_that_varies (test_perf_change_check.MetricClassification.test_refuses_exact_verdict_for_memory_that_varies) ... ok
+test_refuses_improvement_inside_noise (test_perf_change_check.MetricClassification.test_refuses_improvement_inside_noise) ... ok
+test_refuses_improvement_when_ranges_overlap (test_perf_change_check.MetricClassification.test_refuses_improvement_when_ranges_overlap) ... ok
+test_refuses_timing_verdict_from_one_round (test_perf_change_check.MetricClassification.test_refuses_timing_verdict_from_one_round) ... ok
+test_accepts_a_complete_run (test_perf_change_check.PerfRunValidation.test_accepts_a_complete_run) ... ok
+test_perf_round_rejects_missing_required_column_and_corrupt_optional_cells (test_perf_change_check.PerfRunValidation.test_perf_round_rejects_missing_required_column_and_corrupt_optional_cells) ... ok
+test_perf_round_uses_observed_samples_for_optional_metrics (test_perf_change_check.PerfRunValidation.test_perf_round_uses_observed_samples_for_optional_metrics) ... ok
+test_refuses_each_broken_fact (test_perf_change_check.PerfRunValidation.test_refuses_each_broken_fact) ... ok
+test_refuses_required_column_with_no_numeric_values (test_perf_change_check.PerfRunValidation.test_refuses_required_column_with_no_numeric_values) ... ok
+test_refuses_required_columns_missing_with_the_correct_row_count (test_perf_change_check.PerfRunValidation.test_refuses_required_columns_missing_with_the_correct_row_count) ... ok
+test_reads_single_line (test_perf_change_check.ResultLineParsing.test_reads_single_line) ... ok
+test_refuses_missing_duplicate_empty_and_repeated_keys (test_perf_change_check.ResultLineParsing.test_refuses_missing_duplicate_empty_and_repeated_keys) ... ok
+test_allowance_is_what_the_work_leaves_and_never_negative (test_perf_change_check.TimeBudget.test_allowance_is_what_the_work_leaves_and_never_negative) ... ok
+test_estimate_counts_builds_only_for_unbuilt_worktrees (test_perf_change_check.TimeBudget.test_estimate_counts_builds_only_for_unbuilt_worktrees) ... ok
+test_last_round_over_budget_cannot_complete_a_record (test_perf_change_check.TimeBudget.test_last_round_over_budget_cannot_complete_a_record) ... estimated work 330s; may wait up to 0s for a quiet machine
+measuring aaaaaaaaaaaa (no record)
+round 1/2 aaaaaaaaaaaa
+round 2/2 aaaaaaaaaaaa
+ok
+test_quiet_machine_runs_without_wait_allowance_if_budget_remains (test_perf_change_check.TimeBudget.test_quiet_machine_runs_without_wait_allowance_if_budget_remains) ... ok
+test_refuses_a_quiet_sample_that_finishes_after_the_budget (test_perf_change_check.TimeBudget.test_refuses_a_quiet_sample_that_finishes_after_the_budget) ... ok
+test_refuses_negative_budget_and_impossible_idle_floor (test_perf_change_check.TimeBudget.test_refuses_negative_budget_and_impossible_idle_floor) ... usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: --min-idle must be in (0, 1]
+usage: python3 -m unittest [-h] [--repo REPO] [--home HOME] [--godot GODOT]
+                           [--scons SCONS]
+                           {measure,compare,history} ...
+python3 -m unittest: error: --min-idle must be in (0, 1]
+ok
+test_refuses_to_sample_after_the_run_budget_expires (test_perf_change_check.TimeBudget.test_refuses_to_sample_after_the_run_budget_expires) ... ok
+test_refuses_to_wait_once_the_allowance_is_spent (test_perf_change_check.TimeBudget.test_refuses_to_wait_once_the_allowance_is_spent) ... ok
+test_wont_sleep_past_the_run_budget_with_waiting_allowance_left (test_perf_change_check.TimeBudget.test_wont_sleep_past_the_run_budget_with_waiting_allowance_left) ... ok
+test_zero_budget_is_unlimited (test_perf_change_check.TimeBudget.test_zero_budget_is_unlimited) ... ok
+
+----------------------------------------------------------------------
+Ran 88 tests in 0.153s
+
+OK
