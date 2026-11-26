@@ -41,4 +41,4 @@
 
 合计 34 条规则：至少有一项护栏或测试的 20 条（其中“前台只读”一条，护栏只管到原生绑定访问）；只靠 Qodo 规则的 7 条；靠工厂关卡或提示词的 5 条（“找根因”一条另有 Qodo 规则）；只有文字说明的 2 条。
 
-只靠 Qodo 规则的那几条，评审在 PR 上才会指出。工厂实现提示词里的规则清单由 `agent.review_rules()` 从 [qodo-rules.json](qodo-rules.json) 生成，Codex 写代码前就能看到每一条；`ReviewRulesPromptTest` 检查每条规则名都在渲染后的提示词里，规则文件为空或缺名字、内容时工厂直接报错。这只是把规则送到写代码的一方，不算强制，上面的分类不变。
+只靠 Qodo 规则的那几条，评审在 PR 上才会指出。工厂所有让 Codex 改代码的提示词（实现、修评审、修检查、合并更新、解决冲突）都带规则清单，由 `agent.render()` 调 `agent.review_rules()` 从 [qodo-rules.json](qodo-rules.json) 生成，含规则正文和正反例，Codex 写代码前就能看到每一条；只有只读的 `plan` 不带，豁免写在 `agent.PROMPTS_WITHOUT_RULES` 里并要写理由。`ReviewRulesPromptTest` 检查每个改代码的提示词都含每条规则的名字、正文和例子，规则文件为空、缺名字或内容、例子不是文本时工厂直接报错（拒绝用例也登记在 `test_gates_refuse.py`）。这只是把规则送到写代码的一方，不算强制，上面的分类不变。

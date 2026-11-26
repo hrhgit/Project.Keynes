@@ -38,6 +38,17 @@ def refuses_dispute(text):
     return False
 
 
+def refuses_rules(text):
+    with TemporaryDirectory() as tmp:
+        path = Path(tmp) / "rules.json"
+        path.write_text(text, encoding="utf-8")
+        try:
+            agent.review_rules(path)
+        except ValueError:
+            return True
+        return False
+
+
 def refuses_resolution(entries):
     try:
         agent.parse_conflict_resolutions(json.dumps(entries), ["file.gd"])
@@ -165,6 +176,13 @@ GATES = {
         ("the old Issue runner owns the Issue workspace", lambda: refuses_legacy_owner("issue", "run.py")),
         ("the old PR runner owns the shared workspace", lambda: refuses_legacy_owner("issue", "watch_prs.py")),
         ("the old PR runner owns PR processing", lambda: refuses_legacy_owner("pr", "watch_prs.py")),
+    ],
+    "review_rules": [
+        ("a rules file with no rules", lambda: refuses_rules('{"rules": []}')),
+        ("a rule without content", lambda: refuses_rules('{"rules": [{"name": "Keynes: a rule"}]}')),
+        ("a rule with a blank name", lambda: refuses_rules('{"rules": [{"name": " ", "content": "text"}]}')),
+        ("examples that are not text", lambda: refuses_rules(
+            '{"rules": [{"name": "n", "content": "c", "good_examples": 1}]}')),
     ],
     "parse_disputes": [
         ("line without the '- ' marker", lambda: refuses_dispute("f1: evidence")),

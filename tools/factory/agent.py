@@ -10,33 +10,46 @@ from ticket import section
 
 
 REVIEW_RULES = FACTORY.parents[1] / "docs" / "factory" / "qodo-rules.json"
+# Prompts that do not get the review rules, with the reason. Every other prompt lets Codex write code and
+# must contain `{review_rules}`; test_factory.py enforces both.
+PROMPTS_WITHOUT_RULES = {"plan": "read-only investigation; Codex writes no code"}
 
 
 def render(name: str, **values: str) -> str:
     text = (FACTORY / "prompts" / f"{name}.md").read_text(encoding="utf-8")
+    if "{review_rules}" in text and "review_rules" not in values:
+        values = {**values, "review_rules": review_rules()}
     for key, value in values.items():
         text = text.replace("{" + key + "}", value)
     return text
 
 
 def review_rules(path: Path = REVIEW_RULES) -> str:
-    """The rules only Qodo review enforces, as a Markdown list for the implement prompt.
+    """The rules only Qodo review enforces, with their examples, as Markdown for the code-writing prompts.
 
-    Raises ValueError when the file has no rules or a rule lacks a name or content, so the agent never
-    runs with a silently empty rule list.
+    Raises ValueError when the file has no rules, a rule lacks a name or content, or an example is not
+    text, so the agent never runs with a silently empty or partial rule list.
     """
     data = json.loads(path.read_text(encoding="utf-8"))
     rules = data.get("rules") if isinstance(data, dict) else None
     if not isinstance(rules, list) or not rules:
         raise ValueError(f"{path}: no rules")
-    lines = []
+    blocks = []
     for i, rule in enumerate(rules):
-        name = rule.get("name") if isinstance(rule, dict) else None
-        content = rule.get("content") if isinstance(rule, dict) else None
+        if not isinstance(rule, dict):
+            raise ValueError(f"{path}: rule {i} is not an object")
+        name, content = rule.get("name"), rule.get("content")
         if not isinstance(name, str) or not name.strip() or not isinstance(content, str) or not content.strip():
             raise ValueError(f"{path}: rule {i} has no name or content")
-        lines.append(f"- **{name.strip()}** {' '.join(content.split())}")
-    return "\n".join(lines)
+        block = [f"### {name.strip()}", "", " ".join(content.split())]
+        for key, label in (("good_examples", "Meets the rule"), ("bad_examples", "Breaks the rule")):
+            example = rule.get(key, "")
+            if not isinstance(example, str):
+                raise ValueError(f"{path}: rule {i} {key} is not text")
+            if example.strip():
+                block += ["", f"{label}:", "```", example.strip("\n"), "```"]
+        blocks.append("\n".join(block))
+    return "\n\n".join(blocks)
 
 
 def codex(cfg: dict, workdir: str, prompt: str, report: str, writable: bool, *, session: str | None = None) -> dict:

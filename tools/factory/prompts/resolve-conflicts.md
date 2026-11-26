@@ -6,6 +6,10 @@ Inspect the base, PR, and incoming versions. Keep the intent of both sides and m
 
 Leave the merge pending for the factory to check and commit. Do not run Git commands that write to the index, commit, abort the merge, switch branches, or push.
 
+Qodo reviews the pull request against these project rules (`docs/factory/qodo-rules.json`). No static check enforces them, so the change must meet them:
+
+{review_rules}
+
 Return only a JSON array, without a Markdown fence, with one entry for every listed path. Use the exact repository-relative path, set the action to "keep" for a resolved file or "delete" for a file removed from disk, and explain the decision in "reason".
 
 [{"path":"example.gd","action":"keep","reason":"Combined the two checks for the shared animation."}]
