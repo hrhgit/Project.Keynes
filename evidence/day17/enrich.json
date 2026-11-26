@@ -1,0 +1,364 @@
+{
+ "story": [
+  {
+   "id": "notice",
+   "kind": "notice",
+   "title": "What to decide",
+   "lede": "One decision to check, one coverage gap to keep visible.",
+   "items": [
+    {
+     "text": "The row check now fails on a gap in the dates, not only on a short count. Confirm this is the guard the ticket asked to keep.",
+     "beat": "exit6-choice"
+    },
+    {
+     "text": "Qodo's review of the final merge commit reports status completed but review_complete=false, so zero open findings is not a complete review.",
+     "beat": "brief"
+    }
+   ]
+  },
+  {
+   "id": "brief",
+   "kind": "brief",
+   "title": "One CSV row per published day",
+   "lede": "The headless performance recorder writes a row for every published day, not one per batch, and still exits 6 when a day is missing.",
+   "paragraphs": [
+    {
+     "label": "Today",
+     "text": "The recorder takes one snapshot per batch of committed days. When the host delivers two days together, one of them never gets a row, so a quick performance run sometimes exports 49 of 50 rows and the whole comparison fails with exit 6."
+    },
+    {
+     "label": "Why",
+     "text": "Issue 82: one lost row made a performance comparison of another PR fail even though the simulation results matched. The ticket asks for exactly one row per measured day and says exit 6 must still fire when rows really are missing."
+    },
+    {
+     "label": "What",
+     "text": "Each published day record becomes its own row with its own day, generation and commit time. Export waits for the final measured day. The row check accepts the CSV only when it holds exactly the expected days in order."
+    },
+    {
+     "label": "How",
+     "text": "The recorder subscribes to the host's ordered day records instead of the per-batch tick. The headless runner's row check reads the committed-day column and requires first_day, first_day+1, ... with no gaps."
+    }
+   ],
+   "contributions": [
+    {
+     "pr": "hrhgit/Project.Keynes#85",
+     "adds": "Per-day capture in the recorder, a date-order row check in the headless runner, and tests for batched, late and missing days."
+    }
+   ]
+  },
+  {
+   "id": "flow",
+   "kind": "flow",
+   "title": "From a published day to the exit code",
+   "lede": "A day record travels from the host to the recorder, into the CSV, and back through the row check.",
+   "hops": [
+    {
+     "from": "Runtime host",
+     "to": "PerfRecorder",
+     "call": "simulation_day_records signal",
+     "carries": "ordered day records (day, generation, produced_at_us)",
+     "keyed": "day",
+     "fails": "a day never delivered gets no row"
+    },
+    {
+     "from": "PerfRecorder",
+     "to": "perf.csv",
+     "call": "stop_and_export()",
+     "carries": "one row per measured day",
+     "keyed": "runtime_graph_simulation_committed_day",
+     "fails": "export path empty gives exit 5"
+    },
+    {
+     "from": "perf.csv",
+     "to": "headless runner",
+     "call": "_check_csv(path, first_day, expected_rows)",
+     "carries": "row count and date order",
+     "keyed": "committed-day column",
+     "fails": "short CSV or a gap in the dates gives exit 6"
+    }
+   ]
+  },
+  {
+   "id": "exit6-choice",
+   "kind": "question",
+   "title": "Is the stricter exit 6 the right guard?",
+   "lede": "Before this change exit 6 meant only a short row count. Now a CSV with the right number of rows but a missing day also fails.",
+   "ask": "Accept the date-order check as the guard the ticket asked to keep, or ask for the count-only check back?",
+   "options": [
+    "Accept: a gap in the dates is a lost row even when the count matches",
+    "Request the count-only check"
+   ]
+  },
+  {
+   "id": "scope",
+   "kind": "scope",
+   "title": "Ticket acceptance criteria",
+   "lede": "Two of three criteria are shown by evidence in the PR; the third is a scope rule.",
+   "items": [
+    {
+     "text": "Regression checks pass (tools/ci/run_regression_checks.py)",
+     "status": "partial",
+     "pr": "hrhgit/Project.Keynes#85",
+     "why": "Box unchecked in the PR body. The agent report says all 128 default checks reported PASS but the wrapper's aggregate exit was unavailable. The focused recorder test passes locally (93 checks, 0 failures)."
+    },
+    {
+     "text": "measure HEAD --tier quick --budget 0 completes all rounds with 50 rows",
+     "status": "done",
+     "pr": "hrhgit/Project.Keynes#85",
+     "why": "PR body: run on 2ba168376, rounds 1-3 each exported 50 rows for days 6-55, exit 0."
+    },
+    {
+     "text": "Diff touches only the recorder and its tests, not tools/factory, tools/ci, .github or .qodo",
+     "status": "partial",
+     "pr": "hrhgit/Project.Keynes#85",
+     "why": "None of the four forbidden paths is touched, but the diff also changes tools/perf/perf_change_check.py, two docs/architecture files and an ideology test, which are not the recorder or its tests."
+    }
+   ]
+  }
+ ],
+ "prs": {
+  "hrhgit/Project.Keynes#85": {
+   "summary": "Fixes issue 82: the headless performance recorder writes one row per published day and the runner rejects a CSV with a short count or a gap in the dates. This review follows one decision (the exit 6 guard). perf_change_check.py, perf_recorder_graph.gd, the docs and the other headless runner changes were not read in depth; their lines stay outside the layers.",
+   "risk": "Low for game behavior (test and tooling code only; native_changed=false). The main consequence is for performance comparisons: a CSV that used to pass on count alone can now fail on date order.",
+   "layers": [
+    {
+     "id": "capture",
+     "title": "Per-day capture",
+     "summary": "Read how each published record becomes one row and how duplicates and late days are handled.",
+     "ranges": [
+      {
+       "path": "Project/project-keynes/scripts/ui/perf_recorder.gd",
+       "from": 573,
+       "to": 612,
+       "side": "new"
+      }
+     ]
+    },
+    {
+     "id": "check",
+     "title": "The row check and exit 6",
+     "summary": "The decision under review: exit 6 now requires the expected days in order, not just the count.",
+     "ranges": [
+      {
+       "path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+       "from": 764,
+       "to": 777,
+       "side": "new"
+      },
+      {
+       "path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+       "from": 718,
+       "to": 727,
+       "side": "new"
+      }
+     ],
+     "depends_on": [
+      "capture"
+     ]
+    },
+    {
+     "id": "tests",
+     "title": "Tests for batched, late and missing days",
+     "summary": "The missing-day test is the one that proves the decision.",
+     "ranges": [
+      {
+       "path": "Project/project-keynes/tests/game/perf_recorder_test.gd",
+       "from": 295,
+       "to": 383,
+       "side": "new"
+      }
+     ],
+     "depends_on": [
+      "check"
+     ]
+    }
+   ],
+   "decisions": [
+    {
+     "id": "exit6-date-order",
+     "status": "planned",
+     "source": "ticket",
+     "kind": "technical",
+     "text": "Exit 6 fires on a short count or on any gap or reordering in the committed-day column",
+     "plan": "Issue 82, item 2: 'Do not relax the check: exit 6 must still fire when rows really are missing.'",
+     "why": "The agent's own plan (PR body, step 3) chose to 'Check the exact date sequence and retain exit 6 for a genuinely short CSV.' No further rationale is recorded. Reviewer's reading: the recorder skips a day it never receives, so a count-only check could pass a CSV whose count matches while a day is missing; checking the dates closes that hole.",
+     "effects": [
+      "contract"
+     ],
+     "notice": "A run that loses a day fails with 'CSV days must be ordered from N through M' instead of passing.",
+     "refs": [
+      "https://github.com/hrhgit/Project.Keynes/issues/82"
+     ],
+     "ev": [
+      {
+       "path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+       "side": "new",
+       "from": 764,
+       "to": 777
+      },
+      {
+       "path": "Project/project-keynes/tests/game/perf_recorder_test.gd",
+       "side": "new",
+       "from": 368,
+       "to": 383
+      }
+     ]
+    }
+   ],
+   "quality": {
+    "summary": "The focused recorder test passes at 2ba168376 (93 checks, 0 failures). A one-line mutation that drops the date check makes exactly one assertion fail, so the test guards the decision.",
+    "tests": [
+     {
+      "path": "Project/project-keynes/tests/game/perf_recorder_test.gd",
+      "verdict": "fine",
+      "why": "Listed because it is the proof for the decision under review: _test_missing_committed_day delivers days 6 and 8, then 9 after the window, and asserts exit 6 for both the expected count of 3 and a matching count of 2."
+     }
+    ]
+   }
+  }
+ },
+ "behavior": {
+  "headline": "Every published day gets a row, and a missing day fails the run.",
+  "capabilities": [
+   {
+    "id": "rows",
+    "title": "Record one row per day",
+    "summary": "Batched publications no longer lose a day.",
+    "prs": [
+     "hrhgit/Project.Keynes#85"
+    ]
+   },
+   {
+    "id": "guard",
+    "title": "Fail on a missing day",
+    "summary": "Exit 6 checks the dates, not only the count.",
+    "prs": [
+     "hrhgit/Project.Keynes#85"
+    ]
+   }
+  ],
+  "files": [
+   {
+    "pr": "hrhgit/Project.Keynes#85",
+    "path": "Project/project-keynes/scripts/ui/perf_recorder.gd",
+    "headline": "Rows come from day records, not from batch ticks.",
+    "hunks": [
+     {
+      "cap": "rows",
+      "title": "Day records",
+      "lines": [
+       {
+        "k": "+",
+        "kind": "behavior",
+        "text": "Each published day record within the measurement window appends one row with its own day, generation and commit time.",
+        "ev": [
+         {
+          "side": "new",
+          "from": 577,
+          "to": 607
+         }
+        ]
+       },
+       {
+        "k": "+",
+        "kind": "behavior",
+        "text": "A replayed day (day <= last published) is skipped, so a duplicate batch adds no row.",
+        "ev": [
+         {
+          "side": "new",
+          "from": 583,
+          "to": 584
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pr": "hrhgit/Project.Keynes#85",
+    "path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+    "headline": "The row check reads the dates.",
+    "hunks": [
+     {
+      "cap": "guard",
+      "title": "_check_csv",
+      "lines": [
+       {
+        "k": "~",
+        "kind": "behavior",
+        "text": "Exit 6 now requires the committed-day column to read first_day, first_day+1, ... in order, in addition to the expected row count.",
+        "ev": [
+         {
+          "side": "new",
+          "from": 764,
+          "to": 777
+         }
+        ]
+       },
+       {
+        "k": "+",
+        "kind": "behavior",
+        "text": "When the count matches but the dates do not, the error says the days must be ordered from first through last.",
+        "ev": [
+         {
+          "side": "new",
+          "from": 721,
+          "to": 727
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "pr": "hrhgit/Project.Keynes#85",
+    "path": "Project/project-keynes/tests/game/perf_recorder_test.gd",
+    "headline": "Tests cover batched, late and missing days.",
+    "hunks": [
+     {
+      "cap": "guard",
+      "title": "Missing day",
+      "lines": [
+       {
+        "k": "+",
+        "kind": "proof",
+        "text": "Days 6 and 8 delivered without 7: exit 6 with the expected count 3, and still exit 6 when the expected count is 2.",
+        "ev": [
+         {
+          "side": "new",
+          "from": 368,
+          "to": 383
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "context": {
+  "sources": [
+   {
+    "url": "https://github.com/hrhgit/Project.Keynes/issues/82",
+    "title": "Issue 82: headless perf recorder intermittently exports 49 of 50 rows",
+    "kind": "ticket",
+    "summary": "Asks for one row per measured day, keeps exit 6 for real missing rows, lists three acceptance criteria.",
+    "prs": [
+     "hrhgit/Project.Keynes#85"
+    ]
+   },
+   {
+    "url": "https://github.com/hrhgit/Project.Keynes/pull/85",
+    "title": "PR 85",
+    "kind": "pr",
+    "summary": "Factory PR by Codex with the plan, agent report and the committed-fix measure result.",
+    "prs": [
+     "hrhgit/Project.Keynes#85"
+    ]
+   }
+  ]
+ }
+}

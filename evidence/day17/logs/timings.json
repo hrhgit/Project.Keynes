@@ -1,0 +1,7 @@
+{
+  "checks": {
+    "import": 7.2,
+    "perf_recorder_test": 3.9
+  },
+  "total_seconds": 4.0
+}

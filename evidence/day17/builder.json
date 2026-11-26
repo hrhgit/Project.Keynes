@@ -1,0 +1,137 @@
+{
+ "files": [
+  {
+   "pr": "hrhgit/Project.Keynes#85",
+   "path": "Project/project-keynes/scripts/ui/perf_recorder.gd",
+   "purpose": "Holds the CSV buffer; now appends one row per published day record.",
+   "methods": [
+    {
+     "name": "_on_day_records",
+     "qual": "PerfRecorder._on_day_records",
+     "kind": "method",
+     "purpose": "Turns each published day record in the measurement window into one row; skips replayed days.",
+     "start": 577,
+     "end": 607,
+     "change": "added",
+     "add": 31,
+     "del": 0
+    }
+   ],
+   "status": "modified"
+  },
+  {
+   "pr": "hrhgit/Project.Keynes#85",
+   "path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+   "purpose": "Headless runner; exports the CSV and decides the exit code.",
+   "methods": [
+    {
+     "name": "_run",
+     "qual": "HeadlessPerf._run",
+     "kind": "method",
+     "purpose": "Runs the measured days, exports the CSV, calls _check_csv and returns 6 with a count or date-order message.",
+     "start": 49,
+     "end": 741,
+     "ostart": 45,
+     "oend": 787,
+     "change": "modified",
+     "add": 87,
+     "del": 137
+    },
+    {
+     "name": "_check_csv",
+     "qual": "HeadlessPerf._check_csv",
+     "kind": "function",
+     "purpose": "Counts rows and requires the committed-day column to read first_day, first_day+1, ... in order; returns exit 6 otherwise. Replaces the count-only _csv_data_row_count.",
+     "start": 764,
+     "end": 777,
+     "ostart": 810,
+     "oend": 822,
+     "change": "modified",
+     "add": 12,
+     "del": 10
+    }
+   ],
+   "status": "modified"
+  },
+  {
+   "pr": "hrhgit/Project.Keynes#85",
+   "path": "Project/project-keynes/tests/game/perf_recorder_test.gd",
+   "purpose": "Recorder tests: batched, late and missing days.",
+   "methods": [
+    {
+     "name": "_test_committed_day_export",
+     "qual": "_test_committed_day_export",
+     "kind": "function",
+     "purpose": "Batched and late publications give days 6, 7, 8 once each; _check_csv returns exit 0.",
+     "start": 295,
+     "end": 365,
+     "change": "added",
+     "add": 71,
+     "del": 0
+    },
+    {
+     "name": "_test_missing_committed_day",
+     "qual": "_test_missing_committed_day",
+     "kind": "function",
+     "purpose": "Days 6 and 8 without 7: _check_csv returns exit 6 for expected count 3 and for a matching count of 2.",
+     "start": 368,
+     "end": 383,
+     "change": "added",
+     "add": 16,
+     "del": 0
+    }
+   ],
+   "status": "modified"
+  }
+ ],
+ "flows": [
+  {
+   "title": "A missing day reaches exit 6",
+   "trigger": {
+    "kind": "cli",
+    "label": "perf_change_check.py measure runs the headless runner"
+   },
+   "steps": [
+    {
+     "pr": "hrhgit/Project.Keynes#85",
+     "repo": "hrhgit/Project.Keynes",
+     "path": "Project/project-keynes/scripts/ui/perf_recorder.gd",
+     "name": "_on_day_records",
+     "depth": 0,
+     "line": 577,
+     "via": "simulation_day_records signal from the runtime host"
+    },
+    {
+     "pr": "hrhgit/Project.Keynes#85",
+     "repo": "hrhgit/Project.Keynes",
+     "path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+     "name": "_run",
+     "depth": 0,
+     "line": 529,
+     "via": "stop_and_export() then _check_csv(output_path, first_measured_day, days)"
+    },
+    {
+     "pr": "hrhgit/Project.Keynes#85",
+     "repo": "hrhgit/Project.Keynes",
+     "path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+     "name": "_check_csv",
+     "depth": 1,
+     "line": 775,
+     "via": "ordered = ordered and cells[day_column] == str(first_day + rows)"
+    },
+    {
+     "pr": "hrhgit/Project.Keynes#85",
+     "repo": "hrhgit/Project.Keynes",
+     "path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+     "name": "_run",
+     "depth": 0,
+     "line": 721,
+     "via": "csv_check.exit_code == 6: push_error count mismatch or 'CSV days must be ordered', return 6"
+    }
+   ],
+   "outcome": {
+    "label": "The round fails with exit 6 instead of passing on a matching count"
+   }
+  }
+ ]
+}

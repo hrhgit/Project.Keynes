@@ -1,0 +1,5 @@
+--- a/Project/project-keynes/tests/game/headless_perf_record.gd
++++ b/Project/project-keynes/tests/game/headless_perf_record.gd
+@@ -777 +777 @@
+-	return {"rows": rows, "exit_code": 0 if ordered and rows == expected_rows else 6}
++	return {"rows": rows, "exit_code": 0 if rows == expected_rows else 6}
