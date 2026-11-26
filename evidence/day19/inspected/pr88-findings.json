@@ -1,0 +1,238 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/88",
+ "git_provider": null,
+ "finding_count": 5,
+ "review_session": {
+  "run_id": 2157579,
+  "status": "completed",
+  "commit_sha": "0e0395aae186c5ba4075f6c53f1ce91a3199856c",
+  "started_at": "2026-11-25T14:11:18.190844Z",
+  "git_provider": "github",
+  "review_complete": true
+ },
+ "findings": [
+  {
+   "id": "665d91a0-e318-4322-aaaf-d0733f2f9dac",
+   "action_level": "action_required",
+   "attribution_status": "implemented",
+   "title": "Failed map reads drop out with no error",
+   "description": "`publish_worker_climate_visuals` returns a `none` encode path with reason `map_lut_publication_unavailable` when `read_runtime_map_lut_frame` yields an empty dictionary. The bridge returns `{}` silently when the extension or map is null, and the native `read_runtime_map_lut_frame` returns an empty frame without logging for a different map, day, generation, or cell count, or a failed buffer resize. Nothing in the shown diff calls `push_error`, so a deferred map update that fails its identity check or allocation leaves the textures stale with no logged cause, and the caller only sees a quiet `none` path.",
+   "git_sha": "99f5d9b4877e486f65737817c73bb3428f0f1fd0",
+   "category": "Reliability",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/simulation/climate/mapgen_native_daily_runtime.gd[67-70]",
+      "citation": "\t\tframe = _generator._get_map_runtime_bridge().read_runtime_map_lut_frame(\n\t\t\t_generator._sus_map, int(commit.map_lut_day), int(commit.map_lut_generation))\n\t\tif frame.is_empty():\n\t\t\treturn {\"lut_encode_path\": \"none\", \"reason\": \"map_lut_publication_unavailable\"}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/map_runtime_bridge.gd[160-165]",
+      "citation": "func read_runtime_map_lut_frame(map: MapData, day: int, generation: int) -> Dictionary:\n\tvar ext = _generator._data_core_world_ext\n\tif ext == null or map == null:\n\t\treturn {}\n\treturn ext.read_runtime_map_lut_frame(map, day, generation, map.cell_count(), measure_map_lut_copies)\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_simulation_host.cpp[1410-1436]",
+      "citation": "Dictionary DCWorldExt::read_runtime_map_lut_frame(Object *map, int64_t day, int64_t generation,\n                                                  int cell_count, bool measure_copy) const {\n    Dictionary frame;\n    const auto &commit = _runtime_map_display_commit;\n    if (!map || map != _map_data || !commit || !commit->day_tail ||\n        day != commit->header.committed_day || generation <= 0 ||\n        static_cast<uint64_t>(generation) != commit->header.generation ||\n        cell_count <= 0 || cell_count != _native_world_cell_count) return frame;\n\n    const auto &model = commit->day_tail->cell_luts;\n    const auto count = static_cast<size_t>(cell_count);\n    if (model.transition_age.size() != count || model.previous_vitality.size() != count)\n        return frame;\n\n    using Clock = std::chrono::steady_clock;\n    const auto started = measure_copy ? Clock::now() : Clock::time_point{};\n    PackedByteArray ages, vitalities;\n    if (ages.resize(cell_count) != OK || vitalities.resize(cell_count) != OK) return frame;\n    std::memcpy(ages.ptrw(), model.transition_age.data(), count);\n    std::memcpy(vitalities.ptrw(), model.previous_vitality.data(), count);\n    if (measure_copy)\n        frame[\"copy_ns\"] = static_cast<int64_t>(\n            std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - started).count());\n    frame[\"transition_age\"] = ages;\n    frame[\"previous_vitality\"] = vitalities;\n    return frame;\n}"
+     },
+     {
+      "source_type": "rules",
+      "source": "21",
+      "platform_entity_id": "21",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     }
+    ],
+    "explanation": "The new read path has several failure returns (null extension, identity mismatch, count mismatch, resize failure) that return an empty or `none` result without `push_error`. The rule requires that such failures be reported with push_error or an explicit error result while the previous state is kept."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/simulation/climate/mapgen_native_daily_runtime.gd",
+    "start_line": 69,
+    "end_line": 70,
+    "side": "right",
+    "code_snippet": "+\t\tif frame.is_empty():\n+\t\t\treturn {\"lut_encode_path\": \"none\", \"reason\": \"map_lut_publication_unavailable\"}"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "3387e908-f9ae-4b26-921f-39cc7d926c90",
+   "action_level": "remediation_recommended",
+   "attribution_status": "implemented",
+   "title": "Window tests bypass map budget decisions",
+   "description": "`independent_presentation_window_test.gd` calls `_map_updates.start_frame(0)` on every process frame, while `player_map_publication_test.gd` manipulates the private map-update timer, disables `WorldClock`, and calls `_admit_runtime_calendar` directly. Because `can_apply()` unconditionally admits updates when `_frame_started_usec == 0`, the window assertions bypass budget and spacing checks, and the publication test does not verify that the production clock advances to the player's wait point while the map is held.",
+   "git_sha": "99f5d9b4877e486f65737817c73bb3428f0f1fd0",
+   "category": "Correctness",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/independent_presentation_window_test.gd[47-49]",
+      "citation": "\t_timings.attach(_host)\n\tvar allow_map_read := func(): _host._presentation._map_updates.start_frame(0)\n\tprocess_frame.connect(allow_map_read)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/independent_presentation_window_test.gd[76-83]",
+      "citation": "\t\tfor result in row.receipts:\n\t\t\tif int(result.request_id) == int(command.request_id):\n\t\t\t\treceipt_seen = true\n\t\t\t\tcheck(int(row.day) == int(receipt.effective_day), \"receipt arrived on its sealed day\")\n\tcheck(receipt_seen, \"command receipt arrives while map is held\")\n\tcheck(not ui_days.is_empty() and date_before != top._date_label.text, \"date updates on the held map\")\n\tcheck(not _timings.take().map_copies.is_empty() and target.draw_count == count,\n\t\t\"draw switch holds map drawing while the map reader still stages new textures\")"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_map_updates.gd[99-110]",
+      "citation": "\n\nfunc can_apply(frame: int, usec: int, fps: int) -> bool:\n\tvar budget := _frame_budget_usec(fps)\n\tif budget == 0 or _frame_started_usec == 0:\n\t\treturn true\n\tif _last_update_frame >= 0 and frame - _last_update_frame < _draw_spacing:\n\t\treturn false\n\t# A past expensive update can lower cadence, but its estimate must not\n\t# prevent all future updates even on an otherwise empty frame.\n\tvar update_usec := minf(_update_usec, budget * 0.5)\n\treturn usec - _frame_started_usec + update_usec < budget * 0.9"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_map_updates.gd[100-109]",
+      "citation": "\nfunc can_apply(frame: int, usec: int, fps: int) -> bool:\n\tvar budget := _frame_budget_usec(fps)\n\tif budget == 0 or _frame_started_usec == 0:\n\t\treturn true\n\tif _last_update_frame >= 0 and frame - _last_update_frame < _draw_spacing:\n\t\treturn false\n\t# A past expensive update can lower cadence, but its estimate must not\n\t# prevent all future updates even on an otherwise empty frame.\n\tvar update_usec := minf(_update_usec, budget * 0.5)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_presentation.gd[81-91]",
+      "citation": "\nfunc apply_pending_worker_map(vision_dirty: PackedInt32Array, publish_map: Callable) -> void:\n\tif not _map_updates.has_pending():\n\t\treturn\n\tvar frame := Engine.get_process_frames()\n\tvar started := Time.get_ticks_usec()\n\tif vision_dirty.is_empty() and not _map_updates.can_apply(frame, started, Engine.max_fps):\n\t\treturn\n\tif not publish_map.call(_map_updates.collect(vision_dirty), _pending_map_day, started):\n\t\t_map_updates.reject()\n\t\treturn"
+     }
+    ],
+    "explanation": "`can_apply()` returns early when `_frame_started_usec == 0`, before checking the frame budget or update spacing. The window test supplies that value every frame, so its map-read and draw-switch assertions observe only the unthrottled path. The publication test also writes the private timer; by turning off `WorldClock` processing and calling `_admit_runtime_calendar` directly, it tests calendar admission without the production clock advancing."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/game/independent_presentation_window_test.gd",
+    "start_line": 48,
+    "end_line": 49,
+    "side": "right",
+    "code_snippet": "+\tvar allow_map_read := func(): _host._presentation._map_updates.start_frame(0)\n+\tprocess_frame.connect(allow_map_read)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "a51f2eb2-ab34-4a9d-bed6-0f800bd0c3a2",
+   "action_level": "remediation_recommended",
+   "attribution_status": "implemented",
+   "title": "Unmeasured runs report zero map reads",
+   "description": "`map_read_stats()` rejects invalid copy entries but accepts an empty `map_copies` list as zero reads and zero copied bytes. In a normal `--map-reads` run, an uninstrumented baseline can produce no entries, and the overload-only validation does not catch it, so the comparison reports an unmeasured quantity as a measured result.",
+   "git_sha": "99f5d9b4877e486f65737817c73bb3428f0f1fd0",
+   "category": "Observability",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "skill",
+      "source": "project-keynes-perf-change-check",
+      "citation": "project-keynes-perf-change-check"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/analyze_player_handoff.py[84-98]",
+      "citation": "def map_read_stats(sample):\n    copies = [copy for row in sample for copy in row[\"map_copies\"]]\n    if any(copy[\"ns\"] < 0 or copy[\"bytes\"] <= 0 for copy in copies):\n        raise ValueError(\"map copy timing requires an instrumented baseline and candidate\")\n    draws = [usec for row in sample for usec in row[\"map_draw_times\"]]\n    lags = sorted(lag for row in sample for lag in row[\"map_draw_lag_days\"])\n    if len(draws) != len(lags) or len(draws) < 2:\n        raise ValueError(\"need two actual map draws with the corresponding published-day lag\")\n    feedback = [click[\"usec\"] for row in sample for click in row[\"panel_feedback\"]]\n    return {\n        \"map_reads\": len(copies),\n        \"map_copied_bytes\": sum(copy[\"bytes\"] for copy in copies),\n        \"map_copy_total_ms\": sum(copy[\"ns\"] for copy in copies) / 1_000_000,\n        \"map_copy\": timing_stats([copy[\"ns\"] / 1000 for copy in copies]),\n        \"panel_feedback\": timing_stats(feedback),"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/run_rendered_player_handoff.py[239-250]",
+      "citation": "                result = {\"trial\": trial, \"config\": baseline.config,\n                          \"windows\": compare_recordings(baseline, candidate, windows)}\n                if args.map_reads:\n                    for window in result[\"windows\"]:\n                        for side in projects:\n                            if window[side].get(\"panel_feedback\", {}).get(\"samples\", 0) == 0:\n                                raise ValueError(f\"{side} missing panel feedback in {window['requested_days']}\")\n                    if args.overload:\n                        result[\"held_map_reads\"] = {\n                            side: check_held_map_reads(samples[side].frames, baseline=side == \"baseline\")\n                            for side in projects\n                        }"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/player_scene_handoff_timings.gd[29-40]",
+      "citation": "\t\tvar started := Time.get_ticks_usec()\n\t\tvar result := super(after_generation, take_days)\n\t\tvar elapsed := Time.get_ticks_usec() - started\n\t\tif take_days and not result.get(\"days\", []).is_empty():\n\t\t\treceive_us += elapsed\n\t\t\treceived_batches += 1\n\t\t\t# Older builds copy the two lanes as part of day receipt delivery.\n\t\t\tvar lut: Dictionary = result.get(\"cell_lut_frame\", {})\n\t\t\tif not lut.is_empty():\n\t\t\t\tmap_copies.append({\"day\": result.committed_day, \"ns\": lut.get(\"copy_ns\", -1),\n\t\t\t\t\t\"bytes\": lut.transition_age.size() + lut.previous_vitality.size()})\n\t\treturn result"
+     }
+    ],
+    "explanation": "The performance-check skill requires an unmeasured claim to be identified as such rather than substituting a metric that appears to move. Here an empty copy collection passes the analyzer's validation, while the runner checks for held-map baseline copies only in overload mode."
+   },
+   "location": {
+    "file_path": "tools/perf/analyze_player_handoff.py",
+    "start_line": 85,
+    "end_line": 87,
+    "side": "right",
+    "code_snippet": "+    copies = [copy for row in sample for copy in row[\"map_copies\"]]\n+    if any(copy[\"ns\"] < 0 or copy[\"bytes\"] <= 0 for copy in copies):\n+        raise ValueError(\"map copy timing requires an instrumented baseline and candidate\")"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "c2864f70-c7ee-4f36-8793-e9d7683cc1b7",
+   "action_level": "remediation_recommended",
+   "attribution_status": "implemented",
+   "title": "Test skips the receive step while waiting",
+   "description": "`_advance_to` spins on `await process_frame` while `received_worker_day()` is below the target, and only asserts afterwards. It never calls `wait_for_runtime_day` or the production `_service_runtime_liveness` receive step, so the completion condition is the observed day rather than the committed day with results received. A watchdog break is also present, so the loop can exit early and leave the next assertion to report the failure.",
+   "git_sha": "99f5d9b4877e486f65737817c73bb3428f0f1fd0",
+   "category": "Testability",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/player_map_publication_test.gd[135-146]",
+      "citation": "func _advance_to(day: int) -> bool:\n\tvar through := day + 1 if day == WAITING_DAY else day\n\t_check(_host._admit_runtime_calendar(through + 1) >= through,\n\t\t\"calendar admits work through day %d\" % through)\n\tvar started := Time.get_ticks_usec()\n\twhile _host.received_worker_day() < day and not _host.is_runtime_fault_paused():\n\t\tif Time.get_ticks_usec() - started >= WATCHDOG_USEC:\n\t\t\tbreak\n\t\tawait process_frame\n\tvar arrived := _host.received_worker_day() == day and not _host.is_runtime_fault_paused()\n\t_check(arrived, \"day %d delivered through the normal publication reader\" % day)\n\treturn arrived"
+     },
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948326?state=active",
+      "id": 4948326,
+      "platform_entity_id": "4948326",
+      "citation": "Keynes: background-day tests wait for the committed day and receive results",
+      "platform_entity_type": "rule"
+     }
+    ],
+    "explanation": "The new background-day helper uses a `received_worker_day() < day` loop with a manual frame wait, which matches the disallowed pattern of waiting until the observed day grows. The rule requires `wait_for_runtime_day` for the committed date followed by the production result-receive step before asserting."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/game/player_map_publication_test.gd",
+    "start_line": 139,
+    "end_line": 143,
+    "side": "right",
+    "code_snippet": "+\tvar started := Time.get_ticks_usec()\n+\twhile _host.received_worker_day() < day and not _host.is_runtime_fault_paused():\n+\t\tif Time.get_ticks_usec() - started >= WATCHDOG_USEC:\n+\t\t\tbreak\n+\t\tawait process_frame"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "0f10bb1f-68b3-47b1-adb3-a2f9e5f43c40",
+   "action_level": "informational",
+   "attribution_status": "pending",
+   "title": "Player-visible feedback gain is still unmeasured",
+   "description": "The new feature-status entry gives headless copy counts and microsecond timings only. Visible-window panel feedback, map draw interval and map lag are explicitly left unmeasured because the macOS launch failed. The baseline copy timings were also taken while a local compile was running, so they cannot show whether players get faster feedback.",
+   "git_sha": "99f5d9b4877e486f65737817c73bb3428f0f1fd0",
+   "category": "Observability",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/architecture/feature-status.md[74-76]",
+      "citation": "改前在数组分配及复制处加计时后，同一复现得到 15 次读取、72,000 字节。每次分配与复制耗时\n中位数 3.667 微秒，P95 为 4.750 微秒，范围 1.875–4.750 微秒，合计 52.710 微秒。\n原始日志在 `/private/tmp/keynes-83.5xQarw/instrumented-base/`。该次取样与本机编译重叠。"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/architecture/feature-status.md[116-117]",
+      "citation": "本次配对试跑的第一组和 `independent_presentation_window_test.gd` 均在 macOS 启动阶段失败。\n桌面工具也拒绝操作 Godot，实际地图绘制间隔、落后天数和点击反馈仍待可见窗口验证。"
+     }
+    ],
+    "explanation": "Lines 74–76 state that the instrumented baseline sample overlapped local compilation. Lines 116–117 state that the paired window run failed at launch, so the actual draw interval, lag and click feedback are not available. The PR does not claim a frame-time gain, so this is the known measurement gap rather than an unsupported claim."
+   },
+   "location": {
+    "file_path": "docs/architecture/feature-status.md",
+    "start_line": 116,
+    "end_line": 117,
+    "side": "right",
+    "code_snippet": "+本次配对试跑的第一组和 `independent_presentation_window_test.gd` 均在 macOS 启动阶段失败。\n+桌面工具也拒绝操作 Godot，实际地图绘制间隔、落后天数和点击反馈仍待可见窗口验证。"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2157579,
+   "commit_sha": "0e0395aae186c5ba4075f6c53f1ce91a3199856c",
+   "started_at": "2026-11-25T14:11:18.190844Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2156111,
+   "commit_sha": "99f5d9b4877e486f65737817c73bb3428f0f1fd0",
+   "started_at": "2026-11-25T13:12:15.805074Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  }
+ ]
+}

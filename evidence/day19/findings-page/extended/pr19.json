@@ -1,0 +1,395 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/19",
+ "git_provider": null,
+ "finding_count": 8,
+ "review_session": {
+  "run_id": 2084457,
+  "status": "completed",
+  "commit_sha": "59858fd432000245fd2cba6a454132527adb780f",
+  "started_at": "2026-11-21T05:56:22.180281Z",
+  "git_provider": "github",
+  "review_complete": true
+ },
+ "findings": [
+  {
+   "category": "Correctness",
+   "id": "507e9972-41e9-4b03-8ec8-2e1dccf4c32b",
+   "git_sha": "59858fd432000245fd2cba6a454132527adb780f",
+   "action_level": "action_required",
+   "title": "Vision setup fails with restored libraries",
+   "attribution_status": "pending",
+   "description": "`_initialize_runtime_vision()` no longer supplies the `explored` array to `configure_vision_research()`, while the baseline native implementation still requires an array matching the map's cell count. On this diagnostic branch the platform libraries remain at that baseline, so vision initialization returns `vision_research_input_shape_invalid` for both new and restored worlds.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/addons/dots_ext/dots_ext.gdextension[5-18]",
+      "citation": "compatibility_maximum = \"4.6\"\n\n[libraries]\n\nwindows.debug.x86_64    = \"res://addons/dots_ext/bin/windows/dots_ext_country_border_fix.windows.template_debug.x86_64.dll\"\nwindows.release.x86_64  = \"res://addons/dots_ext/bin/windows/dots_ext_country_border_fix.windows.template_release.x86_64.dll\"\nlinux.debug.x86_64      = \"res://addons/dots_ext/bin/linux/libdots_ext.linux.template_debug.x86_64.so\"\nlinux.release.x86_64    = \"res://addons/dots_ext/bin/linux/libdots_ext.linux.template_release.x86_64.so\"\nmacos.debug.arm64       = \"res://addons/dots_ext/bin/macos/libdots_ext.macos.template_debug.arm64.dylib\"\nmacos.release.arm64     = \"res://addons/dots_ext/bin/macos/libdots_ext.macos.template_release.arm64.dylib\"\nmacos.debug.x86_64      = \"res://addons/dots_ext/bin/macos/libdots_ext.macos.template_debug.x86_64.dylib\"\nmacos.release.x86_64    = \"res://addons/dots_ext/bin/macos/libdots_ext.macos.template_release.x86_64.dylib\"\nandroid.debug.arm64     = \"res://addons/dots_ext/bin/android/libdots_ext.android.template_debug.arm64.so\"\nandroid.release.arm64   = \"res://addons/dots_ext/bin/android/libdots_ext.android.template_release.arm64.so\""
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_visual_adapter.gd[467-493]",
+      "citation": "\tvar seeded: Dictionary = ext.configure_vision_research({\n\t\t\"cell_count\": n,\n\t\t\"neighbor_indices\": map.neighbor_indices_packed(),\n\t\t\"view_height\": host._world_data.cell_view_height,\n\t\t\"view_block\": host._world_data.cell_view_block,\n\t\t\"signal_offsets\": map.cell_research_signal_offsets,\n\t\t\"signal_ids\": map.cell_research_signal_ids,\n\t\t\"bio_bits\": signal_catalog.get(\"research_bio_occupancy_bits\", PackedInt32Array()),\n\t\t\"bio_signals\": signal_catalog.get(\"research_bio_signal_ids\", PackedInt32Array()),\n\t\t\"world_day\": host._world_clock.day_index() if host._world_clock != null else 0,\n\t\t\"player_start_cell\": _resolve_player_start_cell(host),\n\t\t\"remote_technology\": tech_ids.find(\"tech.magnetic_navigation\"),\n\t\t\"occupancy\": map.bio_occupancy_bits_arr,\n\t\t\"fog_available\": _fog_allowed(host),\n\t\t\"fog_enabled\": host.fog_of_war_enabled,\n\t\t\"restored\": restored,\n\t})\n\tif not bool(seeded.get(\"ok\", false)):\n\t\tpush_error(\"Vision setup: \" + String(seeded.get(\"reason\", seeded.get(\"code\", \"unknown\"))))\n\t\treturn seeded\n\treturn apply_runtime_vision_display(host)\n\n\nfunc apply_runtime_vision_display(host) -> Dictionary:\n\tvar map: MapData = host._current_map\n\tif map == null or host._generator == null:\n\t\treturn {\"ok\": true, \"applied\": false}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_vision.cpp[217-229]",
+      "citation": "        work.player_slot = state->player_slot;\n        work.remote = state->remote;\n        work.military_sources = state->military_sources;\n        work.previous_explored = std::move(explored);\n        work.occupancy = copy_column<int32_t>(\n            PackedInt32Array(config.get(\"occupancy\", PackedInt32Array())));\n        if (work.previous_explored.size() != size_t(n) || work.occupancy.size() != size_t(n)) {\n            out[\"reason\"] = \"vision_research_input_shape_invalid\";\n            return out;\n        }\n        work.compute();\n        if (!work.ok) {\n            out[\"reason\"] = \"vision_research_compute_failed\";"
+     }
+    ],
+    "explanation": "The GDExtension descriptor loads platform binaries rather than compiling the changed C++ at launch. The diff removes the `explored` argument that the baseline implementation copied from the configuration; its existing shape check rejects the resulting empty array, and the script propagates that failure."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_visual_adapter.gd",
+    "start_line": 484,
+    "end_line": 484,
+    "side": "left",
+    "code_snippet": "-\t\t\"explored\": map.explored_arr,"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "category": "Testability",
+   "id": "0ef48426-d47a-413d-9d40-d62d058b6eef",
+   "git_sha": "59858fd432000245fd2cba6a454132527adb780f",
+   "action_level": "action_required",
+   "title": "Ideology test no longer catches stalled clients",
+   "attribution_status": "pending",
+   "description": "The diff deletes the assertion that no client has outstanding boundary-turn requests and the assertion that GDScript never re-replies for the worker (duplicate and unknown ack counts must be zero). Those assertions guarded the R-3b stall and the double-reply regression, and the replacement only checks foreground waits and equip settlement.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948320?state=active",
+      "id": 4948320,
+      "platform_entity_type": "rule",
+      "citation": "Keynes: fix the root cause instead of relaxing the check",
+      "platform_entity_id": "4948320"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/ideology/ideology_card_content_worker_test.gd[431-471]",
+      "citation": "\t\ttick = _drive_days(host, clock, ext, tick, 3)\n\t\tvar day_after := int(ext.get_runtime_thread_report().get(\n\t\t\t\"ideology_parity_worker_committed_day\", -1))\n\t\t_expect(\"%s: worker keeps committing days after a second equip\" % key,\n\t\t\tday_after > day_before,\n\t\t\t\"worker_committed_day %d -> %d\" % [day_before, day_after])\n\t\tvar final_report: Dictionary = ext.get_runtime_thread_report()\n\t\tvar days: Dictionary = final_report.get(\"worker_main_wait_by_day\", {})\n\t\tvar front_waits := 0\n\t\tfor committed_day in range(day_before + 1, day_after + 1):\n\t\t\tfor reason in days.get(committed_day, {}).values():\n\t\t\t\tfront_waits += int(reason.count)\n\t\t_expect(\"%s: the second equip never waits for foreground services\" % key,\n\t\t\tfinal_report.has(\"worker_main_wait_by_day\") and front_waits == 0\n\t\t\t\tand String(final_report.get(\"fault_code\", \"\")).is_empty(),\n\t\t\t\"waits=%d fault=%s\" % [front_waits, final_report.get(\"fault_code\", \"\")])\n\t\tvar terminals: Dictionary = ext.poll_ideology_receipts(0, 64)\n\t\tvar equip_outcomes := 0\n\t\tfor i in range(int(terminals.get(\"count\", 0))):\n\t\t\tif int(terminals.opcodes[i]) == 5 and int(terminals.ideology_ids[i]) == dense:\n\t\t\t\tequip_outcomes += int(terminals.statuses[i] == 2)\n\t\t_expect(\"%s: both equip submissions have exactly one settled result each\" % key,\n\t\t\tequip_outcomes == 2, str(terminals))\n\t\t# 0c: LEVEL-UP and RELOCATION on the WORKER path.\n\t\t#\n\t\t# The main-thread test (`ideology_card_content_test._test_level_up_replaces_rows`)\n\t\t# proves the batch split works where the Effect runtime is on the main thread.\n\t\t# The worker path is a different set of hops (pod plans -> intents/ACKs ->\n\t\t# Modifier POD applies), so \"the old tier's row was retired\" has to be asserted\n\t\t# HERE too: a stale row is invisible to the main-thread run if the worker ACKs\n\t\t# differently, and the card would silently stack two levels in the game.\n\t\t#\n\t\t# Gated because each one needs its own fresh equip cycle on an already-loaded\n\t\t# world; `C0_LEVEL_PROBES=1` turns them on.\n\t\tif OS.get_environment(\"C0_LEVEL_PROBES\") == \"1\":\n\t\t\t_test_worker_level_up(host, clock, ext, handle, int(dense), tick, key,\n\t\t\t\tString(row[\"stat\"]))\n\t\t# 3c: save -> restore -> keep running.\n\t\t#\n\t\t# Gated because a second world costs another full MapGenerator build, and the\n\t\t# seven-card batch runner invokes this file seven times. `C0_SAVE_ROUNDTRIP=1`"
+     }
+    ],
+    "explanation": "Rule 4948320 flags changes that delete compared fields or loosen assertions. The PR removes the `main_boundary_service_requests == 0` check and the `duplicate_acks`/`unknown_acks == 0` check, and it gives no root-cause evidence for the removal."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/ideology/ideology_card_content_worker_test.gd",
+    "start_line": 437,
+    "end_line": 440,
+    "side": "right",
+    "code_snippet": " \t\tvar final_report: Dictionary = ext.get_runtime_thread_report()\n-\t\t# The boundary bit is released at the TOP of the next refresh call, so a run\n-\t\t# that ends while the last refresh had to skip leaves it set by design (the\n-\t\t# worker is parked until the next tick asks again). One extra call is what a\n-\t\t# real session does every frame; without it the assertion below would measure\n-\t\t# \"the session stopped mid-skip\", not \"a client is stranded\".\n-\t\tif ext.has_method(\"step_ideology_instance_refresh\"):\n-\t\t\text.step_ideology_instance_refresh(tick)\n-\t\t\tfinal_report = ext.get_runtime_thread_report()\n-\t\tvar outstanding := int(final_report.get(\n-\t\t\t\"main_boundary_service_requests\", -1))\n-\t\t_expect(\"%s: no client is left waiting for a boundary turn (outstanding=%d)\"\n-\t\t\t% [key, outstanding], outstanding == 0,\n-\t\t\t(\"ideology=%s trigger=%s state=%s\") % [\n-\t\t\t\tstr(final_report.get(\"main_boundary_service_ideology\", \"?\")),\n-\t\t\t\tstr(final_report.get(\"main_boundary_service_trigger\", \"?\")),\n-\t\t\t\tstr(final_report.get(\"simulation_host_state\", \"?\"))])\n-\t\t# 4. The GDScript intent fallback must stay SILENT under a 0xFFF mask.\n-\t\t#\n-\t\t# When the worker owns EFFECT it drains the intents itself, so any reply from\n-\t\t# `_service_ideology_worker_intents_if_authoritative` would be a duplicate claim\n-\t\t# that the effect committed. Both counters therefore have to be 0 here; a\n-\t\t# non-zero value means the pump fired where it should not have.\n-\t\tvar reply_report: Dictionary = host.get_ideology_intent_reply_report()\n-\t\t_expect(\"%s: GDScript never re-replied for the worker (duplicate=%d unknown=%d)\"\n-\t\t\t% [key, int(reply_report.get(\"duplicate_acks\", -1)),\n-\t\t\t\tint(reply_report.get(\"unknown_acks\", -1))],\n-\t\t\tint(reply_report.get(\"duplicate_acks\", -1)) == 0 and\n-\t\t\t\tint(reply_report.get(\"unknown_acks\", -1)) == 0,\n-\t\t\tstr(reply_report))\n+\t\tvar days: Dictionary = final_report.get(\"worker_main_wait_by_day\", {})\n+\t\tvar front_waits := 0\n+\t\tfor committed_day in range(day_before + 1, day_after + 1):"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "category": "Correctness",
+   "id": "4acb0d33-fbf4-4cee-a5c8-9e19a451444e",
+   "git_sha": "59858fd432000245fd2cba6a454132527adb780f",
+   "action_level": "action_required",
+   "title": "AI countries can no longer start colonies",
+   "attribution_status": "pending",
+   "description": "`apply_start_family_expedition` now reads the country handle from `cmd.i64_1` and rejects any command with `expedition_route_hash == 0`. The AI colonization producer in `economy_runtime_country_ai.cpp`, which this PR did not change, still puts the quote token into `i64_1` and never sets `expedition_route_hash`, so every AI start is rejected as `colonization_requote_required`. The same mismatch breaks the AI's duplicate-target check (`pending_family_expedition_target_taken` compares `i64_1` to the country handle) and gives the rejection receipt a bogus country.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/economy_runtime_country_ai.cpp[363-399]",
+      "citation": "            if (pending_family_expedition_target_taken(intent.country_handle, intent.target_cell) ||\n                family_population_in_cell(static_cast<uint64_t>(family_handles[i]), sources[i]) <=\n                    population)\n                continue;\n            // Relocate must not strip a healthy source city below the AI floor;\n            // otherwise reinforce just moves the dead-end problem around.\n            if (reinforce_target) {\n                const int32_t src = sources[i];\n                const int64_t source_cell_pop =\n                    src >= 0 && static_cast<size_t>(src) < _cell_population_total.size()\n                        ? _cell_population_total[static_cast<size_t>(src)] : 0;\n                if (source_cell_pop - population < intent.min_population) continue;\n            }\n            const int32_t cost = i < costs.size() ? costs[i] : std::numeric_limits<int32_t>::max();\n            if (best_i >= 0 && (population < best_population ||\n                    (population == best_population && cost >= best_cost)))\n                continue;\n            best_i = i;\n            best_population = population;\n            best_cost = cost;\n        }\n        bool queued = false;\n        if (best_i >= 0) {\n            Command command;\n            command.opcode = COMMAND_START_FAMILY_EXPEDITION;\n            command.effective_day = day_index;\n            command.sequence = COUNTRY_AI_COLONIZATION_SEQUENCE_TAG |\n                static_cast<int64_t>(intent.sequence &\n                    static_cast<uint64_t>(COUNTRY_AI_COLONIZATION_SEQUENCE_TAG - 1));\n            command.target_handle = static_cast<uint64_t>(family_handles[best_i]);\n            command.i32_0 = sources[best_i];\n            command.i32_1 = intent.target_cell;\n            command.i64_0 = best_population;\n            command.i64_1 = tokens[best_i];\n            command.submit_order = _next_submit_order++;\n            _pending_commands.push_back(command);\n            queued = true;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/economy_runtime.cpp[1086-1088]",
+      "citation": "        case COMMAND_START_FAMILY_EXPEDITION:\n        case COMMAND_CANCEL_FAMILY_EXPEDITION:\n            return apply_family_expedition_player_command(cmd, error);"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/economy_runtime_colonization.cpp[817-826]",
+      "citation": "bool NativeEconomyRuntime::apply_start_family_expedition(\n        const Command &cmd, std::string &error, const uint8_t *visible,\n        int32_t visible_count, uint64_t kit_identity) {\n    const auto country = static_cast<uint64_t>(cmd.i64_1);\n    const uint64_t family = cmd.target_handle;\n    const int32_t source = cmd.i32_0, target = cmd.i32_1;\n    if (cmd.expedition_route_hash == 0) {\n        error = \"colonization_requote_required\";\n        return false;\n    }"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/economy_runtime_colonization.cpp[445-457]",
+      "citation": "bool NativeEconomyRuntime::pending_family_expedition_target_taken(\n        uint64_t country_handle, int32_t target_cell) const {\n    const auto matches = [&](const Command &cmd) {\n        return cmd.opcode == COMMAND_START_FAMILY_EXPEDITION &&\n            cmd.i32_1 == target_cell && static_cast<uint64_t>(cmd.i64_1) == country_handle;\n    };\n    if (std::any_of(_pending_commands.begin(), _pending_commands.end(), matches) ||\n        std::any_of(_epoch_commands.begin(), _epoch_commands.end(), matches))\n        return true;\n    std::lock_guard<std::mutex> lock(_worker_command_inbox->mutex);\n    const auto &inbox = _worker_command_inbox->commands;\n    return std::any_of(inbox.begin(), inbox.end(), matches);\n}"
+     }
+    ],
+    "explanation": "The AI producer builds START_FAMILY_EXPEDITION commands with `command.i64_1 = tokens[best_i]` and leaves `expedition_route_hash` unset. Those commands are pushed to `_pending_commands` and dispatched through `apply_family_expedition_player_command` into the rewritten `apply_start_family_expedition`. That function now treats `i64_1` as the country and returns `colonization_requote_required` when `expedition_route_hash == 0`. The new `pending_family_expedition_target_taken` also compares `i64_1` against `country_handle`, so queued AI commands never match."
+   },
+   "location": {
+    "file_path": "gdext/src/economy_runtime_colonization.cpp",
+    "start_line": 820,
+    "end_line": 823,
+    "side": "right",
+    "code_snippet": "+    const auto country = static_cast<uint64_t>(cmd.i64_1);\n+    const uint64_t family = cmd.target_handle;\n+    const int32_t source = cmd.i32_0, target = cmd.i32_1;\n+    if (cmd.expedition_route_hash == 0) {"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "category": "Reliability",
+   "id": "d333726b-6944-498d-b818-b5ee2a06143e",
+   "git_sha": "59858fd432000245fd2cba6a454132527adb780f",
+   "action_level": "action_required",
+   "title": "Old saves lose explored fog on load",
+   "attribution_status": "pending",
+   "description": "`restore_vision_seed` treats a missing VISION section as success without changing its zero-filled `explored` buffer, while the PKFG restorer no longer applies legacy `explored`; the BIO restore similarly accepts a missing section after the geography restorer drops legacy occupancy bits. Pre-change saves have neither native section, and unchanged save versions allow them to load without an error, so the map is fully fogged, species occupancy is regenerated, and a subsequent save persists the lost exploration.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948319?state=active",
+      "id": 4948319,
+      "platform_entity_type": "rule",
+      "citation": "Keynes: new continuation state is versioned, validated and installed atomically",
+      "platform_entity_id": "4948319"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_vision.cpp[425-437]",
+      "citation": "bool NativeSimulationHost::restore_vision_seed(std::vector<uint8_t> &explored,\n        bool &enabled, uint64_t &player_handle) const {\n    if (!_has_pending_restore ||\n        (_pending_restore_bundle.section_mask & RUNTIME_SAVE_SECTION_VISION) == 0) return true;\n    const auto &bytes = _pending_restore_bundle.vision_bytes;\n    CheckpointReader in{bytes.data(), bytes.size()};\n    uint8_t fog = 0;\n    if (!in.field(player_handle) || !in.field(fog) || fog > 1 ||\n        in.size - in.cursor != explored.size()) return false;\n    std::copy(bytes.begin() + in.cursor, bytes.end(), explored.begin());\n    enabled = fog != 0;\n    return true;\n}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/save_modules/vision_state.gd[10-40]",
+      "citation": "\nfunc _write_vision_provider(context: Dictionary) -> Dictionary:\n\tvar map: MapData = context.map\n\tvar payload := {\"schema\": \"PKFogOfWar\", \"version\": 4, \"cells\": map.cell_count()}\n\tvar intel = context.intel\n\tif intel != null:\n\t\tpayload.merge(intel.to_pkfg_fields(), true)\n\telse:\n\t\tvar empty_intel := BuildingVisualIntelCache.new()\n\t\tempty_intel.configure(map.cell_count())\n\t\tpayload.merge(empty_intel.to_pkfg_fields(), true)\n\treturn {\"ok\": true, \"sections\": {\"pkfg\": payload}}\n\nfunc _restore_vision_provider(sections: Dictionary, context: Dictionary) -> Dictionary:\n\tvar payload = sections.get(\"pkfg\")\n\tif not payload is Dictionary or String(payload.get(\"schema\", \"\")) != \"PKFogOfWar\":\n\t\treturn _result(false, \"pkfg_restore_failed\", \"视野 section 格式不正确。\")\n\tvar map: MapData = context.map\n\tif map == null:\n\t\treturn _result(false, \"pkfg_restore_failed\", \"视野恢复时地图不可用。\")\n\tvar n := map.cell_count()\n\tif int(payload.get(\"cells\", -1)) != n:\n\t\treturn _result(false, \"pkfg_restore_failed\", \"视野 section 的格数与当前地图不一致。\")\n\tvar intel = context.intel\n\tif intel != null:\n\t\tvar type_count := int(context.type_count)\n\t\tvar intel_restore: Dictionary = intel.restore_pkfg(payload, type_count)\n\t\tif not bool(intel_restore.get(\"ok\", false)):\n\t\t\treturn _result(false, \"pkfg_restore_failed\",\n\t\t\t\tString(intel_restore.get(\"reason\", \"建筑情报 CSR 无效。\")))\n\treturn _result(true, \"ok\", \"\")"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/save_modules/vision_state.gd[11-40]",
+      "citation": "func _write_vision_provider(context: Dictionary) -> Dictionary:\n\tvar map: MapData = context.map\n\tvar payload := {\"schema\": \"PKFogOfWar\", \"version\": 4, \"cells\": map.cell_count()}\n\tvar intel = context.intel\n\tif intel != null:\n\t\tpayload.merge(intel.to_pkfg_fields(), true)\n\telse:\n\t\tvar empty_intel := BuildingVisualIntelCache.new()\n\t\tempty_intel.configure(map.cell_count())\n\t\tpayload.merge(empty_intel.to_pkfg_fields(), true)\n\treturn {\"ok\": true, \"sections\": {\"pkfg\": payload}}\n\nfunc _restore_vision_provider(sections: Dictionary, context: Dictionary) -> Dictionary:\n\tvar payload = sections.get(\"pkfg\")\n\tif not payload is Dictionary or String(payload.get(\"schema\", \"\")) != \"PKFogOfWar\":\n\t\treturn _result(false, \"pkfg_restore_failed\", \"视野 section 格式不正确。\")\n\tvar map: MapData = context.map\n\tif map == null:\n\t\treturn _result(false, \"pkfg_restore_failed\", \"视野恢复时地图不可用。\")\n\tvar n := map.cell_count()\n\tif int(payload.get(\"cells\", -1)) != n:\n\t\treturn _result(false, \"pkfg_restore_failed\", \"视野 section 的格数与当前地图不一致。\")\n\tvar intel = context.intel\n\tif intel != null:\n\t\tvar type_count := int(context.type_count)\n\t\tvar intel_restore: Dictionary = intel.restore_pkfg(payload, type_count)\n\t\tif not bool(intel_restore.get(\"ok\", false)):\n\t\t\treturn _result(false, \"pkfg_restore_failed\",\n\t\t\t\tString(intel_restore.get(\"reason\", \"建筑情报 CSR 无效。\")))\n\treturn _result(true, \"ok\", \"\")"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_vision.cpp[194-196]",
+      "citation": "        bool fog = config.get(\"fog_enabled\", false);\n        std::vector<uint8_t> explored(static_cast<size_t>(n), 0);\n        if (restored && !_runtime_host->restore_vision_seed(explored, fog, state->player_handle)) {"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_vision.cpp[425-429]",
+      "citation": "bool NativeSimulationHost::restore_vision_seed(std::vector<uint8_t> &explored,\n        bool &enabled, uint64_t &player_handle) const {\n    if (!_has_pending_restore ||\n        (_pending_restore_bundle.section_mask & RUNTIME_SAVE_SECTION_VISION) == 0) return true;\n    const auto &bytes = _pending_restore_bundle.vision_bytes;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/save_modules/geography_state.gd[16-40]",
+      "citation": "\tif capture.is_valid():\n\t\tvar base: PackedFloat32Array = capture.call()\n\t\tif base.size() == int(state.n_cells):\n\t\t\tstate.cells[\"cell_base_moisture\"] = base\n\tstate.cells.erase(\"cell_bio_occupancy_bits\")\n\treturn {\"ok\": true, \"sections\": {\n\t\t\"new_game_config\": context.session.get(\"new_game_config\", {}),\n\t\t\"dynamic_world\": state,\n\t}}\n\nfunc _restore_world_provider(sections: Dictionary, context: Dictionary) -> Dictionary:\n\tvar state: Dictionary = sections.dynamic_world\n\tvar cells = state.get(\"cells\", {})\n\tvar saved_cell_count = state.get(\"n_cells\", -1)\n\tif not cells is Dictionary or not saved_cell_count is int \\\n\t\t\tor saved_cell_count != context.world.entity_count():\n\t\treturn _result(false, \"dynamic_world_shape_invalid\", \"存档的地块数据与当前地图不匹配。\")\n\tif cells.has(\"cell_bio_occupancy_bits\"):\n\t\tstate = state.duplicate()\n\t\tstate.cells = cells.duplicate()\n\t\tstate.cells.erase(\"cell_bio_occupancy_bits\")\n\tcontext.world.deserialize(state)\n\tvar restore_geography: Callable = context.get(\"restore_geography_view\", Callable())\n\tif restore_geography.is_valid():\n\t\trestore_geography.call()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_bio.cpp[753-756]",
+      "citation": "bool NativeSimulationHost::restore_bio_seed(std::vector<int32_t> &occupancy) const {\n    if (!_has_pending_restore ||\n        (_pending_restore_bundle.section_mask & RUNTIME_SAVE_SECTION_BIO) == 0) return true;\n    const auto &bytes = _pending_restore_bundle.bio_bytes;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/save_modules/vision_state.gd[30-40]",
+      "citation": "\tvar n := map.cell_count()\n\tif int(payload.get(\"cells\", -1)) != n:\n\t\treturn _result(false, \"pkfg_restore_failed\", \"视野 section 的格数与当前地图不一致。\")\n\tvar intel = context.intel\n\tif intel != null:\n\t\tvar type_count := int(context.type_count)\n\t\tvar intel_restore: Dictionary = intel.restore_pkfg(payload, type_count)\n\t\tif not bool(intel_restore.get(\"ok\", false)):\n\t\t\treturn _result(false, \"pkfg_restore_failed\",\n\t\t\t\tString(intel_restore.get(\"reason\", \"建筑情报 CSR 无效。\")))\n\treturn _result(true, \"ok\", \"\")"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_vision.cpp[189-220]",
+      "citation": "        const bool restored = bool(config.get(\"restored\", false));\n        const int32_t start = config.get(\"player_start_cell\", -1);\n        state->player_slot = start >= 0 && start < n ? state->owners[start] : -1;\n        if (state->player_slot >= 0 && size_t(state->player_slot) < country_view.country_handles.size())\n            state->player_handle = country_view.country_handles[state->player_slot];\n        bool fog = config.get(\"fog_enabled\", false);\n        std::vector<uint8_t> explored(static_cast<size_t>(n), 0);\n        if (restored && !_runtime_host->restore_vision_seed(explored, fog, state->player_handle)) {\n            out[\"reason\"] = \"vision_checkpoint_invalid\";\n            return out;\n        }\n        if (restored) {\n            const auto row = std::find(country_view.country_handles.begin(),\n                country_view.country_handles.end(), state->player_handle);\n            state->player_slot = row == country_view.country_handles.end() ? -1\n                : static_cast<int32_t>(row - country_view.country_handles.begin());\n        }\n        state->remote_technology = config.get(\"remote_technology\", -1);\n        state->remote = state->remote_technology >= 0 &&\n            country_api::has_completed_technology(*country, state->player_handle, state->remote_technology);\n        state->fog_available = static_cast<bool>(config.get(\"fog_available\", false)) &&\n            state->player_handle != 0;\n        state->fog_enabled = state->fog_available && fog;\n        state->all_visible.assign(size_t(n), 1);\n        if (_military) state->military_sources = _military->vision_sources(state->player_slot);\n        VisionResearchWork work;\n        work.state = state.get();\n        work.owners = state->owners;\n        work.player_slot = state->player_slot;\n        work.remote = state->remote;\n        work.military_sources = state->military_sources;\n        work.previous_explored = std::move(explored);"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_vision.cpp[425-436]",
+      "citation": "bool NativeSimulationHost::restore_vision_seed(std::vector<uint8_t> &explored,\n        bool &enabled, uint64_t &player_handle) const {\n    if (!_has_pending_restore ||\n        (_pending_restore_bundle.section_mask & RUNTIME_SAVE_SECTION_VISION) == 0) return true;\n    const auto &bytes = _pending_restore_bundle.vision_bytes;\n    CheckpointReader in{bytes.data(), bytes.size()};\n    uint8_t fog = 0;\n    if (!in.field(player_handle) || !in.field(fog) || fog > 1 ||\n        in.size - in.cursor != explored.size()) return false;\n    std::copy(bytes.begin() + in.cursor, bytes.end(), explored.begin());\n    enabled = fog != 0;\n    return true;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_visual_adapter.gd[501-524]",
+      "citation": "\tvar explored: PackedByteArray = frame.explored_arr\n\tvar fog: PackedByteArray = frame.fog_k_arr\n\tvar count := map.cell_count()\n\tif physical.size() != count or explored.size() != count or fog.size() != count:\n\t\treturn {\"ok\": false, \"reason\": \"vision_display_shape_invalid\"}\n\tvar enabled := bool(frame.fog_enabled)\n\tvar enabled_changed: bool = host._fog_of_war_enabled != enabled\n\tvar visible := physical\n\tif not enabled:\n\t\tvisible = physical.duplicate()\n\t\tfog.fill(255)\n\t\tvisible.fill(1)\n\tvar pending_dirty := {}\n\tfor cell in host._vision_dirty_indices:\n\t\tpending_dirty[cell] = true\n\tvar revealed := PackedInt32Array()\n\tvar compare := map.fog_solved and map.fog_k_arr.size() == count and map.visible_arr.size() == count\n\tfor cell in count:\n\t\tif not compare or map.fog_k_arr[cell] != fog[cell] or map.visible_arr[cell] != visible[cell]:\n\t\t\tpending_dirty[cell] = true\n\t\tif enabled and visible[cell] != 0 and (not compare or map.visible_arr[cell] == 0):\n\t\t\trevealed.append(cell)\n\tmap.physical_visible_arr = physical\n\tmap.explored_arr = explored"
+     }
+    ],
+    "explanation": "The PKFG restore path no longer assigns the saved `explored` array, while native vision initialization zero-fills its buffer and `restore_vision_seed()` leaves that buffer untouched when VISION is absent; the resulting native frame is then copied to the map. The geography restorer drops `cell_bio_occupancy_bits`, and native bio restore likewise reports success without a BIO section. PKFG remains at version 4 and PKSR at v5, so the missing sections in pre-change saves do not cause rejection or migration."
+   },
+   "location": {
+    "file_path": "gdext/src/world_ext_vision.cpp",
+    "start_line": 427,
+    "end_line": 428,
+    "side": "right",
+    "code_snippet": "+    if (!_has_pending_restore ||\n+        (_pending_restore_bundle.section_mask & RUNTIME_SAVE_SECTION_VISION) == 0) return true;"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "category": "Reliability",
+   "id": "2abc8dc3-0dae-4a7b-8f82-feb4a253a22a",
+   "git_sha": "59858fd432000245fd2cba6a454132527adb780f",
+   "action_level": "remediation_recommended",
+   "title": "Old saves with queued country commands fail to load",
+   "attribution_status": "pending",
+   "description": "`RuntimeCountryPodAdapter::decode_command` now accepts only payloads of exactly `COUNTRY_COMMAND_WIRE_SIZE` (400 bytes). Before this PR, country packets stored a raw `memcpy` of `sizeof(RuntimeCountryCommand)`, padding included, so pending country commands in an older PKSR bundle have a different size and fail startup restore with `invalid_country_command_payload_size`.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_country_pod.cpp[541-544]",
+      "citation": "namespace {\nconstexpr size_t COUNTRY_COMMAND_WIRE_SIZE = 112u + RUNTIME_COUNTRY_STABLE_ID_CAPACITY +\n    RUNTIME_COUNTRY_DISPLAY_NAME_CAPACITY;\nstatic_assert(COUNTRY_COMMAND_WIRE_SIZE <= RUNTIME_MAX_COMMAND_PAYLOAD);"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_country_pod.cpp[573-592]",
+      "citation": "bool RuntimeCountryPodAdapter::decode_command(\n        const RuntimeCommandPacket &packet, RuntimeCountryCommand &command,\n        std::string &error) {\n    error.clear();\n    const auto &envelope = packet.envelope;\n    if (envelope.payload_offset > RUNTIME_MAX_COMMAND_PAYLOAD ||\n        envelope.payload_size > RUNTIME_MAX_COMMAND_PAYLOAD ||\n        envelope.payload_offset + envelope.payload_size > RUNTIME_MAX_COMMAND_PAYLOAD) {\n        error = \"invalid_command_payload\";\n        return false;\n    }\n    if (envelope.payload_size != COUNTRY_COMMAND_WIRE_SIZE) {\n        error = \"invalid_country_command_payload_size\";\n        return false;\n    }\n    Reader reader{packet.payload.data() + envelope.payload_offset, envelope.payload_size};\n    if (!read_command(reader, command) || reader.cursor != reader.size ||\n            command.opcode != envelope.opcode) {\n        error = \"invalid_country_command_payload\";\n        return false;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_startup.cpp[187-201]",
+      "citation": "            _executor_pending_commands.insert(\n                _executor_pending_commands.end(),\n                _prestart_modifier_commands.begin(),\n                _prestart_modifier_commands.end());\n        }\n        _prestart_modifier_commands.clear();\n    }\n    seed_executor_command_orders();\n    if (restore_pending) {\n        _country_observations.clear();\n        auto &pending = _executor_pending_commands;\n        pending.erase(std::remove_if(pending.begin(), pending.end(), [&](const auto &packet) {\n            if (!is_country_day_observation(packet.envelope)) return false;\n            RuntimeCountryCommand observation;\n            std::string error;"
+     }
+    ],
+    "explanation": "The new decoder requires the exact field-by-field wire size. The removed encoders in `world_ext_country_commands.cpp` and `country_runtime_commands.cpp` copied the whole struct with `memcpy`. On restore, the payload bytes are kept as saved and then decoded by `decode_command`, so the size check rejects them."
+   },
+   "location": {
+    "file_path": "gdext/src/runtime_country_pod.cpp",
+    "start_line": 584,
+    "end_line": 587,
+    "side": "right",
+    "code_snippet": "+    if (envelope.payload_size != COUNTRY_COMMAND_WIRE_SIZE) {\n         error = \"invalid_country_command_payload_size\";\n         return false;\n     }\n-    std::memcpy(&command, packet.payload.data() + envelope.payload_offset,\n-                sizeof(RuntimeCountryCommand));"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "category": "Correctness",
+   "id": "75efaddd-c852-4e04-be7b-f856db471dce",
+   "git_sha": "59858fd432000245fd2cba6a454132527adb780f",
+   "action_level": "remediation_recommended",
+   "title": "Oversized scouting orders vanish silently",
+   "attribution_status": "pending",
+   "description": "`validate_command()` no longer rejects exploration cell lists exceeding `MILITARY_MAX_EXPLORATION_CELLS`, but `create_exploration_task()` still returns false for them and `apply_command()` ignores that return value. A submitted oversized order can therefore pass admission yet create no task and produce no player rejection.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/military_core_commands.cpp[479-487]",
+      "citation": "            std::sort(command.cells.begin(), command.cells.end());\n            command.cells.erase(std::unique(command.cells.begin(), command.cells.end()),\n                                command.cells.end());\n            for (int32_t cell : command.cells) {\n                if (cell < 0 || cell >= _terrain.cell_count) {\n                    error = \"command_bad_exploration_cells\";\n                    return false;\n                }\n            }"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/military_core_commands.cpp[1034-1054]",
+      "citation": "        case MCMD_ARMY_EXPLORE: {\n            if (!resolve_army(cmd.army, army_slot)) return;\n            if (_armies.owner_slot[(size_t)army_slot] != country) return;\n            // Exploration is a player-only command. The host installs the\n            // observer before a day with pending work; every other country is\n            // rejected here even if it can submit a structurally valid command.\n            if (_exploration_observer_slot < 0 ||\n                country != _exploration_observer_slot) {\n                return;\n            }\n            if (cmd.cells.empty() && player_map_order) {\n                MilitaryCommand order = cmd;\n                order.cells = ring_cells(cmd.cell, cmd.radius);\n                create_exploration_task(order, day, army_slot, country);\n            } else {\n                create_exploration_task(cmd, day, army_slot, country);\n            }\n            return;\n        }\n        default:\n            apply_war_command(cmd, day);"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/military_core_explore.cpp[570-575]",
+      "citation": "bool MilitaryCore::create_exploration_task(const MilitaryCommand &cmd, int64_t day,\n                                           int32_t army_slot, int32_t owner_slot) {\n    if (!army_alive(_armies, army_slot)) return false;\n    if (cmd.cells.empty() ||\n        cmd.cells.size() > (size_t)MILITARY_MAX_EXPLORATION_CELLS) return false;\n"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_military.cpp[151-164]",
+      "citation": "        military.prepare_exploration(_executor_vision->player_slot, vision.explored, index, vision.revision);\n    }\n    if (military.should_run(index)) {\n        military.last_result = military.run_day(index);\n        for (const auto &rejection : military.take_player_rejections()) {\n            godot::Dictionary result;\n            result[\"ok\"] = false;\n            result[\"code\"] = rejection.reason;\n            result[\"settled_day\"] = index;\n            publish_boundary_command_result(rejection.command, rejection.caller_sequence, std::move(result));\n        }\n        if (!static_cast<bool>(military.last_result.get(\"ok\", false)) &&\n            godot::String(military.last_result.get(\"reason\", \"\")) != \"military_intent_submit_failed\")\n            return \"military_stage_failed\";"
+     }
+    ],
+    "explanation": "The task creator checks the fixed maximum before copying cells, so this is a silent failure rather than a memory overwrite. The application branch drops its false return and the military publication path exposes only recorded player rejections."
+   },
+   "location": {
+    "file_path": "gdext/src/military_core_commands.cpp",
+    "start_line": 497,
+    "end_line": 500,
+    "side": "left",
+    "code_snippet": "-            if (command.cells.empty() ||\n-                command.cells.size() > (size_t)MILITARY_MAX_EXPLORATION_CELLS) {\n-                error = \"command_bad_exploration_cells\";\n-                return false;"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "category": "Reliability",
+   "id": "afcc5ee8-2e40-4772-b8d0-424b3afb3aa4",
+   "git_sha": "59858fd432000245fd2cba6a454132527adb780f",
+   "action_level": "remediation_recommended",
+   "title": "Failed peers can stall days forever",
+   "attribution_status": "pending",
+   "description": "`worker_main()` removes the timeout paths that faulted prolonged peer waits and failed event-day waits, replacing the remaining peer check with a warning. If a required peer does not complete its day, the worker keeps retrying that day without publishing a commit or transitioning to a fault state.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_worker.cpp[817-846]",
+      "citation": "                                static_cast<long long>(climate_committed));\n                        }\n                    }\n                    if (_state.load(std::memory_order_acquire) ==\n                        RuntimeWorkerState::FAULTED) {\n                        break;\n                    }\n                    // An input/reference barrier failure must not advance the\n                    // committed clock. Wait for the main thread to publish\n                    // the matching reference or for a control message; this\n                    // is a condition-variable wait, not a polling sleep.\n                    if (day_commit.continuation_pending == 0) {\n                        _time_debt_days.store(std::min(100.0,\n                            _time_debt_days.load(std::memory_order_relaxed) + 1.0),\n                            std::memory_order_release);\n                    }\n                    // Same-day Economy→Country asset prepare must happen before\n                    // parking. Otherwise Climate ring stays full, main cannot\n                    // publish, and country_peer_signal never fires.\n                    std::string prepare_error;\n                    const uint32_t prepared_before_wait =\n                        prepare_economy_origin_country_assets(prepare_error);\n                    _day_waterfall.mark(RuntimeDayWaterfall::WORKER_RETRY);\n                    if (!prepare_error.empty()) {\n                        set_fault(prepare_error.c_str());\n                        break;\n                    }\n                    // 捕获输入时主线程必须可取得边界锁；等待期间没有公式写入。\n                    boundary_lock.unlock();\n                    if (prepared_before_wait > 0u) {"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_worker.cpp[936-942]",
+      "citation": "                    });\n                    _worker_timing.finish_main_wait();\n                    _worker_timing.set(RuntimeWorkerTiming::OVERHEAD);\n                    log_slow_peer(day);\n                    break;\n                    } // missing != 0\n                }"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_worker.cpp[252-260]",
+      "citation": "void NativeSimulationHost::log_slow_peer(int64_t day) {\n    const auto since = _day_stall_peer_since_us.load(std::memory_order_acquire);\n    if (since == 0 || since == _last_peer_stall_warning) return;\n    const auto ms = (now_us() - since) / 1000u;\n    if (ms < 5000u) return;\n    _last_peer_stall_warning = since;\n    pk::log_info(\"[day-stall] day=%lld stall=0x%x peer_ms=%llu ring=%zu\",\n        static_cast<long long>(day), day_stall_reason_mask(),\n        static_cast<unsigned long long>(ms), _environment_ring.size());"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host.cpp[357-367]",
+      "citation": "    // advance.  Unrequested domains remain on their legacy writer and are\n    // intentionally absent from this mask.  This closes the old hole where a\n    // missing stage could still let COMMIT publish a half-day.\n    const uint32_t active_requested =\n        _mode.load(std::memory_order_acquire) == RuntimeSimulationMode::ACTIVE\n            ? _requested_authority_mask.load(std::memory_order_acquire) : 0u;\n    if (active_requested != 0u &&\n        (commit.completed_domain_mask & active_requested) != active_requested) {\n        commit.preflight_ok = 0;\n        commit.continuation_pending = 1;\n    }"
+     }
+    ],
+    "explanation": "Missing domain input enters a retry wait rather than committing. The replacement `log_slow_peer()` only logs, whereas the deleted timeout and failed-event paths transitioned to a fault."
+   },
+   "location": {
+    "file_path": "gdext/src/native_simulation_host_worker.cpp",
+    "start_line": 931,
+    "end_line": 934,
+    "side": "left",
+    "code_snippet": "-                    if (fault_if_peer_stall_timed_out(\n-                            day, \"day_wait_peer_stall_timeout\")) {\n-                        break;\n-                    }"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "category": "Correctness",
+   "id": "b3ac4ccf-74f0-4e13-9971-1885071231e9",
+   "git_sha": "59858fd432000245fd2cba6a454132527adb780f",
+   "action_level": "remediation_recommended",
+   "title": "Older saves change future climate",
+   "attribution_status": "pending",
+   "description": "`WorldClock.restore_state()` no longer reads the saved anomaly or random-generator state, although `opening_climate_seed()` supplies those clock values when constructing the native climate calendar. For an existing save without the newly introduced native calendar section, loading the world uses the clock's current values instead of its saved climate progression, changing later annual results.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/save_modules/clock_state.gd[9-26]",
+      "citation": "func _write_clock_provider(context: Dictionary) -> Dictionary:\n\tvar state: Dictionary = context.clock.export_state()\n\tstate.paused = bool(context.saved_paused)\n\tstate.speed_multiplier = float(context.saved_speed)\n\treturn {\"ok\": true, \"sections\": {\"world_clock\": state}}\n\nfunc _restore_clock_provider(sections: Dictionary, context: Dictionary) -> Dictionary:\n\tvar state: Dictionary = sections.world_clock.duplicate(true)\n\tif OS.get_environment(\"PK_SAVE_MIGRATE\") == \"1\":\n\t\t# Offline migration may not advance business state while loading.\n\t\tstate[\"paused\"] = true\n\tvar result: Dictionary = context.clock.restore_state(state)\n\tif bool(result.get(\"ok\", false)):\n\t\tcontext.clock_restored.call(context.clock.year_index())\n\treturn result\n\n\nfunc section_codecs(_id: StringName, sections: PackedStringArray) -> Dictionary:"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/geography/world_clock.gd[845-889]",
+      "citation": "func opening_climate_seed() -> Dictionary:\n\treturn {\n\t\t\"climate_anomaly\": climate_anomaly,\n\t\t\"climate_year\": maxi(0, _last_year),\n\t\t\"rng_seed\": _rng.seed if _rng != null else 0,\n\t\t\"rng_state\": _rng.state if _rng != null else 0,\n\t}\n\n\nfunc export_state() -> Dictionary:\n\treturn {\n\t\t\"schema\": \"WorldClock\",\n\t\t\"version\": 1,\n\t\t\"current_day\": current_day,\n\t\t\"day_carry\": _day_carry,\n\t\t\"paused\": paused,\n\t\t\"speed_multiplier\": speed_multiplier,\n\t\t\"visual_day_phase\": visual_day_phase,\n\t\t\"last_day\": _last_day,\n\t\t\"last_season\": _last_season,\n\t\t\"last_year\": _last_year,\n\t\t\"last_emit_day_phase\": _last_emit_day_phase,\n\t\t\"last_emit_season_phase\": _last_emit_season_phase,\n\t}\n\n\nfunc restore_state(state: Dictionary) -> Dictionary:\n\tif String(state.get(\"schema\", \"\")) != \"WorldClock\" or int(state.get(\"version\", -1)) != 1:\n\t\treturn {\"ok\": false, \"code\": \"clock_schema_incompatible\", \"message\": \"时钟存档版本不兼容。\"}\n\tcurrent_day = float(state.get(\"current_day\", 0.0))\n\t_day_carry = clampf(float(state.get(\"day_carry\", 0.0)), 0.0, 0.999999)\n\tpaused = bool(state.get(\"paused\", true))\n\tspeed_multiplier = maxf(float(state.get(\"speed_multiplier\", 1.0)), 0.0)\n\tvisual_day_phase = fposmod(float(state.get(\"visual_day_phase\", 0.25)), 1.0)\n\tvisual_day_phase_held = false\n\t_last_day = int(state.get(\"last_day\", int(floor(current_day))))\n\t_last_season = int(state.get(\"last_season\", season_index_for_day(_last_day)))\n\t_last_year = int(state.get(\"last_year\", year_index_for_day(_last_day)))\n\t_apply_phase_step_for_speed(speed_multiplier)\n\t# Applying the speed tier resets the publication cursors. Restore them after\n\t# the tier thresholds so the next emitted phases match the saved timeline.\n\t_last_emit_day_phase = float(state.get(\"last_emit_day_phase\", day_phase()))\n\t_last_emit_season_phase = float(state.get(\"last_emit_season_phase\", season_phase()))\n\tday_phase_changed.emit(day_phase())\n\tseason_phase_changed.emit(season_phase())"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/simulation/climate/runtime_climate_capture.gd[446-465]",
+      "citation": "func initialize_world_environment(notice_history: Array = []) -> Dictionary:\n\tvar map: MapData = _generator._sus_map\n\tvar clock: WorldClock = _generator._world_clock_ref\n\tvar profile = _generator._c()\n\tvar config := clock.opening_climate_seed()\n\tconfig[\"display_notice_history\"] = notice_history\n\tconfig[\"days_per_year\"] = clock.days_per_year()\n\tconfig[\"climate_random_drift\"] = clock.climate_random_drift\n\tconfig[\"climate_anomaly_max\"] = clock.climate_anomaly_max\n\tconfig[\"season\"] = _generator._build_season_round_knobs(map, 0)\n\tconfig[\"season_period\"] = int(profile.season_refresh_period_ticks)\n\tconfig[\"albedo_stride\"] = int(profile.weather_albedo_stride)\n\tconfig[\"vegetation_stride\"] = int(profile.weather_vegetation_dynamics_stride)\n\tconfig[\"feedback_stride\"] = int(profile.weather_feedback_stride)\n\tconfig[\"convergence_stride\"] = int(profile.weather_convergence_refresh_stride)\n\tconfig[\"ice_form\"] = float(profile.sea_ice_form_threshold)\n\tconfig[\"ice_melt\"] = float(profile.sea_ice_melt_threshold)\n\tconfig[\"volcano_landform\"] = int(LandformType.LF.VOLCANO)\n\tconfig[\"volcanoes\"] = map.has_volcano_arr\n\tconfig[\"water_lut\"] = MapData.is_water_lut()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_environment.cpp[29-38]",
+      "citation": "            (_pending_restore_bundle.section_mask & RUNTIME_SAVE_SECTION_SEASON_HISTORY) != 0 &&\n            !_world_environment->restore_season_history(_pending_restore_bundle.season_history_bytes,\n                _pending_restore_bundle.committed_day))\n        log_error(\"season history restore: runtime_bundle_season_history_invalid\");\n    if (_has_pending_restore &&\n            (_pending_restore_bundle.section_mask & RUNTIME_SAVE_SECTION_CLIMATE_CALENDAR) != 0 &&\n            !_world_environment->restore_calendar(_pending_restore_bundle.climate_calendar_bytes)) {\n        error = \"climate_calendar_checkpoint_invalid\";\n        return false;\n    }"
+     }
+    ],
+    "explanation": "The clock save provider delegates restoration to `restore_state()`, while environment initialization takes its starting anomaly and RNG state from `opening_climate_seed()`. Native calendar restoration only overrides that seed if the new section is present."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/geography/world_clock.gd",
+    "start_line": 884,
+    "end_line": 888,
+    "side": "left",
+    "code_snippet": "-\t_native_climate_year = int(state.get(\"climate_rng_year\", -1))\n-\tif _rng == null:\n-\t\t_rng = RandomNumberGenerator.new()\n-\t_rng.seed = int(state.get(\"rng_seed\", 0))\n-\t_rng.state = int(state.get(\"rng_state\", _rng.state))"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2084457,
+   "commit_sha": "59858fd432000245fd2cba6a454132527adb780f",
+   "started_at": "2026-11-21T05:56:22.180281Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  }
+ ]
+}

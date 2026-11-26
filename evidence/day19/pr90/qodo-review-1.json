@@ -1,0 +1,185 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/90",
+ "git_provider": null,
+ "finding_count": 4,
+ "review_session": {
+  "run_id": 2173385,
+  "status": "completed",
+  "commit_sha": "92614b2d23e77f1b9c6638c1f1461bf4287a2968",
+  "started_at": "2026-11-26T09:52:35.575845Z",
+  "git_provider": "github",
+  "review_complete": true
+ },
+ "findings": [
+  {
+   "id": "563c5871-08de-4f00-a8b9-9f3095e34232",
+   "title": "New rules validator is missing from the refusal registry",
+   "description": "`review_rules()` is a new validator in `tools/factory/agent.py` that refuses malformed rules files by raising `ValueError`. Its refusals are covered by `ReviewRulesPromptTest`, but the function is not listed in `GATES` in `test_gates_refuse.py`, and this PR does not modify that file. The name scan in `gate_functions()` matches only names containing entries from `NAME_PARTS`, such as `validate` and `parse`, and `review_rules` contains none of them, so the omission passes CI silently. A later change that weakens this validator would not be caught by the gate-refusal registry.",
+   "category": "Correctness",
+   "attribution_status": "pending",
+   "action_level": "remediation_recommended",
+   "git_sha": "92614b2d23e77f1b9c6638c1f1461bf4287a2968",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4990668?state=active",
+      "id": 4990668,
+      "citation": "Keynes: gates are tested with inputs they must refuse",
+      "platform_entity_type": "rule",
+      "platform_entity_id": "4990668"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/tests/test_gates_refuse.py[163-163]",
+      "citation": "GATES = {"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/tests/test_gates_refuse.py[330-343]",
+      "citation": "        for name, cases in GATES.items():\n            self.assertTrue(cases, name)\n            for description, refused in cases:\n                with self.subTest(gate=name, case=description):\n                    self.assertTrue(refused())\n\n    def test_merge_and_ready_gates_accept_a_clean_case(self):\n        # Without this, every refusal above would pass for a gate that refuses everything.\n        self.assertFalse(merge_refused())\n        self.assertFalse(judge_refused())\n\n    def test_every_gate_function_is_registered(self):\n        missing = sorted(gate_functions() - set(GATES) - set(KNOWN_UNLISTED))\n        self.assertEqual(missing, [], \"gate-like functions with no refusal test; add them to GATES\")"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/agent.py[22-39]",
+      "citation": "def review_rules(path: Path = REVIEW_RULES) -> str:\n    \"\"\"The rules only Qodo review enforces, as a Markdown list for the implement prompt.\n\n    Raises ValueError when the file has no rules or a rule lacks a name or content, so the agent never\n    runs with a silently empty rule list.\n    \"\"\"\n    data = json.loads(path.read_text(encoding=\"utf-8\"))\n    rules = data.get(\"rules\") if isinstance(data, dict) else None\n    if not isinstance(rules, list) or not rules:\n        raise ValueError(f\"{path}: no rules\")\n    lines = []\n    for i, rule in enumerate(rules):\n        name = rule.get(\"name\") if isinstance(rule, dict) else None\n        content = rule.get(\"content\") if isinstance(rule, dict) else None\n        if not isinstance(name, str) or not name.strip() or not isinstance(content, str) or not content.strip():\n            raise ValueError(f\"{path}: rule {i} has no name or content\")\n        lines.append(f\"- **{name.strip()}** {' '.join(content.split())}\")\n    return \"\\n\".join(lines)"
+     }
+    ],
+    "explanation": "The rule requires any new validator in tools/factory/ to be listed in GATES with refused inputs. `review_rules` raises on malformed input, so it acts as a validator. `test_gates_refuse.py` registers GATES entries by name, and `gate_functions()` only matches names containing the NAME_PARTS strings, which do not include `review_rules`. The PR does not modify `test_gates_refuse.py`."
+   },
+   "location": {
+    "file_path": "tools/factory/agent.py",
+    "start_line": 22,
+    "end_line": 24,
+    "side": "right",
+    "code_snippet": "+def review_rules(path: Path = REVIEW_RULES) -> str:\n+    \"\"\"The rules only Qodo review enforces, as a Markdown list for the implement prompt.\n+"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "f9329e46-1968-4a81-9f98-5c763d31b718",
+   "title": "Code-fixing agents still never see the review rules",
+   "description": "The rules are injected only into the `implement` prompt in `run.py`, while the other prompts that make Codex write code after review (`fix-review`, `fix-checks` in `run.py`, and `fix-pr`, `fix-update`, `fix-checks` in `watch_prs.py`) receive no rules. The fix runs are where Qodo's review-only findings are typically addressed, so the agent that writes the fix can still violate \"errors fail loudly\" or the other 13 rules.",
+   "category": "Correctness",
+   "attribution_status": "pending",
+   "action_level": "remediation_recommended",
+   "git_sha": "92614b2d23e77f1b9c6638c1f1461bf4287a2968",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/run.py[127-130]",
+      "citation": "            prompt = agent.render(\"implement\", number=str(self.number), title=issue[\"title\"],\n                                  body=issue[\"body\"] or \"\", criteria=crit, plan=plan,\n                                  feedback=f\"Problems from the previous attempt:\\n\\n{feedback}\" if feedback else \"\",\n                                  review_rules=agent.review_rules())"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/run.py[225-226]",
+      "citation": "        prompt = agent.render(\"fix-review\", number=str(self.number), title=issue[\"title\"],\n                              committed=\" and committed\" if committed else \"\","
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/run.py[255-256]",
+      "citation": "            prompt = agent.render(\"fix-checks\", number=str(self.number), title=issue[\"title\"],\n                                  feedback=checks.feedback(res, new))"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/watch_prs.py[705-706]",
+      "citation": "                prompt = agent.render(\"fix-update\", number=str(n), title=pr[\"title\"], base=base,\n                                      feedback=checks.feedback(res, new))"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/watch_prs.py[802]",
+      "citation": "        prompt = agent.render(\"fix-pr\", number=str(n), title=pr[\"title\"], findings=qodo.describe(findings))"
+     }
+    ],
+    "explanation": "The PR's stated goal is that Codex sees the Qodo-only rules \"while writing code\", but only the implement stage passes `review_rules`. Every other code-writing render call in the factory omits it, so those runs get no rules."
+   },
+   "location": {
+    "file_path": "tools/factory/prompts/implement.md",
+    "start_line": 22,
+    "end_line": 24,
+    "side": "right",
+    "code_snippet": "+Qodo reviews the pull request against these project rules (`docs/factory/qodo-rules.json`). No static check enforces them, so write the change to meet them from the start:\n+\n+{review_rules}"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "640a62c1-01dd-44c0-856e-4083e89dcf2c",
+   "title": "Prompt test checks only rule names, not their text",
+   "description": "`test_implement_prompt_names_every_rule_in_the_rules_file` asserts only that each rule's name appears in the rendered prompt, so a regression that drops or truncates `content` would still pass. The test cannot tell whether the rule body Codex needs actually reached it.",
+   "category": "Correctness",
+   "attribution_status": "pending",
+   "action_level": "informational",
+   "git_sha": "92614b2d23e77f1b9c6638c1f1461bf4287a2968",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/tests/test_factory.py[315-322]",
+      "citation": "    def test_implement_prompt_names_every_rule_in_the_rules_file(self):\n        import json\n        rules = json.loads(agent.REVIEW_RULES.read_text(encoding=\"utf-8\"))[\"rules\"]\n        prompt = self.render_implement()\n        self.assertNotIn(\"{review_rules}\", prompt)\n        for rule in rules:\n            with self.subTest(rule=rule[\"name\"]):\n                self.assertIn(rule[\"name\"], prompt)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/agent.py[38-38]",
+      "citation": "        lines.append(f\"- **{name.strip()}** {' '.join(content.split())}\")"
+     }
+    ],
+    "explanation": "The loop asserts only `rule[\"name\"]` in the prompt. The renderer produces `- **name** content` for each rule, so a loss of the content field would not fail any assertion."
+   },
+   "location": {
+    "file_path": "tools/factory/tests/test_factory.py",
+    "start_line": 320,
+    "end_line": 322,
+    "side": "right",
+    "code_snippet": "+        for rule in rules:\n+            with self.subTest(rule=rule[\"name\"]):\n+                self.assertIn(rule[\"name\"], prompt)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "89ecb4d1-316d-4471-8c2d-0ab636846940",
+   "title": "Rules reach Codex without their good and bad examples",
+   "description": "`review_rules()` emits only each rule's `name` and `content`, dropping `good_examples` and `bad_examples`, which hold the concrete silent-fallback and fail-loud patterns. Codex therefore receives an abstract rule text without the concrete shapes Qodo flags, which weakens the stated purpose of getting the rule into the agent before review.",
+   "category": "Maintainability",
+   "attribution_status": "pending",
+   "action_level": "informational",
+   "git_sha": "92614b2d23e77f1b9c6638c1f1461bf4287a2968",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/factory/qodo-rules.json[66-75]",
+      "citation": "      \"bad_examples\": \"Ref<Image> img = Image::create(w, h, false, Image::FORMAT_RF);  // Godot object on the worker\\nreturn ok;  // bool used as business result\"\n    },\n    {\n      \"name\": \"Keynes: saves happen only at a committed boundary and never lose commands\",\n      \"source\": \"docs/architecture/development-guide.md#存档\",\n      \"category\": \"Reliability\",\n      \"severity\": \"error\",\n      \"content\": \"Saving must wait for a committed safe boundary through GameSaveCoordinator and must not capture Plan intermediates from a provider. Commands beyond the PKSR capacity must fail explicitly and keep every command. A failed load must not switch to a new world or continue a half-restored session.\",\n      \"good_examples\": \"if pending.size() > PKSR_COMMAND_CAPACITY:\\n    return fail(\\\"save: %d pending commands exceed capacity\\\" % pending.size())\",\n      \"bad_examples\": \"pending = pending.slice(0, PKSR_COMMAND_CAPACITY)  # silently drops commands\""
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/factory/agent.py[38-38]",
+      "citation": "        lines.append(f\"- **{name.strip()}** {' '.join(content.split())}\")"
+     }
+    ],
+    "explanation": "The rules file stores `good_examples` and `bad_examples` for each rule, and the concrete bad shapes are the most actionable guidance. The renderer keeps only `name` and `content`, so the examples never reach the prompt."
+   },
+   "location": {
+    "file_path": "tools/factory/agent.py",
+    "start_line": 38,
+    "end_line": 38,
+    "side": "right",
+    "code_snippet": "+        lines.append(f\"- **{name.strip()}** {' '.join(content.split())}\")"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2173385,
+   "commit_sha": "92614b2d23e77f1b9c6638c1f1461bf4287a2968",
+   "started_at": "2026-11-26T09:52:35.575845Z",
+   "status": "completed",
+   "review_effort": "lite",
+   "review_complete": true
+  }
+ ]
+}

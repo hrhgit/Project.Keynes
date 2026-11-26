@@ -1,0 +1,117 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/38",
+ "git_provider": null,
+ "finding_count": 2,
+ "review_session": {
+  "run_id": 2087801,
+  "status": "completed",
+  "commit_sha": "d81382b79a52e477ccc9d9139aa6aa3a93c9adf6",
+  "started_at": "2026-11-21T16:53:43.646620Z",
+  "git_provider": "github",
+  "review_complete": true
+ },
+ "findings": [
+  {
+   "action_level": "action_required",
+   "id": "82a5d2c1-7aed-4c41-ba3f-6e4450fe4240",
+   "description": "`season_history_for()` returns an empty `PackedByteArray` whenever the published array does not fully cover the target cell, with no `push_error`, warning, or other logging. Callers such as the info panel and cell inspector then show no history, so an incomplete publication from the background worker looks identical to a cell that simply has no history.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Missing season history goes unlogged",
+   "git_sha": "6cba727799fffc7bb4c4279bbb1050c8b54bbd4a",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/geography/map_data.gd[609-613]",
+      "citation": "\tvar start := cell.index * HexCell.HISTORY_LEN\n\tif start >= 0 and start + HexCell.HISTORY_LEN <= history.size():\n\t\treturn history.slice(start, start + HexCell.HISTORY_LEN)\n\treturn PackedByteArray()\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/info_panel_controller.gd[228-251]",
+      "citation": "\t# ── 近期植被演替（vegetation_history 环形缓冲，最近 8 季）\n\t# Milestone 1：换源到独立植被轴，粒度更细；空缓冲时回退到 biome_history\n\tvar veg_history := _current_map.season_history_for(cell, true)\n\tif not veg_history.is_empty():\n\t\tvar names := PackedStringArray()\n\t\tfor i in range(veg_history.size()):\n\t\t\tnames.append(VegetationType.name_cn(int(veg_history[i])))\n\t\t_history_label.visible = true\n\t\t_history_label.text = \"近期植被：%s\" % \" → \".join(names)\n\telse:\n\t\tvar bio_history := _current_map.season_history_for(cell, false)\n\t\tif bio_history.is_empty():\n\t\t\t_history_label.visible = false\n\t\telse:\n\t\t\tvar names2 := PackedStringArray()\n\t\t\tfor i in range(bio_history.size()):\n\t\t\t\tnames2.append(TerrainType.terrain_name_cn(int(bio_history[i])))\n\t\t\t_history_label.visible = true\n\t\t\t_history_label.text = \"近期气候区：%s（旧兼容记录）\" % \" → \".join(names2)\n\n\t# Emergent Climate Coupling：三行涌现耦合信息（温度分解 / 海冰覆盖度 / 反馈缓冲）\n\trefresh_physical_lines()\n\trefresh_emergent_lines()\n\t# 自然资源储量（economy.resources）"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/cell_inspector/geography.gd[631-646]",
+      "citation": "func _history_badges(host, cell: HexCell) -> Array:\n\tvar h = host\n\tvar badges = []\n\tvar hist: PackedByteArray = _season_history(host, cell)\n\tvar start = maxi(hist.size() - 6, 0)\n\tfor i in range(start, hist.size()):\n\t\tbadges.append({\"text\": VegetationType.name_cn(int(hist[i])), \"accent\": UITokens.ECO})\n\treturn badges\n\n\nfunc _season_history(host, cell: HexCell) -> PackedByteArray:\n\tvar map: MapData = host._map\n\tif map == null:\n\t\treturn cell.biome_history if cell.vegetation_history.is_empty() else cell.vegetation_history\n\tvar vegetation := map.season_history_for(cell, true)\n\treturn map.season_history_for(cell, false) if vegetation.is_empty() else vegetation"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/geography/map_data.gd[607-612]",
+      "citation": "func season_history_for(cell: HexCell, vegetation: bool) -> PackedByteArray:\n\tvar history := published_vegetation_history if vegetation else published_biome_history\n\tvar start := cell.index * HexCell.HISTORY_LEN\n\tif start >= 0 and start + HexCell.HISTORY_LEN <= history.size():\n\t\treturn history.slice(start, start + HexCell.HISTORY_LEN)\n\treturn PackedByteArray()"
+     }
+    ],
+    "explanation": "The rule treats an empty result as a silent fallback and requires the missing-data path to report the cause, either through `push_error` or an explicit error result. The added `return PackedByteArray()` on the missing-coverage path does neither, so an incomplete `published_biome_history` or `published_vegetation_history` is reported as 'no data' with no cause logged. Ticket rule 4948331 allows showing no data, but that does not excuse dropping the logged cause required by rule 4948321. The change removes the wrong-data fallback but replaces it with a silent empty result, so a real publication gap can persist unnoticed."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/geography/map_data.gd",
+    "start_line": 610,
+    "end_line": 612,
+    "side": "right",
+    "code_snippet": " \tif start >= 0 and start + HexCell.HISTORY_LEN <= history.size():\n \t\treturn history.slice(start, start + HexCell.HISTORY_LEN)\n-\treturn cell.vegetation_history if vegetation else cell.biome_history\n+\treturn PackedByteArray()"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "informational",
+   "id": "a5116e50-6bfe-477a-8374-dab2bc30e5d8",
+   "description": "`_season_history` in the geography cell inspector still returns the `HexCell` mirror arrays when `host._map` is null, which is the same mirror-data fallback the ticket removes from `season_history_for`. The PR leaves this sibling copy unchanged, so the front end can still read simulation mirror data in that branch.",
+   "attribution_status": "pending",
+   "category": "Correctness",
+   "title": "Mirror fallback survives in the inspector null-map branch",
+   "git_sha": "6cba727799fffc7bb4c4279bbb1050c8b54bbd4a",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/cell_inspector/geography.gd[634-638]",
+      "citation": "\tvar hist: PackedByteArray = _season_history(host, cell)\n\tvar start = maxi(hist.size() - 6, 0)\n\tfor i in range(start, hist.size()):\n\t\tbadges.append({\"text\": VegetationType.name_cn(int(hist[i])), \"accent\": UITokens.ECO})\n\treturn badges"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/geography/map_data.gd[607-612]",
+      "citation": "func season_history_for(cell: HexCell, vegetation: bool) -> PackedByteArray:\n\tvar history := published_vegetation_history if vegetation else published_biome_history\n\tvar start := cell.index * HexCell.HISTORY_LEN\n\tif start >= 0 and start + HexCell.HISTORY_LEN <= history.size():\n\t\treturn history.slice(start, start + HexCell.HISTORY_LEN)\n\treturn PackedByteArray()"
+     }
+    ],
+    "explanation": "The inspector's null-map path is a second, independent read of the mirror arrays that this PR did not update, so the ticket's 'front end reads only published data' rule is not fully enforced. The branch is likely rare in practice because the inspector normally has a map, so impact is low."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/geography/map_data.gd",
+    "start_line": 612,
+    "end_line": 612,
+    "side": "left",
+    "code_snippet": "-\treturn cell.vegetation_history if vegetation else cell.biome_history\n+\treturn PackedByteArray()"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2087801,
+   "commit_sha": "d81382b79a52e477ccc9d9139aa6aa3a93c9adf6",
+   "started_at": "2026-11-21T16:53:43.646620Z",
+   "status": "completed",
+   "review_effort": "lite",
+   "review_complete": true
+  },
+  {
+   "run_id": 2087711,
+   "commit_sha": "6cba727799fffc7bb4c4279bbb1050c8b54bbd4a",
+   "started_at": "2026-11-21T16:40:48.112681Z",
+   "status": "completed",
+   "review_effort": "lite",
+   "review_complete": true
+  }
+ ]
+}

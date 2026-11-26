@@ -1,0 +1,419 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/73",
+ "git_provider": null,
+ "finding_count": 9,
+ "review_session": {
+  "run_id": 2144628,
+  "status": "completed",
+  "commit_sha": "a3a347e14978b4b1e710761beb6cb711e0fb8008",
+  "started_at": "2026-11-24T22:12:51.469560Z",
+  "git_provider": "github",
+  "review_complete": false
+ },
+ "findings": [
+  {
+   "id": "963d6938-958b-40c7-a1f7-235c2f9455d2",
+   "title": "Missing ecology data falls back silently",
+   "description": "In `_bake_cell_luts_gd`, a size mismatch in `transition_ages` or `previous_vitalities` sets `has_transition` to false, so each cell silently uses age 0 and its current vitality. No error is logged, and the native encoder in `world_ext_cell_luts.cpp` similarly drops to the cache path when `frame_valid` is false.",
+   "category": "Reliability",
+   "attribution_status": "implemented",
+   "action_level": "action_required",
+   "git_sha": "9fad268f568010850dcc70d0118e7df2e2c7a4e6",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule",
+      "platform_entity_id": "4948321"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/bakers/cell_lut_baker.gd[531-565]",
+      "citation": "\t\tfog_k_override: PackedByteArray = PackedByteArray(), cell_lut_frame: Dictionary = {}) -> void:\n\tvar slots: int = lw * lh\n\tvar transition_ages: PackedByteArray = cell_lut_frame.get(\"transition_age\", PackedByteArray())\n\tvar previous_vitalities: PackedByteArray = cell_lut_frame.get(\"previous_vitality\", PackedByteArray())\n\tvar has_transition := transition_ages.size() == map.cell_count() and previous_vitalities.size() == map.cell_count()\n\tvar enum_data := PackedByteArray(); enum_data.resize(slots * 4)\n\tvar dyn_data := PackedByteArray(); dyn_data.resize(slots * 4)\n\tvar eco_data := PackedByteArray(); eco_data.resize(slots * 4)\n\tvar weather_data := PackedByteArray(); weather_data.resize(slots * 4)\n\n\tfor cell in map.all_cells():\n\t\tif cell == null:\n\t\t\tcontinue\n\t\tvar ci: int = int(cell.index)\n\t\tif ci < 0 or ci >= slots:\n\t\t\tcontinue\n\t\t# enum LUT：R=terrain G=vegetation B=cover A=迷雾知识度 k（与 C++ 同布局）。\n\t\t# 未接线时 A=255（全知），保证迷雾系统关闭时视觉与改造前一致。\n\t\tvar e4: int = ci * 4\n\t\tenum_data[e4]     = int(cell.terrain) & 0xFF\n\t\tenum_data[e4 + 1] = int(cell.vegetation) & 0xFF\n\t\tenum_data[e4 + 2] = int(cell.cover) & 0xFF\n\t\tenum_data[e4 + 3] = fog_k_override[ci] if ci < fog_k_override.size() else 255\n\t\tvar snow_override: float = snow_cover_override[ci] if ci < snow_cover_override.size() else -1.0\n\t\tvar dsig: int = baker._dynamic_cell_signature(cell, snow_override)\n\t\tvar d4: int = ci * 4\n\t\tdyn_data[d4]     = dsig & 0xFF\n\t\tdyn_data[d4 + 1] = (dsig >> 8) & 0xFF\n\t\tdyn_data[d4 + 2] = (dsig >> 16) & 0xFF\n\t\tdyn_data[d4 + 3] = (dsig >> 24) & 0xFF\n\t\tvar cur_vit_byte: int = baker._q01_byte(float(cell.vegetation_vitality))\n\t\tvar age := transition_ages[ci] if has_transition else 0\n\t\tvar previous_vit := previous_vitalities[ci] if has_transition else cur_vit_byte\n\t\tvar esig: int = baker._ecology_visual_signature(cell, age, previous_vit, snow_override)\n\t\tvar c4: int = ci * 4"
+     }
+    ],
+    "explanation": "The fallback `age := transition_ages[ci] if has_transition else 0` hides a length mismatch in data that the commit should always supply, and it does so without `push_error` or an explicit failure."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/rendering/bakers/cell_lut_baker.gd",
+    "start_line": 562,
+    "end_line": 563,
+    "side": "right",
+    "code_snippet": "+\t\tvar age := transition_ages[ci] if has_transition else 0\n+\t\tvar previous_vit := previous_vitalities[ci] if has_transition else cur_vit_byte"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "c7c8c684-e5b8-4161-b778-5a50a13a236f",
+   "title": "Held map changes can be dropped",
+   "description": "`WorldRuntimeDailyAdapter._consume_runtime_commit_if_ready` passes `{}` to `queue_worker_commit` when `authority_ready` is false, and `WorldRuntimeMapUpdates.queue()` interprets that empty commit as a request to clear its latest batch and held dirty and class cells. If earlier tile changes are still held because of the frame budget, they are discarded before encoding while the presented day advances, leaving those textures stale until the cells change again.",
+   "category": "Correctness",
+   "attribution_status": "implemented",
+   "action_level": "action_required",
+   "git_sha": "9fad268f568010850dcc70d0118e7df2e2c7a4e6",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "ticket",
+      "source": "https://github.com/hrhgit/Project.Keynes/issues/63",
+      "citation": "Preserve responsive and complete map updates"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_map_updates.gd[26-36]",
+      "citation": "func queue(commit: Dictionary) -> void:\n\tif commit.is_empty():\n\t\tclear_pending()\n\t\treturn\n\tif has_pending():\n\t\t_add_cells(_held_dirty, _latest.get(DIRTY, PackedInt32Array()))\n\t\t_add_cells(_held_classes, _latest[CLASSES])\n\t_full_update = _full_update or not commit.has(DIRTY)\n\tvar dirty: PackedInt32Array = commit.get(DIRTY, PackedInt32Array())\n\t_latest = {DIRTY: dirty, CLASSES: commit.get(CLASSES, dirty),\n\t\tCELLS: commit.get(CELLS, {})}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[71-71]",
+      "citation": "\tvar whole_graph = bool(report.get(\"authority_ready\", false))"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[142-143]",
+      "citation": "\thost._presentation.queue_worker_commit(from_day,\n\t\t\thost._runtime_commit_day, host._runtime_commit_generation, commit if whole_graph else {})"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_map_updates.gd[26-37]",
+      "citation": "func queue(commit: Dictionary) -> void:\n\tif commit.is_empty():\n\t\tclear_pending()\n\t\treturn\n\tif has_pending():\n\t\t_add_cells(_held_dirty, _latest.get(DIRTY, PackedInt32Array()))\n\t\t_add_cells(_held_classes, _latest[CLASSES])\n\t_full_update = _full_update or not commit.has(DIRTY)\n\tvar dirty: PackedInt32Array = commit.get(DIRTY, PackedInt32Array())\n\t_latest = {DIRTY: dirty, CLASSES: commit.get(CLASSES, dirty),\n\t\tCELLS: commit.get(CELLS, {})}\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_presentation.gd[37-42]",
+      "citation": "func publish_worker_view(publish: Callable) -> void:\n\tif _pending_day < 0 or _map_updates.has_pending():\n\t\treturn\n\t_presented_day = _pending_day\n\t_pending_day = -1\n\tpublish.call(_pending_from_day, _presented_day, _pending_generation)"
+     }
+    ],
+    "explanation": "`whole_graph` comes from `report.authority_ready`, and a false value causes the adapter to pass an empty visual commit. `queue()` takes its `commit.is_empty()` branch and calls `clear_pending()`, erasing `_latest`, `_held_dirty`, and `_held_classes`; `has_pending()` then becomes false, allowing `publish_worker_view` to advance the presented day without applying the held map changes. The existing held-cell test covers only non-empty commits."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd",
+    "start_line": 143,
+    "end_line": 143,
+    "side": "right",
+    "code_snippet": "+\t\t\thost._runtime_commit_day, host._runtime_commit_generation, commit if whole_graph else {})"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "d0eced59-a978-46c1-9161-24e2b65b6ee5",
+   "title": "Real-window frame-rate report covers only the 30 fps setting",
+   "description": "The alternating real-window table in `feature-status.md` states it re-ran only the 30 fps setting at 50× and tabulates only those rows, while the same section says the pair command runs 30, 60 and adaptive rounds three times each. The 60 fps and adaptive before/after frame-interval P95, sample counts, ranges, background days per second, map updates per second and display lag are therefore not reported anywhere in the PR, even though the 36 regular and 18 injected-load window runs the text cites span all three settings. The report also never says which settings stabilise and which remain limited by drawing cost, so the requested per-setting conclusion is missing.",
+   "category": "Observability",
+   "attribution_status": "implemented",
+   "action_level": "remediation_recommended",
+   "git_sha": "56088ab1ac66ad131c1a6e48c7ae56d18a79f5b5",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/architecture/feature-status.md[110-111]",
+      "citation": "同一台 M2 以 Godot 4.6.3、Metal Mobile、1600×960、高画质和相同种子复测 30 帧、50 倍速。\n下表给出三个共同游戏日区间的改前 → 改后结果。基线为 `9ddb12734`，改后为 `c5c3eff65`。"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/architecture/feature-status.md[149-152]",
+      "citation": "单独验证交互和贴图读回，在上面的窗口探针命令中使用改后项目，并在 `--fps=60`\n的过载轮加 `--exercise-display`。两条配对命令各档轮流运行三次，保留逐帧、逐日、\n提交耗时和实际设置。汇总报告每轮实际绘制间隔 P95、样本数和范围，以及同一范围内的\n后台天/秒、地图更新/秒和延后游戏日数。"
+     },
+     {
+      "source_type": "ticket",
+      "source": "https://github.com/hrhgit/Project.Keynes/issues/63",
+      "citation": "Report matched real-window frame-rate and simulation comparisons"
+     }
+    ],
+    "explanation": "The report text restricts the table to 30 fps while the reproduction command in the same section runs all three settings, so the 60 fps and adaptive real-window before/after data is absent from the PR."
+   },
+   "location": {
+    "file_path": "docs/architecture/feature-status.md",
+    "start_line": 110,
+    "end_line": 111,
+    "side": "right",
+    "code_snippet": "+同一台 M2 以 Godot 4.6.3、Metal Mobile、1600×960、高画质和相同种子复测 30 帧、50 倍速。\n+下表给出三个共同游戏日区间的改前 → 改后结果。基线为 `9ddb12734`，改后为 `c5c3eff65`。"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "1cc1f599-a792-4ea0-bf8c-09c6a0917200",
+   "title": "A failed map update freezes the date display",
+   "description": "`apply_pending_worker_map` returns without clearing the pending update when `publish_worker_climate_visuals` reports no encode path. `publish_worker_view` now refuses to advance while `_map_updates.has_pending()` is true, so after one such failure `simulation_view_updated` never fires again for the rest of the session. That signal drives the time UI and the selected-cell daily lines. The encode reports no path when the baker, sus map or world is missing, or when the LUT dimensions are invalid. It then retries on every frame and never recovers. Before this PR, the view date advanced whatever the outcome of the texture publish.",
+   "category": "Reliability",
+   "attribution_status": "implemented",
+   "action_level": "remediation_recommended",
+   "git_sha": "9fad268f568010850dcc70d0118e7df2e2c7a4e6",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/simulation/climate/mapgen_native_daily_runtime.gd[61-67]",
+      "citation": "func publish_worker_climate_visuals(defer_upload: bool, commit: Dictionary = {}) -> Dictionary:\n\tif _generator._baker == null or _generator._sus_map == null or _generator._last_world == null:\n\t\treturn {}\n\tvar dirty: PackedInt32Array = commit.get(\"display_dirty_cells\", PackedInt32Array())\n\treturn DCCellLutBaker.refresh_cell_luts_daily(_generator._baker,\n\t\t\t_generator._sus_map, _generator._last_world, dirty,\n\t\t\tnot commit.has(\"display_dirty_cells\"), true, defer_upload, commit)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/bakers/cell_lut_baker.gd[1265-1276]",
+      "citation": "static func refresh_cell_luts_daily(baker: MapBaker, map: MapData, world: WorldData,\n\t\tdirty_indices: PackedInt32Array = PackedInt32Array(),\n\t\tforce_full_encode: bool = true,\n\t\tpublish_weather_lut: bool = false, defer_upload: bool = false,\n\t\truntime_commit: Dictionary = {}) -> Dictionary:\n\tif world == null or world.lut_dims.x <= 0 or world.lut_dims.y <= 0:\n\t\treturn {\"path\": \"none\", \"fallback\": true, \"reason\": \"missing_world_or_lut_dims\"}\n\t# cache_valid=true：C++ encode_cell_luts 按 prev 推进 eco transition_age（每日衰减）。\n\tif defer_upload or not runtime_commit.is_empty():\n\t\treturn bake_cell_luts(baker, map, world, true, publish_weather_lut,\n\t\t\t\tdirty_indices, force_full_encode, defer_upload, runtime_commit)\n\treturn baker.bake_cell_luts(map, world, true, publish_weather_lut, dirty_indices, force_full_encode)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_presentation.gd[37-42]",
+      "citation": "func publish_worker_view(publish: Callable) -> void:\n\tif _pending_day < 0 or _map_updates.has_pending():\n\t\treturn\n\t_presented_day = _pending_day\n\t_pending_day = -1\n\tpublish.call(_pending_from_day, _presented_day, _pending_generation)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_host.gd[749-752]",
+      "citation": "func _process(_delta: float) -> void:\n\t_run_admitted_inline_day()\n\t_daily_adapter._process(self, _delta)\n\t_presentation.publish_worker_view(simulation_view_updated.emit)"
+     }
+    ],
+    "explanation": "`publish_worker_climate_visuals` returns `{}` when the baker, sus map or last world is null. `refresh_cell_luts_daily` and `bake_cell_luts` return 'none' when the map, world or LUT dimensions are missing. On that path the update is never marked as applied, `has_pending()` stays true, and `publish_worker_view` keeps returning early."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_presentation.gd",
+    "start_line": 60,
+    "end_line": 62,
+    "side": "right",
+    "code_snippet": "+\tvar result: Dictionary = host._generator.publish_worker_climate_visuals(false, update)\n+\tif result.get(\"lut_encode_path\", \"none\") == \"none\":\n+\t\treturn"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "6387ab75-530c-4f12-bb74-cf7c5379250d",
+   "title": "Save flush reaches into host internals",
+   "description": "`_save` in `game_save_coordinator.gd` now reads `_runtime_host._vision_dirty_indices` and calls the host's private `_service_worker_map_presentation` before saving. The save path therefore drives host-owned display state directly rather than through a host-owned intent or committed boundary.",
+   "category": "Architecture",
+   "attribution_status": "implemented",
+   "action_level": "remediation_recommended",
+   "git_sha": "9fad268f568010850dcc70d0118e7df2e2c7a4e6",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948318?state=active",
+      "id": 4948318,
+      "citation": "Keynes: cross-module hand-offs go through committed views or intents",
+      "platform_entity_type": "rule",
+      "platform_entity_id": "4948318"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/game_save_coordinator.gd[396-402]",
+      "citation": "\t\t\t_restore_clock_mode(was_paused, previous_speed, generation)\n\t\t\t_busy = false\n\t\t\treturn _result(false, \"save_vision_writeback_failed\", \"视野未能写入地图，已取消保存。\")\n\t\tif not _runtime_host._vision_dirty_indices.is_empty():\n\t\t\t_runtime_host._service_worker_map_presentation(Time.get_ticks_usec())\n\t\tif not bool(resources.get(\"ok\", false)) or not bool(species.get(\"ok\", false)):\n\t\t\t_restore_clock_mode(was_paused, previous_speed, generation)"
+     }
+    ],
+    "explanation": "The save coordinator reads `_runtime_host._vision_dirty_indices` and calls `_service_worker_map_presentation` directly, so another module drives the host's display state and vision dirty list without a public intent."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/game_save_coordinator.gd",
+    "start_line": 399,
+    "end_line": 400,
+    "side": "right",
+    "code_snippet": "+\t\tif not _runtime_host._vision_dirty_indices.is_empty():\n+\t\t\t_runtime_host._service_worker_map_presentation(Time.get_ticks_usec())"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "7c427df1-97ac-4c46-bcd5-5337f58e9d18",
+   "title": "Signal callbacks bypass host binding",
+   "description": "`_enter_tree` connects `process_frame` and `frame_post_draw` to `_presentation.begin_frame` and `_presentation.observe_draw`, which are the component's own methods rather than host-bound Callables. The matching disconnects in `_exit_tree` depend on those same component-bound references.",
+   "category": "Architecture",
+   "attribution_status": "implemented",
+   "action_level": "remediation_recommended",
+   "git_sha": "9fad268f568010850dcc70d0118e7df2e2c7a4e6",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948327?state=active",
+      "id": 4948327,
+      "citation": "Keynes: session components get narrow dependencies and one daily entry",
+      "platform_entity_type": "rule",
+      "platform_entity_id": "4948327"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_host.gd[1174-1180]",
+      "citation": "\tif DisplayServer.get_name() != \"headless\":\n\t\tget_tree().process_frame.connect(_presentation.begin_frame)\n\t\tRenderingServer.frame_post_draw.connect(_presentation.observe_draw)\nfunc _exit_tree() -> void:\n\tif RenderingServer.frame_post_draw.is_connected(_presentation.observe_draw):\n\t\tRenderingServer.frame_post_draw.disconnect(_presentation.observe_draw)\n\t\tget_tree().process_frame.disconnect(_presentation.begin_frame)"
+     }
+    ],
+    "explanation": "The signals are connected to unbound component methods, against the rule that callbacks handed to signals must be Callables bound to the host."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_host.gd",
+    "start_line": 1174,
+    "end_line": 1176,
+    "side": "right",
+    "code_snippet": "+\tif DisplayServer.get_name() != \"headless\":\n+\t\tget_tree().process_frame.connect(_presentation.begin_frame)\n+\t\tRenderingServer.frame_post_draw.connect(_presentation.observe_draw)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "9349c808-57f3-4b7c-817e-6e7a405f410e",
+   "title": "Map presenter gets whole host access",
+   "description": "`apply_pending_worker_map(host, vision_changed)` in the new presentation component takes the entire `WorldRuntimeHost` and writes its fields directly, including `_vision_dirty_indices` and the `_sched_*` and `_dcp_*` timings. This couples the component to host internals instead of narrow Callables or values.",
+   "category": "Architecture",
+   "attribution_status": "implemented",
+   "action_level": "remediation_recommended",
+   "git_sha": "9fad268f568010850dcc70d0118e7df2e2c7a4e6",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948327?state=active",
+      "id": 4948327,
+      "citation": "Keynes: session components get narrow dependencies and one daily entry",
+      "platform_entity_type": "rule",
+      "platform_entity_id": "4948327"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_presentation.gd[50-72]",
+      "citation": "func apply_pending_worker_map(host, vision_changed: bool) -> void:\n\tif not _map_updates.has_pending():\n\t\treturn\n\tvar frame := Engine.get_process_frames()\n\tvar started := Time.get_ticks_usec()\n\tif not vision_changed and not _map_updates.can_apply(frame, started, Engine.max_fps):\n\t\treturn\n\tvar update := _map_updates.collect(host._vision_dirty_indices)\n\t# There is at most one worker upload now. Finish it here before the\n\t# vision-dependent layers and weather interpolation read the new textures.\n\tvar result: Dictionary = host._generator.publish_worker_climate_visuals(false, update)\n\tif result.get(\"lut_encode_path\", \"none\") == \"none\":\n\t\treturn\n\thost._vision_dirty_indices = PackedInt32Array()\n\tif host._renderer != null:\n\t\thost._renderer.set_season_phase(host._world_clock.season_phase_for_day(_pending_day))\n\t\thost._renderer.set_climate_anomaly(host._world_clock.climate_anomaly)\n\thost.mark_map_overlay_dirty(&\"worker_committed\")\n\tvar elapsed := Time.get_ticks_usec() - started\n\t_map_updates.applied(frame, elapsed)\n\thost._runtime_last_visual_apply_ms = float(elapsed) / 1000.0\n\thost._sched_proc_visual_ms += host._runtime_last_visual_apply_ms\n\tif host._dcp_on():"
+     }
+    ],
+    "explanation": "The function reads `host._renderer` and `host._world_clock`, writes `host._vision_dirty_indices`, and updates several host timing fields, so the whole host is passed where narrow dependencies are expected."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_presentation.gd",
+    "start_line": 50,
+    "end_line": 50,
+    "side": "right",
+    "code_snippet": "+func apply_pending_worker_map(host, vision_changed: bool) -> void:"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "cce49955-da84-4a5b-b3ed-a25436e7a2d1",
+   "title": "Post-change window timings are missing",
+   "description": "The feature status says the after-change real-window run is still pending, and the desktop capture failed to launch Godot. The merged throttling therefore has no alternating before and after samples of frame interval, background days per second, display-update rate or display lag.",
+   "category": "Observability",
+   "attribution_status": "implemented",
+   "action_level": "remediation_recommended",
+   "git_sha": "9fad268f568010850dcc70d0118e7df2e2c7a4e6",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "ticket",
+      "source": "https://github.com/hrhgit/Project.Keynes/issues/63",
+      "citation": "Report comparable real-window frame-rate and simulation measurements"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/architecture/feature-status.md[86-92]",
+      "citation": "改后窗口复测待完成。桌面采集在启动 Godot 时得到 LaunchServices `-10827`，没有生成绘制样本。\n直接启动停在 macOS 窗口服务连接阶段，记录见 `/private/tmp/keynes-issue63.zOmKne/first.log`。\n续跑的 LaunchServices 调用和退出状态见 `/private/tmp/keynes-63-verify.nm8ULe/launch-probe.run.json`。\n既有基线不能替代同版本配对样本，改后实际绘制间隔、后台天/秒、地图更新频率、落后游戏日\n和各档绘制瓶颈待测。用两份已导入的同基线项目，安装相应的本地扩展，复制相同的\n`player_scene_handoff_probe.gd`、`player_scene_handoff_timings.gd` 和\n`player_scene_display_checks.gd`。本机已准备以下两份项目。"
+     }
+    ],
+    "explanation": "The document states `改后窗口复测待完成` and gives no real-window samples for the new display throttling, so the required comparable post-change measurements are absent."
+   },
+   "location": {
+    "file_path": "docs/architecture/feature-status.md",
+    "start_line": 86,
+    "end_line": 88,
+    "side": "right",
+    "code_snippet": "+改后窗口复测待完成。桌面采集在启动 Godot 时得到 LaunchServices `-10827`，没有生成绘制样本。\n+直接启动停在 macOS 窗口服务连接阶段，记录见 `/private/tmp/keynes-issue63.zOmKne/first.log`。\n+续跑的 LaunchServices 调用和退出状态见 `/private/tmp/keynes-63-verify.nm8ULe/launch-probe.run.json`。"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "2efd305b-a864-4e4d-a837-4b0ead50c855",
+   "title": "Launcher exit status hides a failed game run",
+   "description": "On macOS, `run_sample` takes `result.returncode` from `/usr/bin/open -W`, which reports only whether the app launched, not the Godot process's exit code. A game that crashes after launch therefore passes the `returncode` gate and reaches `load_recording`, where the failure is only inferred from missing or incomplete markers and the recorded `exit_code` in `.run.json` is misleading.",
+   "category": "Reliability",
+   "attribution_status": "pending",
+   "action_level": "informational",
+   "git_sha": "c5c3eff6585c38eebeb0ed32b605fb3ee874bce9",
+   "evidence": null,
+   "location": {
+    "file_path": "tools/perf/run_rendered_player_handoff.py",
+    "start_line": 85,
+    "end_line": 86,
+    "side": "right",
+    "code_snippet": "+        with launch_log.open(\"w\") as output:\n+            result = subprocess.run(command, stdout=output, stderr=subprocess.STDOUT)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2144628,
+   "commit_sha": "a3a347e14978b4b1e710761beb6cb711e0fb8008",
+   "started_at": "2026-11-24T22:12:51.469560Z",
+   "status": "completed",
+   "review_effort": "skip",
+   "review_complete": false
+  },
+  {
+   "run_id": 2143151,
+   "commit_sha": "0ae7a89c5d848fc857ee9c61b2cfcef18ae2c623",
+   "started_at": "2026-11-24T20:36:35.677030Z",
+   "status": "completed",
+   "review_effort": "skip",
+   "review_complete": false
+  },
+  {
+   "run_id": 2143148,
+   "commit_sha": "0ae7a89c5d848fc857ee9c61b2cfcef18ae2c623",
+   "started_at": "2026-11-24T20:36:25.349861Z",
+   "status": "superseded",
+   "review_effort": null,
+   "review_complete": null
+  },
+  {
+   "run_id": 2143123,
+   "commit_sha": "0ae7a89c5d848fc857ee9c61b2cfcef18ae2c623",
+   "started_at": "2026-11-24T20:34:15.628866Z",
+   "status": "completed",
+   "review_effort": "skip",
+   "review_complete": false
+  },
+  {
+   "run_id": 2142978,
+   "commit_sha": "56088ab1ac66ad131c1a6e48c7ae56d18a79f5b5",
+   "started_at": "2026-11-24T20:24:15.090726Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2142957,
+   "commit_sha": "56088ab1ac66ad131c1a6e48c7ae56d18a79f5b5",
+   "started_at": "2026-11-24T20:22:33.655272Z",
+   "status": "superseded",
+   "review_effort": null,
+   "review_complete": null
+  },
+  {
+   "run_id": 2141539,
+   "commit_sha": "c5c3eff6585c38eebeb0ed32b605fb3ee874bce9",
+   "started_at": "2026-11-24T18:51:07.131435Z",
+   "status": "completed",
+   "review_effort": "lite",
+   "review_complete": true
+  },
+  {
+   "run_id": 2140768,
+   "commit_sha": "db8a246606b171c9151a50784ae88e796ec73829",
+   "started_at": "2026-11-24T18:06:36.081557Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  },
+  {
+   "run_id": 2139507,
+   "commit_sha": "9fad268f568010850dcc70d0118e7df2e2c7a4e6",
+   "started_at": "2026-11-24T16:46:17.800921Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  }
+ ]
+}

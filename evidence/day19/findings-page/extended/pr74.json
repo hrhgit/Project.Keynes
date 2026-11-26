@@ -1,0 +1,522 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/74",
+ "git_provider": null,
+ "finding_count": 11,
+ "review_session": {
+  "run_id": 2146612,
+  "status": "completed",
+  "commit_sha": "fe4ee78e0113215ab116f0405f1431deb3d3d166",
+  "started_at": "2026-11-25T01:47:33.846001Z",
+  "git_provider": "github",
+  "review_complete": true
+ },
+ "findings": [
+  {
+   "action_level": "action_required",
+   "id": "41b96796-4243-492c-bad2-da580adebf36",
+   "description": "`displayed_fog_state` returns `FOG_UNEXPLORED` when the drawn frame is not valid or the cell index is out of range, without calling `push_error` or reporting the cause. Callers such as the cell inspector and the hover card then treat an unavailable or corrupted visibility snapshot as a real unexplored cell, and that result hides the failure.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Invalid frame reads as unexplored fog",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/geography/vision_solver.gd[316-318]",
+      "citation": "\tvar frame = map.drawn_frame\n\tif not frame.valid or cell < 0 or cell >= frame.visible.size() or cell >= frame.explored.size():\n\t\treturn FOG_UNEXPLORED"
+     }
+    ],
+    "explanation": "The rule requires errors to be reported and the previous state kept, not replaced by a default. This branch returns a default fog value silently for invalid frame data, and the inspector, board and hover callers consume that value as a real result."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/geography/vision_solver.gd",
+    "start_line": 317,
+    "end_line": 318,
+    "side": "right",
+    "code_snippet": "+\tif not frame.valid or cell < 0 or cell >= frame.visible.size() or cell >= frame.explored.size():\n+\t\treturn FOG_UNEXPLORED"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "8fc056d1-f868-45db-8130-2ed983400570",
+   "description": "`_prepare_draw` and `bind_map` in `player_map_viewport.gd` assign `_map.drawn_frame = _frame` on the `MapData` object, which holds the simulation's visibility arrays, and also set `_camera.drawn_frame`. The front-end viewport therefore writes a field on simulation-owned state, and `reset()` later nulls it. Any later reader of `MapData` now depends on whether the viewport is alive, and the front end is not limited to reading the published frame.",
+   "attribution_status": "implemented",
+   "category": "Architecture",
+   "title": "Map viewport attaches its frame to sim map",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948317?state=active",
+      "id": 4948317,
+      "platform_entity_id": "4948317",
+      "citation": "Keynes: the front end only reads published frames",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/player_map_viewport.gd[41-42]",
+      "citation": "\t_map.drawn_frame = _frame\n\t_camera.drawn_frame = _frame"
+     }
+    ],
+    "explanation": "The rule forbids the front end from writing simulation state and requires it to consume only a published frame. The viewport stores its frame on `MapData`, a simulation object, and the change sits inside the rendering layer under `scripts/rendering`."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/rendering/player_map_viewport.gd",
+    "start_line": 41,
+    "end_line": 42,
+    "side": "right",
+    "code_snippet": "+\t_map.drawn_frame = _frame\n+\t_camera.drawn_frame = _frame"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "b38da055-8e53-4bbc-9298-d3283d77a46a",
+   "description": "`_consume_runtime_commit_if_ready` writes `host._current_map.drawn_frame.received_day` directly, and a later branch writes `staged_day` and calls `stage_vision` on the same viewport-owned frame. The simulation-side host therefore mutates a presentation object it does not own, and the frame's day bookkeeping is split between two owners.",
+   "attribution_status": "implemented",
+   "category": "Architecture",
+   "title": "Runtime host edits the viewport's frame",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948318?state=active",
+      "id": 4948318,
+      "platform_entity_id": "4948318",
+      "citation": "Keynes: cross-module hand-offs go through committed views or intents",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[78-79]",
+      "citation": "\t\tif host._current_map != null and host._current_map.drawn_frame != null:\n\t\t\thost._current_map.drawn_frame.received_day = commit_day"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[144-147]",
+      "citation": "\tif not whole_graph and host._current_map != null and host._current_map.drawn_frame != null:\n\t\t# This path publishes the installed map directly, without a queued worker texture.\n\t\tvar map: MapData = host._current_map\n\t\tmap.drawn_frame.staged_day = commit_day"
+     }
+    ],
+    "explanation": "The rule requires one owner to change another owner's state only by submitting an intent. The host here writes the presentation frame's `received_day` directly, rather than sending an intent that the viewport accepts."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd",
+    "start_line": 78,
+    "end_line": 79,
+    "side": "right",
+    "code_snippet": "+\t\tif host._current_map != null and host._current_map.drawn_frame != null:\n+\t\t\thost._current_map.drawn_frame.received_day = commit_day"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "e81ff784-610e-471d-800f-512fc0a27350",
+   "description": "The annual report test used to assert that the clock is paused when the report opens, and that check was replaced by `not clock.paused` together with a new condition on the speed multiplier. The original comparison was dropped rather than the root cause being shown, so a regression that pauses the clock now makes the test pass.",
+   "attribution_status": "dismissed",
+   "category": "Testability",
+   "title": "Annual test now expects a running clock",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948320?state=active",
+      "id": 4948320,
+      "platform_entity_id": "4948320",
+      "citation": "Keynes: fix the root cause instead of relaxing the check",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/ui/annual_report_runtime_test.gd[49-56]",
+      "citation": "\tvar hold: Dictionary = runtime.generator().get_runtime_control_state()\n\t_expect(\"report automatically opens and holds the worker at the first year boundary\",\n\t\tui.is_annual_report_open() and controller.player_confirmation_reason() == \"annual_report_confirmation_required\"\n\t\tand hold.get(\"simulation_host_state\") == \"PAUSED\"\n\t\tand int(hold.get(\"simulation_committed_day\", -1)) == clock.days_per_year())\n\t_expect(\"waiting for the report preserves the player's 50x clock\",\n\t\tnot clock.paused and is_equal_approx(clock.speed_multiplier, 50.0))\n\tif bool(report.get(\"ok\", false)):"
+     }
+    ],
+    "explanation": "The rule forbids loosening or flipping an assertion to make a test pass. The PR removes the `clock.paused` expectation and adds an assertion of the opposite value, while the feature-status note only argues that the old check looked at the wrong control."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/ui/annual_report_runtime_test.gd",
+    "start_line": 54,
+    "end_line": 55,
+    "side": "right",
+    "code_snippet": "+\t_expect(\"waiting for the report preserves the player's 50x clock\",\n+\t\tnot clock.paused and is_equal_approx(clock.speed_multiplier, 50.0))"
+   },
+   "dismiss_reason": "rejected",
+   "dismiss_explanation": "Disputed by the factory agent (Codex), whose judgement takes precedence: gdext/src/native_simulation_host_player_confirmation.cpp:82-87 blocks admission at the year boundary, and Project/project-keynes/scripts/annual/annual_report_flow.gd:85-100 opens the report without changing playback. Desktop captures before and after the PR both show committed day 24, host PAUSED, and clock.paused false. Project/project-keynes/tests/ui/annual_report_runtime_test.gd:49-55 fails if either the host advances or the player's clock is paused."
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "24f3c4b7-a128-4f8e-96d9-e9b2481accac",
+   "description": "The new branch in `_process` keeps the hover card only while `_payload.day == drawn_frame.day`, and builds a new payload only when `displayed_fields_current()` is true, which requires `drawn_frame.day == received_day`. When batches arrive on most frames (for example at 50×), the drawn day moves past the payload's day while `received_day` has already moved ahead again, so the card is dismissed on almost every map draw and seldom gets a frame where it can rebuild.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Hover card flickers away at high game speed",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/map_drawn_frame.gd[55-56]",
+      "citation": "func fields_current(current_vision_revision: int) -> bool:\n\treturn valid and day == received_day and vision_revision == current_vision_revision"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[76-79]",
+      "citation": "\t\thost._runtime_commit_generation = generation\n\t\thost._runtime_commit_day = commit_day\n\t\tif host._current_map != null and host._current_map.drawn_frame != null:\n\t\t\thost._current_map.drawn_frame.received_day = commit_day"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/cell_hover_view_model.gd[297-300]",
+      "citation": "func _day() -> int:\n\tif _map != null and _map.drawn_frame != null:\n\t\treturn _map.drawn_frame.received_day\n\tif _inspector != null:"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/components/cell_hover_card.gd[250-262]",
+      "citation": "\tif not VisionSolver.displayed_fields_current(_map):\n\t\tif _shown_cell == cell.index and _payload.get(\"day\", -1) == _map.drawn_frame.day:\n\t\t\t_move_to(screen, safe)\n\t\telse:\n\t\t\tdismiss(false)\n\t\treturn\n\tif not _dirty and now - _last_resolve_ms < REVALIDATE_MSEC:\n\t\t_move_to(screen, safe)\n\t\t_sleep_if_idle(now)\n\t\treturn\n\n\t_dirty = false\n\t_last_resolve_ms = now"
+     }
+    ],
+    "explanation": "`fields_current` needs the drawn day to equal the received day. `received_day` moves forward in `_consume_runtime_commit_if_ready` before that day's map texture is drawn. The payload's `day` comes from `_day()`, which returns `received_day` at the moment the card is built. So the card survives at most one drawn-day change and is then dismissed until a frame arrives with no new batch."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/ui/components/cell_hover_card.gd",
+    "start_line": 250,
+    "end_line": 255,
+    "side": "right",
+    "code_snippet": "+\tif not VisionSolver.displayed_fields_current(_map):\n+\t\tif _shown_cell == cell.index and _payload.get(\"day\", -1) == _map.drawn_frame.day:\n+\t\t\t_move_to(screen, safe)\n+\t\telse:\n+\t\t\tdismiss(false)\n+\t\treturn"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "7053d437-4f4b-4440-8de6-6cf0df01cfce",
+   "description": "`show_cell_panel()` hides the inspector when `displayed_fields_current()` is false, even if the clicked cell is visible in the held map image. Once a simulation commit advances beyond that image, clicking a cell selects it but leaves its panel hidden until map drawing resumes.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Frozen clicks hide cell details",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "skill",
+      "source": "project-keynes-player-controller",
+      "citation": "project-keynes-player-controller"
+     },
+     {
+      "source_type": "skill",
+      "source": "project-keynes-ui-development",
+      "citation": "project-keynes-ui-development"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/player_controller/selection.gd[119-151]",
+      "citation": "\t\t\tand host._ui_manager.has_method(\"handle_peace_map_cell\") \\\n\t\t\tand bool(host._ui_manager.call(\"handle_peace_map_cell\", int(cell.index))):\n\t\treturn\n\t# A pending army order (移动 / 军事控制) takes the next map click instead of\n\t# opening the cell panel; the order itself decides what the click means.\n\tif not host._military_order_mode.is_empty() and cell != null \\\n\t\t\tand host.military_arm_order_click(int(cell.index)):\n\t\treturn\n\t# 选格是\"新的地图焦点\"：军务档案关闭，右侧回到地块档案。\n\tif host._ui_manager != null and host._ui_manager.has_method(\"close_military_dossier\"):\n\t\thost._ui_manager.call(\"close_military_dossier\")\n\t# Picking a hex ends whatever card-level question the player was asking:\n\t# leaving a card's hit set on screen while a different hex is selected reads\n\t# as \"this hex is one of them\" and there is no way to tell otherwise.\n\thost.clear_cell_highlights()\n\tif cell == null:\n\t\thost.clear_selection()\n\t\treturn\n\thost._selected_cell = cell\n\tvar display_world = host._cell_display_world(cell)\n\tvar wrap_period: float = host._runtime_host.map_wrap_period_x() if host._runtime_host != null else 0.0\n\tif host._highlight != null:\n\t\thost._highlight.set_cell_display(cell, host._runtime_host.hex_size if host._runtime_host != null else 22.0,\n\t\t\tdisplay_world, wrap_period)\n\tif host._ui_manager != null:\n\t\thost._ui_manager.show_cell_panel(cell)\n\tif host._camera != null and host._ui_manager != null:\n\t\thost._camera.ensure_point_visible(display_world, host._ui_manager.map_safe_area())\n\thost.selection_changed.emit(cell)\n\n\n\nfunc clear_selection(host) -> void:"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/game_ui/selected_cell.gd[39-46]",
+      "citation": "\t# 只有当前可见的格子才值得开经济追踪：未探索与已探索但看不见的格子都拿不到\n\t# 经济页签，追踪它只会让 recorder 白算一份。\n\t_waiting_for_drawn_cell = not VisionSolver.displayed_fields_current(host._map)\n\tif _waiting_for_drawn_cell:\n\t\thost._set_inspector_trace_cell(-1)\n\t\thost._right_panel.hide()\n\t\treturn\n\t_install_panel(host, cell)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/player_map_viewport.gd[65-70]",
+      "citation": "\tvar uncovered: bool = not _world_root.covered_by_ui()\n\t_output.visible = uncovered and _frame.valid\n\t_world_root.visible = uncovered and draw_enabled\n\trender_target_update_mode = SubViewport.UPDATE_DISABLED\n\tif _map == null or not _world_root.visible or not DisplayServer.window_can_draw(get_window().get_window_id()):\n\t\treturn"
+     }
+    ],
+    "explanation": "The player-controller skill requires map selection and UI synchronization to remain coordinated, and the UI-development skill requires player-facing data to follow a read-only view model. Selection routes the tap to the cell panel, but the new currentness gate hides that panel; a held viewport cannot produce the draw callback that would reopen it."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/ui/game_ui/selected_cell.gd",
+    "start_line": 41,
+    "end_line": 45,
+    "side": "right",
+    "code_snippet": "+\t_waiting_for_drawn_cell = not VisionSolver.displayed_fields_current(host._map)\n+\tif _waiting_for_drawn_cell:\n+\t\thost._set_inspector_trace_cell(-1)\n+\t\thost._right_panel.hide()\n+\t\treturn"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "7a51f702-fe56-42ba-9136-8089fc15bdce",
+   "description": "`_on_day_changed()` still calls `refresh_committed_view()` and `sync_ui()` directly for non-worker days, bypassing the new `ui_refresh_enabled` check in `publish_ui_view()`. When an inline simulation advances with UI refresh disabled, the date and ordinary panels can update during the hold rather than waiting for UI delivery.",
+   "attribution_status": "pending",
+   "category": "Correctness",
+   "title": "Inline games ignore the UI refresh hold",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_presentation.gd[49-67]",
+      "citation": "func publish_ui_view(publish: Callable) -> void:\n\tif not ui_refresh_enabled:\n\t\treturn\n\tif _ui_day >= 0:\n\t\tui_presented_day = _ui_day\n\t\t_ui_day = -1\n\t\tpublish.call(_ui_from_day, ui_presented_day, _ui_generation)\n\tif not _held_ui_refreshes.is_empty():\n\t\tvar held := _held_ui_refreshes\n\t\t_held_ui_refreshes = {}\n\t\tfor refresh: Callable in held:\n\t\t\tif refresh.is_valid():\n\t\t\t\trefresh.call()\n\n## Passive panel timers can expire during a hold, including on a paused day.\nfunc defer_ui_refresh(refresh: Callable) -> bool:\n\tif not ui_refresh_enabled:\n\t\t_held_ui_refreshes[refresh] = true\n\treturn not ui_refresh_enabled"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/player_controller.gd[1015-1052]",
+      "citation": "\tif _runtime_host == null or _world_clock == null:\n\t\treturn\n\tif _world_clock._publishing_runtime_date:\n\t\treturn\n\t# Events are read from a completed day. The active worker signals that boundary separately.\n\t_sync_era_reward_offer()\n\t_sync_family_founding_offer()\n\t_sync_ideology_draw()\n\t_sync_era_music()\n\t_sync_event_audio()\n\tvar worker_days: bool = _runtime_host.uses_worker_day_commits()\n\tif not worker_days:\n\t\tif _music_situation != null:\n\t\t\t_music_situation.refresh_global_from_commit()\n\tif _economy_facade != null and _player_country_handle != 0 and \\\n\t\t\t_economy_facade.has_method(\"dispatch_family_colonization_receipts\"):\n\t\t_economy_facade.dispatch_family_colonization_receipts(\n\t\t\t_player_country_handle)\n\tvar ui_started_usec := Time.get_ticks_usec()\n\tvar ui_breakdown: Dictionary = {}\n\tif _ui_manager != null and not worker_days:\n\t\tui_breakdown = _ui_manager.refresh_selected_daily_lines(false, day_idx)\n\t\tif _ui_manager.has_method(\"record_committed_day\"):\n\t\t\t_ui_manager.record_committed_day(day_idx)\n\t\t\t_ui_manager.refresh_committed_view()\n\t\t# Country workspaces are event-driven. Daily ticks only patch the selected\n\t\t# cell and clock; country/economy/ideology commits invalidate their section.\n\t\tui_breakdown[\"country_summary_ms\"] = 0.0\n\t\tif _ui_manager.has_method(\"consume_country_ui_perf_summary\"):\n\t\t\tvar country_ui_perf: Dictionary = _ui_manager.consume_country_ui_perf_summary()\n\t\t\tfor key in country_ui_perf:\n\t\t\t\tui_breakdown[key] = country_ui_perf[key]\n\t\t\tif not country_ui_perf.is_empty():\n\t\t\t\tui_breakdown[\"country_summary_ms\"] = float(\n\t\t\t\t\tcountry_ui_perf.get(\"country_ui_snapshot_ms\", 0.0))\n\t\tsync_ui()\n\t_runtime_host.finish_daily_tick((Time.get_ticks_usec() - ui_started_usec) / 1000.0, ui_breakdown)\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/player_controller/selection.gd[165-180]",
+      "citation": "\thost._narrative_flow.try_present()\n\n\nfunc sync_time_ui(host) -> void:\n\tvar clock = host._world_clock\n\tif host._ui_manager == null or clock == null:\n\t\treturn\n\tvar day := int(clock.day_index())\n\tif host._runtime_host is WorldRuntimeHost:\n\t\tvar ui_day: int = host._runtime_host.ui_worker_day()\n\t\tif ui_day >= 0:\n\t\t\tday = ui_day\n\tvar date: Dictionary = clock.calendar_date_for_day(day)\n\thost._ui_manager.update_time_state(clock.year_index_for_day(day), int(date.month),\n\t\tint(date.day_of_month), clock.paused or not host.player_confirmation_reason().is_empty(),\n\t\tclock.speed_multiplier)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_host.gd[619-621]",
+      "citation": "\tvar state := _runtime_control_state()\n\treturn state.get(\"simulation_thread_mode\", \"OFF\") == \"ACTIVE\" and bool(state.get(\"authority_ready\", false))\n… (1 more lines)"
+     }
+    ],
+    "explanation": "The new hold returns without publishing while disabled, but the existing inline-day callback reaches both ordinary-panel and date updates without using that publication path. Non-worker mode is an explicit runtime state."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_host.gd",
+    "start_line": 769,
+    "end_line": 769,
+    "side": "right",
+    "code_snippet": "+\t_presentation.publish_ui_view(simulation_ui_updated.emit)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "7f19ad1e-4d20-40bd-8df7-c6b21491ea75",
+   "description": "`_publish_worker_map()` returns on a failed texture encode without updating `drawn_frame.staged_day`, even though `received_day` has advanced and the pending map update is cleared, so `displayed_fields_current()` remains false. If no later publication succeeds, as when the game is paused, new cell selections and other map-dependent inspector views keep waiting for a current draw while the map-view notification can still advance.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Failed map upload blocks cell panels while paused",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_host.gd[816-827]",
+      "citation": "\nfunc _publish_worker_map(update: Dictionary, day: int, started_usec: int) -> bool:\n\t# Publish textures before the vision-dependent layers and weather read them.\n\tvar result := _generator.publish_worker_climate_visuals(false, update) \\\n\t\tif _generator != null else {\"reason\": \"missing_generator\"}\n\tif result.get(\"lut_encode_path\", \"none\") == \"none\":\n\t\tpush_warning(\"[worker-map] Day %d publication failed: %s\" % [day, result.get(\"reason\", \"no_encode_path\")])\n\t\treturn false\n\tif _current_map != null and _current_map.drawn_frame != null:\n\t\t_current_map.drawn_frame.staged_day = day\n\t\t_current_map.drawn_frame.stage_vision(_current_map.vision_revision, _current_map.visible_arr, _current_map.explored_arr)\n\t_vision_dirty_indices = PackedInt32Array()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/game_ui/selected_cell.gd[41-46]",
+      "citation": "\t_waiting_for_drawn_cell = not VisionSolver.displayed_fields_current(host._map)\n\tif _waiting_for_drawn_cell:\n\t\thost._set_inspector_trace_cell(-1)\n\t\thost._right_panel.hide()\n\t\treturn\n\t_install_panel(host, cell)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/game_ui/selected_cell.gd[89-93]",
+      "citation": "func refresh_selected_daily_lines(host, force: bool = false, day_idx: int = -1) -> Dictionary:\n\tif not VisionSolver.displayed_fields_current(host._map):\n\t\treturn {}\n\tif _waiting_for_drawn_cell and host._selected_cell != null:\n\t\t_install_panel(host, host._selected_cell)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/architecture/feature-guides.md[634-634]",
+      "citation": "贴图提交失败时记录原因，下一批地图发布到达时按整图重画。普通面板仍可显示已领取的日期。"
+     },
+     {
+      "source_type": "pr_knowledge",
+      "source": "73",
+      "citation": "A failed map publication previously froze the presented date. This is the same failure path, now freezing which frame counts as current."
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[75-80]",
+      "citation": "\t\tvar old_day: int = host._runtime_commit_day\n\t\thost._runtime_commit_generation = generation\n\t\thost._runtime_commit_day = commit_day\n\t\tif host._current_map != null and host._current_map.drawn_frame != null:\n\t\t\thost._current_map.drawn_frame.received_day = commit_day\n\t\tif commit_day <= old_day or int(commit.get(\"from_day\", -1)) == commit_day:"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_host.gd[817-826]",
+      "citation": "func _publish_worker_map(update: Dictionary, day: int, started_usec: int) -> bool:\n\t# Publish textures before the vision-dependent layers and weather read them.\n\tvar result := _generator.publish_worker_climate_visuals(false, update) \\\n\t\tif _generator != null else {\"reason\": \"missing_generator\"}\n\tif result.get(\"lut_encode_path\", \"none\") == \"none\":\n\t\tpush_warning(\"[worker-map] Day %d publication failed: %s\" % [day, result.get(\"reason\", \"no_encode_path\")])\n\t\treturn false\n\tif _current_map != null and _current_map.drawn_frame != null:\n\t\t_current_map.drawn_frame.staged_day = day\n\t\t_current_map.drawn_frame.stage_vision(_current_map.vision_revision, _current_map.visible_arr, _current_map.explored_arr)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_presentation.gd[69-91]",
+      "citation": "func publish_worker_view(publish: Callable) -> void:\n\tif _pending_day < 0 or _map_updates.has_pending():\n\t\treturn\n\t_presented_day = _pending_day\n\t_pending_day = -1\n\tpublish.call(_pending_from_day, _presented_day, _pending_generation)\n\nfunc begin_frame() -> void:\n\t_map_updates.start_frame(Time.get_ticks_usec())\n\nfunc observe_draw() -> void:\n\t_map_updates.observe_draw(Time.get_ticks_usec(), Engine.max_fps)\n\nfunc apply_pending_worker_map(vision_dirty: PackedInt32Array, publish_map: Callable) -> void:\n\tif not _map_updates.has_pending():\n\t\treturn\n\tvar frame := Engine.get_process_frames()\n\tvar started := Time.get_ticks_usec()\n\tif vision_dirty.is_empty() and not _map_updates.can_apply(frame, started, Engine.max_fps):\n\t\treturn\n\tif not publish_map.call(_map_updates.collect(vision_dirty), _pending_map_day, started):\n\t\t_map_updates.reject()\n\t\treturn"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/map_drawn_frame.gd[34-56]",
+      "citation": "func submit(camera_transform: Transform2D, view_size: Vector2) -> void:\n\t_submitted_day = staged_day\n\t_submitted_revision = staged_revision\n\t_submitted_visible = staged_visible\n\t_submitted_explored = staged_explored\n\t_submitted_transform = camera_transform\n\t_submitted_size = view_size\n\n\nfunc present() -> bool:\n\tvar changed := not valid or day != _submitted_day or vision_revision != _submitted_revision\n\tvalid = true\n\tday = _submitted_day\n\ttransform = _submitted_transform\n\tlogical_size = _submitted_size\n\tvision_revision = _submitted_revision\n\tvisible = _submitted_visible\n\texplored = _submitted_explored\n\treturn changed\n\n\nfunc fields_current(current_vision_revision: int) -> bool:\n\treturn valid and day == received_day and vision_revision == current_vision_revision"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/game_ui/selected_cell.gd[39-46]",
+      "citation": "\t# 只有当前可见的格子才值得开经济追踪：未探索与已探索但看不见的格子都拿不到\n\t# 经济页签，追踪它只会让 recorder 白算一份。\n\t_waiting_for_drawn_cell = not VisionSolver.displayed_fields_current(host._map)\n\tif _waiting_for_drawn_cell:\n\t\thost._set_inspector_trace_cell(-1)\n\t\thost._right_panel.hide()\n\t\treturn\n\t_install_panel(host, cell)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/game_ui/selected_cell.gd[89-98]",
+      "citation": "func refresh_selected_daily_lines(host, force: bool = false, day_idx: int = -1) -> Dictionary:\n\tif not VisionSolver.displayed_fields_current(host._map):\n\t\treturn {}\n\tif _waiting_for_drawn_cell and host._selected_cell != null:\n\t\t_install_panel(host, host._selected_cell)\n\tif host._map != null and host._map.drawn_frame != null:\n\t\trefresh_gdp(host)\n\tif not host._pending_inspector_tab.is_empty() or not host._pending_object_request.is_empty():\n\t\thost._schedule_inspector_retry()\n\treturn host._country_component.refresh_selected_daily_lines(host, force, day_idx)"
+     }
+    ],
+    "explanation": "The received day advances before publication, but the failure branch clears queued texture work and returns before staging that day. The inspector gate compares the received and staged days; `show_cell_panel` hides the panel, and `refresh_selected_daily_lines()` cannot restore it until a current draw occurs. The worker-view queue can still emit a notification after rejection because it sees no pending map update."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_host.gd",
+    "start_line": 821,
+    "end_line": 826,
+    "side": "right",
+    "code_snippet": " \tif result.get(\"lut_encode_path\", \"none\") == \"none\":\n \t\tpush_warning(\"[worker-map] Day %d publication failed: %s\" % [day, result.get(\"reason\", \"no_encode_path\")])\n \t\treturn false\n+\tif _current_map != null and _current_map.drawn_frame != null:\n+\t\t_current_map.drawn_frame.staged_day = day\n+\t\t_current_map.drawn_frame.stage_vision(_current_map.vision_revision, _current_map.visible_arr, _current_map.explored_arr)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "cb4c95aa-d74f-4f7d-9232-8148108fa940",
+   "description": "The window test waits with `while _host.received_worker_day() < ...: await RenderingServer.frame_post_draw` and never calls `wait_for_runtime_day` or the host's `_service_runtime_liveness` before asserting. The same pattern repeats at the resume-day wait, so the test can assert on results before they are received.",
+   "attribution_status": "implemented",
+   "category": "Testability",
+   "title": "Window test skips the runtime day wait",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948326?state=active",
+      "id": 4948326,
+      "platform_entity_id": "4948326",
+      "citation": "Keynes: background-day tests wait for the committed day and receive results",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/independent_presentation_window_test.gd[71-72]",
+      "citation": "\twhile _host.received_worker_day() < int(command.requested_day) + 1:\n\t\tawait RenderingServer.frame_post_draw"
+     }
+    ],
+    "explanation": "The rule requires background-day tests to wait for the committed day with `wait_for_runtime_day` and run the production receive step. This loop waits only until the observed received day grows, and then asserts receipts that depend on the receive step."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/game/independent_presentation_window_test.gd",
+    "start_line": 71,
+    "end_line": 72,
+    "side": "right",
+    "code_snippet": "+\twhile _host.received_worker_day() < int(command.requested_day) + 1:\n+\t\tawait RenderingServer.frame_post_draw"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "d07fcf00-c631-4502-9a4e-c865358618a3",
+   "description": "`PlayerMapViewport` copies the window's `canvas_transform` into the SubViewport only in `frame_pre_draw`. Layers now inside it (MapActivityLayer, TradeActivityLayer, settlement labels, sky background) read `get_viewport().get_canvas_transform()` during `_process`, so their culling and screen-space math always uses the previous frame's camera. While panning or zooming, icons and labels at the screen edge can be missing or misplaced for a frame, while the map texture itself is drawn with the current transform.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Map layers cull with the previous frame's camera",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/player_map_viewport.gd[61-85]",
+      "citation": "func _prepare_draw() -> void:\n\t_drawing = false\n\tif not is_instance_valid(_output):\n\t\treturn\n\tvar uncovered: bool = not _world_root.covered_by_ui()\n\t_output.visible = uncovered and _frame.valid\n\t_world_root.visible = uncovered and draw_enabled\n\trender_target_update_mode = SubViewport.UPDATE_DISABLED\n\tif _map == null or not _world_root.visible or not DisplayServer.window_can_draw(get_window().get_window_id()):\n\t\treturn\n\tvar view_size := _source.get_visible_rect().size\n\tif view_size.x <= 0 or view_size.y <= 0:\n\t\treturn\n\tvar pixels := Vector2i((view_size * _source.get_stretch_transform().get_scale().abs()).round())\n\tif size != pixels:\n\t\tsize = pixels\n\tvar logical := Vector2i(view_size.round())\n\tif size_2d_override != logical:\n\t\tsize_2d_override = logical\n\tmsaa_2d = _source.msaa_2d\n\tuse_hdr_2d = _source.use_hdr_2d\n\tcanvas_item_default_texture_filter = _source.canvas_item_default_texture_filter\n\tcanvas_item_default_texture_repeat = _source.canvas_item_default_texture_repeat\n\tcanvas_transform = _source.canvas_transform\n\trender_target_update_mode = SubViewport.UPDATE_ONCE"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/map_activity_layer.gd[264-266]",
+      "citation": "\t\t_watch_cursor += 1\n\tvar corners := get_viewport_rect()\n\tvar inverse := get_viewport().get_canvas_transform().affine_inverse()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/trade_activity_layer.gd[261-266]",
+      "citation": "\t\treturn\n\t_wall_time += delta\n\tif not _external_camera:\n\t\tvar inverse := get_viewport().get_canvas_transform().affine_inverse()\n\t\t_camera_rect = Rect2(inverse * Vector2.ZERO,\n\t\t\tinverse.basis_xform(get_viewport_rect().size))"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/settlement_label_layer.gd[123-129]",
+      "citation": "\t\tlabel.visible = false\n\tvar zoom_value := maxf(_camera.zoom.x, 0.001)\n\tvar minimum_tier := 5 if zoom_value < 0.45 else (\n\t\t4 if zoom_value < 0.75 else (3 if zoom_value < 1.2 else 2))\n\tvar viewport_rect := get_viewport_rect().grow(48.0)\n\tvar canvas_transform := get_viewport().get_canvas_transform()\n\tvar candidates: Array[Dictionary] = []"
+     }
+    ],
+    "explanation": "The transform is assigned only in the pre-draw callback. The listed layers sample it during `_process`, which runs before pre-draw in each frame."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/rendering/player_map_viewport.gd",
+    "start_line": 84,
+    "end_line": 85,
+    "side": "right",
+    "code_snippet": "+\tcanvas_transform = _source.canvas_transform\n+\trender_target_update_mode = SubViewport.UPDATE_ONCE"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "informational",
+   "id": "82fe5d5d-a048-41db-9f3d-6149bd4856d3",
+   "description": "`reset_worker_views()` clears `_held_ui_refreshes`, but `GameUIManager._country_refresh_queued` stays true for a flush that was held there. Every later `_mark_country_panel_dirty` returns early on that flag. If UI refresh was held during a load or session cancel, the country panel never refreshes again until it is closed and reopened.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Country panel can stop refreshing after a reload",
+   "git_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/game_ui_manager.gd[337-364]",
+      "citation": "func _mark_country_panel_dirty(domains: int, reason: String) -> void:\n\t_country_dirty_domains |= domains\n\t_country_refresh_reason = reason\n\tif _country_view_model != null:\n\t\t_country_view_model.invalidate_cache(domains)\n\tif _country_panel == null or not _country_panel.is_panel_open() \\\n\t\t\tor _country_refresh_queued:\n\t\treturn\n\t_country_refresh_queued = true\n\tif _country_ui_event_refresh_enabled:\n\t\tcall_deferred(\"_flush_country_panel_refresh\")\n\telse:\n\t\t_flush_country_panel_refresh()\n\n\nfunc _flush_country_panel_refresh() -> void:\n\tif _country_panel == null or not _country_panel.is_panel_open():\n\t\t_country_refresh_queued = false\n\t\t_country_refresh_timer_active = false\n\t\treturn\n\tvar section_mask := _country_section_mask(_country_panel.current_section())\n\tif publication_views != null and publication_views.defer_ui_refresh(_flush_country_panel_refresh):\n\t\treturn\n\tif not _country_ui_event_refresh_enabled:\n\t\t_country_refresh_queued = false\n\t\trefresh_country_summary()\n\t\t_country_dirty_domains &= ~section_mask\n\t\treturn"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_presentation.gd[63-67]",
+      "citation": "## Passive panel timers can expire during a hold, including on a paused day.\nfunc defer_ui_refresh(refresh: Callable) -> bool:\n\tif not ui_refresh_enabled:\n\t\t_held_ui_refreshes[refresh] = true\n\treturn not ui_refresh_enabled"
+     }
+    ],
+    "explanation": "When `defer_ui_refresh` holds the callback, `_flush_country_panel_refresh` returns while `_country_refresh_queued` is still true. Reset then drops the held callback without notifying the owner."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_presentation.gd",
+    "start_line": 97,
+    "end_line": 99,
+    "side": "right",
+    "code_snippet": " func reset_worker_views() -> void:\n+\t_held_ui_refreshes.clear()\n+\tui_presented_day = -1"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2146612,
+   "commit_sha": "fe4ee78e0113215ab116f0405f1431deb3d3d166",
+   "started_at": "2026-11-25T01:47:33.846001Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  },
+  {
+   "run_id": 2146597,
+   "commit_sha": "fe4ee78e0113215ab116f0405f1431deb3d3d166",
+   "started_at": "2026-11-25T01:45:29.562728Z",
+   "status": "superseded",
+   "review_effort": null,
+   "review_complete": null
+  },
+  {
+   "run_id": 2146469,
+   "commit_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "started_at": "2026-11-25T01:26:22.158995Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  },
+  {
+   "run_id": 2146466,
+   "commit_sha": "41d3b5156662952d5728472ae5dc4d55119ec4d4",
+   "started_at": "2026-11-25T01:26:17.288206Z",
+   "status": "superseded",
+   "review_effort": null,
+   "review_complete": null
+  }
+ ]
+}

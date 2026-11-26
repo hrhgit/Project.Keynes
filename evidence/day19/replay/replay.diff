@@ -1,0 +1,1501 @@
+diff --git a/Project/project-keynes/data/native_binding_manifest.json b/Project/project-keynes/data/native_binding_manifest.json
+index ef9f56c28..5c1c949df 100644
+--- a/Project/project-keynes/data/native_binding_manifest.json
++++ b/Project/project-keynes/data/native_binding_manifest.json
+@@ -1,6 +1,6 @@
+ {
+   "class": "DCWorldExt",
+-  "count": 671,
++  "count": 673,
+   "methods": [
+     "_debug_poke_f32",
+     "_debug_poke_f32_with_flush",
+@@ -108,6 +108,7 @@
+     "clear_military_cell_stats",
+     "clear_modifier_domain",
+     "clear_runtime_fault_injection",
++    "clear_runtime_map_lut_frame",
+     "clear_trigger_state",
+     "climate_main_thread_suppressed",
+     "climate_physics_authoritative",
+@@ -424,6 +425,7 @@
+     "read_economy_save_chunk",
+     "read_f32",
+     "read_i32",
++    "read_runtime_map_lut_frame",
+     "read_u8",
+     "reconcile_completed_research_signals",
+     "reconcile_ideology_effects_for_test",
+diff --git a/Project/project-keynes/scripts/game/map_runtime_bridge.gd b/Project/project-keynes/scripts/game/map_runtime_bridge.gd
+index 6e8ee56cf..178d7c9fc 100644
+--- a/Project/project-keynes/scripts/game/map_runtime_bridge.gd
++++ b/Project/project-keynes/scripts/game/map_runtime_bridge.gd
+@@ -3,6 +3,7 @@ extends "res://scripts/simulation/generator_context.gd"
+ const EconomyTestBootstrapScript = preload("res://scripts/economy/economy_test_bootstrap.gd")
+ const IdeologyFacadeScript = preload("res://scripts/ideology/ideology_facade.gd")
+ var _main_steps = preload("res://scripts/game/runtime_main_step_diagnostics.gd").new()
++var measure_map_lut_copies := false
+ 
+ ## 第 5 批：保存边界、停止清理与 worker 控制。可变状态仍由 MapGenerator 持有。
+ 
+@@ -156,6 +157,23 @@ func poll_runtime_commit(after_generation: int = 0, take_days: bool = false) ->
+ 	return _generator._data_core_world_ext.poll_runtime_commit(after_generation, take_days)
+ 
+ 
++func read_runtime_map_lut_frame(map: MapData, publication_id: int, day: int, generation: int) -> Dictionary:
++	var ext = _generator._data_core_world_ext
++	if ext == null:
++		return {"reason": "map_lut_extension_unavailable"}
++	if map == null:
++		return {"reason": "map_lut_map_unavailable"}
++	var frame: Dictionary = ext.read_runtime_map_lut_frame(
++		map, publication_id, day, generation, map.cell_count(), measure_map_lut_copies)
++	return {"reason": "map_lut_publication_unavailable"} if frame.is_empty() else frame
++
++
++func clear_runtime_map_lut_frame() -> void:
++	var ext = _generator._data_core_world_ext
++	if ext != null:
++		ext.clear_runtime_map_lut_frame()
++
++
+ func request_runtime_save(request_id: int) -> Dictionary:
+ 	if _generator._data_core_world_ext == null:
+ 		return {"ok": false, "code": "runtime_worker_api_missing"}
+diff --git a/Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd b/Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd
+index 2c58dc286..0449cb016 100644
+--- a/Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd
++++ b/Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd
+@@ -139,8 +139,10 @@ func _consume_runtime_commit_if_ready(host, report_override: Dictionary = {}) ->
+ 	if ideology != null:
+ 		ideology.drain_receipts()
+ 	host.simulation_committed.emit(from_day, host._runtime_commit_day, host._runtime_commit_generation)
+-	ext.finish_runtime_display_frame()
+-	if not whole_graph:
++	if whole_graph:
++		commit["map_lut_publication_id"] = ext.finish_runtime_display_frame(bool(vision.get("ok", false)))
++	else:
++		ext.finish_runtime_display_frame()
+ 		# This path publishes the installed map directly, without a queued worker texture.
+ 		host.map_texture_published.emit(commit_day)
+ 	host._presentation.queue_worker_commit(from_day,
+diff --git a/Project/project-keynes/scripts/game/world_runtime_host.gd b/Project/project-keynes/scripts/game/world_runtime_host.gd
+index c27409804..a4e7c032c 100644
+--- a/Project/project-keynes/scripts/game/world_runtime_host.gd
++++ b/Project/project-keynes/scripts/game/world_runtime_host.gd
+@@ -624,6 +624,8 @@ func uses_worker_day_commits() -> bool:
+ func reset_presentation() -> void:
+ 	publication_reader.reset()
+ 	_presentation.reset_worker_views()
++	if _generator != null:
++		_generator._get_map_runtime_bridge().clear_runtime_map_lut_frame()
+ 	presentation_reset.emit()
+ 
+ func ui_worker_day() -> int:
+@@ -817,6 +819,14 @@ func _service_worker_map_presentation(frame_started_usec: int) -> void:
+ 	_sched_proc_country_visual_ms += _sched_elapsed_ms(country_started_usec)
+ 
+ func _publish_worker_map(update: Dictionary, day: int, started_usec: int) -> bool:
++	if _generator != null and update.has("map_lut_publication_id"):
++		var frame: Dictionary = _generator._get_map_runtime_bridge().read_runtime_map_lut_frame(
++			_current_map, int(update.map_lut_publication_id), day, int(update.map_lut_generation))
++		if frame.has("reason"):
++			if not _presentation._map_updates.needs_recovery:
++				push_error("[worker-map] Day %d publication failed: %s" % [day, frame.reason])
++			return false
++		update["cell_lut_frame"] = frame
+ 	# Publish textures before the vision-dependent layers and weather read them.
+ 	var result := _generator.publish_worker_climate_visuals(false, update) \
+ 		if _generator != null else {"reason": "missing_generator"}
+diff --git a/Project/project-keynes/scripts/game/world_runtime_map_updates.gd b/Project/project-keynes/scripts/game/world_runtime_map_updates.gd
+index 772056c38..45f4d4c0b 100644
+--- a/Project/project-keynes/scripts/game/world_runtime_map_updates.gd
++++ b/Project/project-keynes/scripts/game/world_runtime_map_updates.gd
+@@ -32,8 +32,13 @@ func queue(commit: Dictionary) -> bool:
+ 		_add_cells(_held_classes, _latest[CLASSES])
+ 	_full_update = _full_update or not commit.has(DIRTY)
+ 	var dirty: PackedInt32Array = commit.get(DIRTY, PackedInt32Array())
+-	_latest = {DIRTY: dirty, CLASSES: commit.get(CLASSES, dirty),
+-		CELLS: commit.get(CELLS, {})}
++	_latest = {DIRTY: dirty, CLASSES: commit.get(CLASSES, dirty)}
++	if commit.has(CELLS):
++		_latest[CELLS] = commit[CELLS]
++	elif commit.has("map_lut_publication_id"):
++		_latest["map_lut_publication_id"] = commit.map_lut_publication_id
++		_latest["map_lut_day"] = commit.committed_day
++		_latest["map_lut_generation"] = commit.generation
+ 	return true
+ 
+ 
+diff --git a/Project/project-keynes/tests/game/independent_presentation_window_test.gd b/Project/project-keynes/tests/game/independent_presentation_window_test.gd
+index 46b81f7b3..498140009 100644
+--- a/Project/project-keynes/tests/game/independent_presentation_window_test.gd
++++ b/Project/project-keynes/tests/game/independent_presentation_window_test.gd
+@@ -2,6 +2,7 @@ extends "res://tests/game/player_scene_handoff_probe.gd"
+ 
+ ## Pixel readback is intentional here. The performance runs use the unmodified
+ ## player handoff probe and never read back the offscreen texture.
++const TEST_FPS := 60
+ var failures: Array[String] = []
+ var ui_days: Array[int] = []
+ 
+@@ -14,9 +15,13 @@ func _run() -> void:
+ 	root.always_on_top = true
+ 	root.grab_focus()
+ 	var settings := root.get_node("GameSettings")
+-	settings.update({"window_mode": "windowed", "resolution_width": 1600,
++	var window_settings := {"window_mode": "windowed", "resolution_width": 1600,
+ 		"resolution_height": 960, "vsync": true, "render_quality": "high",
+-		"autosave_enabled": false, "ai_narrative_enabled": false}, false)
++		"autosave_enabled": false, "ai_narrative_enabled": false}
++	window_settings.merge(GraphicsSettings.resolve(window_settings, OS.has_feature("mobile")), true)
++	window_settings.graphics_custom = true
++	window_settings.frame_rate_limit = TEST_FPS
++	settings.update(window_settings, false)
+ 	var config := NewGameConfig.new()
+ 	config.apply_land_layout(NewGameConfig.DEFAULT_LAND_LAYOUT)
+ 	config.base.map_width = WIDTH
+@@ -42,16 +47,21 @@ func _run() -> void:
+ 		await RenderingServer.frame_post_draw
+ 	check(target.find_world_2d() != root.find_world_2d(), "world draws only in the map viewport")
+ 	check(target.size == Vector2i(1600, 960), "map uses the full configured drawing size")
++	check(Engine.max_fps == TEST_FPS, "the window uses the 60 fps map budget")
++	_host.publication_reader.interval_usec = 100000
++	_host.execute_gm_command("time.speed", {"value": 5})
++	if not await wait_for_received_day(1, func(): return _camera.drawn_frame.day >= 1):
++		finish()
++		return
++	_clock.pause(true)
+ 	_host.simulation_ui_updated.connect(func(_from, day, _generation): ui_days.append(day))
+ 	_host.simulation_day_records.connect(_record_days)
++	_timings.attach(_host)
+ 	var start_day := _host.received_worker_day()
+ 	var command: Dictionary = COMMAND_LOG[0].duplicate()
+ 	command.requested_day = maxi(0, start_day) + 2
+ 	var receipt: Dictionary = _host.generator().get_data_core_world_ext().submit_runtime_command(command)
+ 	check(receipt.get("admitted", receipt.get("ok", false)), "production command admitted")
+-	_host.publication_reader.interval_usec = 100000
+-	_host.execute_gm_command("time.speed", {"value": 10})
+-	_clock.pause(false)
+ 	var frozen_day: int = _camera.drawn_frame.day
+ 	var frozen_transform := _camera.drawn_frame.transform
+ 	var sample := ui.map_safe_area().get_center()
+@@ -68,7 +78,16 @@ func _run() -> void:
+ 	target.draw_enabled = false
+ 	var date_before: String = top._date_label.text
+ 	var receipt_seen := false
+-	await wait_for_received_day(int(receipt.effective_day) + 1)
++	# The host has already marked the start of each frame when this runs.
++	var occupy_frame := func(): OS.delay_usec(roundi(1_000_000.0 / TEST_FPS))
++	process_frame.connect(occupy_frame)
++	_clock.pause(false)
++	var arrived := await wait_for_received_day(int(receipt.effective_day) + 1)
++	process_frame.disconnect(occupy_frame)
++	_clock.pause(true)
++	if not arrived:
++		finish()
++		return
+ 	for row in _day_rows:
+ 		for result in row.receipts:
+ 			if int(result.request_id) == int(command.request_id):
+@@ -76,6 +95,15 @@ func _run() -> void:
+ 				check(int(row.day) == int(receipt.effective_day), "receipt arrived on its sealed day")
+ 	check(receipt_seen, "command receipt arrives while map is held")
+ 	check(not ui_days.is_empty() and date_before != top._date_label.text, "date updates on the held map")
++	var busy := _timings.take()
++	check(busy.received_batches > 0 and busy.map_copies.is_empty() and target.draw_count == count,
++		"busy window frames receive results without reading the map")
++	var held_day := _host.received_worker_day()
++	if not await wait_for_received_day(held_day, func(): return target._frame.staged_day >= held_day):
++		finish()
++		return
++	check(not _timings.take().map_copies.is_empty() and target.draw_count == count,
++		"the map stages its latest textures when the budget allows while drawing stays held")
+ 	var old_camera_pos := _camera.position
+ 	var old_zoom := _camera.zoom
+ 	push_button(MOUSE_BUTTON_RIGHT, sample, true)
+@@ -101,6 +129,10 @@ func _run() -> void:
+ 	check(clicked_cell != null and ui._right_panel.visible and ui._right_panel._cell_index == clicked_cell.index,
+ 		"frozen map click opens the matching cell inspector")
+ 	check(ui._right_panel._model.get("tabs", []).is_empty(), "frozen cell summary excludes unpublished details")
++	if clicked_cell != null:
++		var unexplored: bool = _camera.drawn_frame.explored[clicked_cell.index] == 0
++		check((ui._right_panel._model.header.title == "未探索区域") == unexplored,
++			"frozen inspector uses the exploration knowledge in the drawn picture")
+ 	ui.toggle_pause_menu()
+ 	await RenderingServer.frame_post_draw
+ 	await RenderingServer.frame_post_draw
+@@ -115,12 +147,15 @@ func _run() -> void:
+ 	_host._presentation.ui_refresh_enabled = false
+ 	target.draw_enabled = true
+ 	_clock.pause(false)
+-	var resume_day := _host.received_worker_day()
+-	await wait_for_received_day(resume_day + 2)
++	var resume_day := _host.received_worker_day() + 2
++	if not await wait_for_received_day(resume_day, func(): return _camera.drawn_frame.day >= resume_day):
++		finish()
++		return
+ 	check(target.draw_count > count and ui_days.size() == notifications, "map draws while ordinary UI is held")
+ 	check(top._date_label.text == held_ui_date, "ordinary date stays held")
+ 	check(texture_before.get_data() != target.get_texture().get_image().get_data(), "next map contains new pixels")
+ 	check(not frozen_world.is_equal_approx(_camera.safe_screen_to_world(sample)), "hit follows the newly drawn camera")
++	check(not ui._cell_panel._waiting_for_drawn_cell, "new map draw releases the inspector's detail query")
+ 	_host._presentation.ui_refresh_enabled = true
+ 	await RenderingServer.frame_post_draw
+ 	check(ui_days.back() == _host.received_worker_day(), "UI catches up to the latest received batch")
+@@ -143,6 +178,10 @@ func _run() -> void:
+ 	var closed: Dictionary = await _host.close_world()
+ 	check(closed.get("ok", false) and MapDrawnFrame.for_map(old_map) == null and not image.visible,
+ 		"closing the world detaches the cached picture")
++	finish()
++
++
++func finish() -> void:
+ 	for item in failures:
+ 		printerr(item)
+ 	print("INDEPENDENT_WINDOW=", JSON.stringify({"failures": failures, "ui_days": ui_days,
+@@ -150,14 +189,22 @@ func _run() -> void:
+ 	quit(0 if failures.is_empty() else 1)
+ 
+ 
+-func wait_for_received_day(day: int) -> void:
+-	# The normal player process owns receipt delivery, including its polling interval.
++func wait_for_received_day(day: int, map_ready: Callable = Callable()) -> bool:
+ 	var generator := _host.generator()
+-	while int(generator.get_runtime_control_state().get("simulation_committed_day", -1)) < day or _host.received_worker_day() < day:
++	var started := Time.get_ticks_usec()
++	while true:
++		var committed := int(generator.get_runtime_control_state().get("simulation_committed_day", -1))
++		var received := _host.received_worker_day()
+ 		if _host.is_runtime_fault_paused():
+ 			check(false, "runtime fault waiting for day %d" % day)
+-			return
+-		await RenderingServer.frame_post_draw
++			return false
++		if committed >= day and received >= day and (not map_ready.is_valid() or map_ready.call()):
++			return true
++		if Time.get_ticks_usec() - started >= WATCHDOG_USEC:
++			check(false, "window wait for day %d timed out: committed=%d received=%d" % [day, committed, received])
++			return false
++		await process_frame
++	return false
+ 
+ 
+ func check_reloaded_world(previous: PlayerGame) -> void:
+diff --git a/Project/project-keynes/tests/game/player_map_publication_test.gd b/Project/project-keynes/tests/game/player_map_publication_test.gd
+new file mode 100644
+index 000000000..99b42a719
+--- /dev/null
++++ b/Project/project-keynes/tests/game/player_map_publication_test.gd
+@@ -0,0 +1,347 @@
++extends "res://tests/game/player_scene_handoff_probe.gd"
++
++## Leaves the formal clock and publication reader running while busy frames
++## prevent the map from using the time left in the frame.
++const WAITING_DAY := 20
++const TEST_SPEED := 5.0
++const TEST_FPS := 60
++
++class MapPublicationLog extends Logger:
++	var errors: Array[String] = []
++
++	func _log_error(_function: String, _file: String, _line: int, code: String,
++			_rationale: String, _editor_notify: bool, error_type: int,
++			_script_backtraces: Array[ScriptBacktrace]) -> void:
++		if error_type == Logger.ERROR_TYPE_ERROR and code.begins_with("[worker-map]"):
++			errors.append(code)
++
++var _hold_map := false
++var _failures: Array[String] = []
++var _ui_days: Array[int] = []
++var _texture_days: Array[int] = []
++var _receipt_frame := -1
++var _calendar_limit := 0
++
++
++func _run() -> void:
++	if OS.get_environment("PK_SAVE_DIR").is_empty():
++		printerr("Set PK_SAVE_DIR to an isolated directory for the map publication test")
++		quit(1)
++		return
++	root.get_node("GameSettings").update({"frame_rate_limit": TEST_FPS, "graphics_custom": true,
++		"autosave_enabled": false, "ai_narrative_enabled": false, "event_pause_mask": 255}, false)
++	var config := NewGameConfig.new()
++	config.apply_land_layout(NewGameConfig.DEFAULT_LAND_LAYOUT)
++	config.base.map_width = WIDTH
++	config.base.map_height = HEIGHT
++	config.base.initial_seed = SEED
++	config.country.foreign_count = 3
++	var normal := await _play_to_wait(config, false)
++	var held := await _play_to_wait(config, true)
++	_check(not normal.is_empty() and not held.is_empty() and normal == held,
++		"daily outcomes, ordered receipts, and final map bytes match with and without the hold")
++	if not held.is_empty():
++		await _check_load_discards_pending_map()
++	if is_instance_valid(_host):
++		_check(bool((await _host.close_world()).get("ok", false)), "formal world closes")
++	for failure in _failures:
++		printerr(failure)
++	print("PLAYER_MAP_PUBLICATION=", JSON.stringify({"failures": _failures,
++		"compared_days": normal.get("records", []).size(), "display": DisplayServer.get_name()}))
++	quit(0 if _failures.is_empty() else 1)
++
++
++func _play_to_wait(config: NewGameConfig, hold: bool) -> Dictionary:
++	var old_map: MapData = _host.current_map() if is_instance_valid(_host) else null
++	var old_ext = _generator.get_data_core_world_ext() if old_map != null else null
++	var old_generation := _host._runtime_commit_generation if old_map != null else 0
++	var old_publication := int(_host._runtime_last_commit.get("map_lut_publication_id", 0)) if old_map != null else 0
++	var start := await _start_player_scene(root.get_node("GameFlow"), config)
++	_check(bool(start.get("ok", false)), "starts through GameFlow")
++	if not start.get("ok", false):
++		return {}
++	_attach_scene()
++	if old_ext != null:
++		_check(old_ext.read_runtime_map_lut_frame(old_map, old_publication, WAITING_DAY, old_generation,
++			old_map.cell_count()) == {"reason": "map_lut_publication_unavailable"},
++			"new game discards the old map publication")
++	var ext = _generator.get_data_core_world_ext()
++	_check(_host.received_worker_day() <= 0 and Engine.max_fps == TEST_FPS and _clock.is_processing(),
++		"starts at day zero at 60 fps with the formal clock processing")
++	for command: Dictionary in COMMAND_LOG:
++		var admission: Dictionary = ext.submit_runtime_command(command)
++		_check(admission.get("ok", false) and admission.get("effective_day") == command.requested_day,
++			"admits the same command log before day one")
++	_host.publication_reader.interval_usec = 100_000
++	process_frame.connect(_occupy_busy_frame)
++	# Keep the daily comparison exact in both runs. The clock still requests
++	# each day through the same host callback.
++	_admit_day = _clock._runtime_calendar_admit
++	_clock.bind_runtime_calendar(_admit_fixture_day)
++	_clock.set_speed(TEST_SPEED)
++	var opening: Array = []
++	var copies := 0
++	for day in range(1, WAITING_DAY + 1):
++		var map_day: int = -1 if _hold_map else day
++		_calendar_limit = day + 1 if day == WAITING_DAY else day
++		if not await _wait_for_runtime_day(day, map_day, _calendar_limit):
++			_clock.pause(true)
++			_clock.bind_runtime_calendar(_admit_day)
++			process_frame.disconnect(_occupy_busy_frame)
++			return {}
++		var sample := _timings.take()
++		var expected := 0 if _hold_map else 1
++		_check(_host.received_worker_day() == day and sample.received_batches == 1
++			and sample.map_copies.size() == expected and (expected == 0 or sample.map_copies[0].day == day),
++			"day %d delivers records and performs %d map copies" % [day, expected])
++		_check(not _ui_days.is_empty() and _ui_days.back() == day, "UI publishes day %d" % day)
++		copies += sample.map_copies.size()
++		if day == 1:
++			opening = _atlas()
++			_hold_map = hold
++		if _hold_map:
++			_check(_atlas() == opening and _texture_days == [1],
++				"day %d leaves the map at its last published textures" % day)
++	var control := _generator.get_runtime_control_state()
++	var offer: Dictionary = _controller.narrative_service().active_offer()
++	_check(not _clock.paused and _host._calendar_admitted_through > WAITING_DAY
++		and control.get("simulation_committed_day") == WAITING_DAY
++		and control.get("player_block_day") == WAITING_DAY
++		and control.get("player_block_reason") == "narrative_choice_required"
++		and _host.player_confirmation_view().get("reason") == "narrative_choice_required"
++		and offer.get("event_id") == "evt.citychain.wall", "worker and player scene reach the same story choice")
++	_check(_commands_settled() and _day_rows.size() == WAITING_DAY,
++		"receives all days and the ordered command receipts through the wait")
++	var generation := _host._runtime_commit_generation
++	var publication := int(_host._runtime_last_commit.map_lut_publication_id)
++	_clock.pause(true)
++	_clock.bind_runtime_calendar(_admit_day)
++	var finished := true
++	if hold:
++		# The pending frame survives a replacement executor, even before its first new day.
++		var restarted := bool(_host.restart_runtime_executor().get("ok", false))
++		_check(restarted, "restarter accepts paused world")
++		_hold_map = false
++		finished = restarted and await _wait_for_runtime_day(WAITING_DAY, WAITING_DAY)
++		var recovered: Array = _timings.take().map_copies
++		_check(recovered.size() == 1 and recovered[0].day == WAITING_DAY
++			and recovered[0].bytes == 2 * WIDTH * HEIGHT and _texture_days == [1, WAITING_DAY],
++			"paused recovery reads and publishes the latest full map exactly once")
++	process_frame.disconnect(_occupy_busy_frame)
++	if not finished:
++		return {}
++	_check(_host.received_worker_day() == WAITING_DAY and _clock.paused,
++		"map recovery does not release another simulation day")
++	_check_identity_rejection(ext, publication, generation)
++	if hold:
++		_check_failed_map_publication(publication, generation)
++		if DisplayServer.get_name() == "headless":
++			_check_lagged_inspector()
++	var records: Array = []
++	for row: Dictionary in _day_rows:
++		records.append([row.day, row.business_hash, row.receipts])
++	var atlas := _atlas()
++	_check(atlas.size() == 4 and atlas.all(func(bytes: PackedByteArray): return bytes.size() >= 4 * WIDTH * HEIGHT)
++		and atlas != opening, "the map produced complete, updated atlas bytes")
++	print("MAP_READ_PHASE=", JSON.stringify({"held": hold, "copies_before_recovery": copies,
++		"texture_days": _texture_days, "ui_days": _ui_days, "player_day": control.get("player_block_day")}))
++	return {"records": records, "atlas": atlas, "offer": offer.get("event_id")}
++
++
++func _attach_scene() -> void:
++	var scene := current_scene as PlayerGame
++	_host = scene.get_node("RuntimeHost")
++	_generator = _host.get_generator()
++	_clock = scene.get_node("WorldClock")
++	_controller = scene.get_node("PlayerController")
++	if DisplayServer.get_name() == "headless":
++		# Headless sessions normally skip frame timing. Connect the same frame
++		# start callback as a windowed session before injecting the busy work.
++		_host._connect_presentation_frames()
++	_hold_map = false
++	_ui_days.clear()
++	_texture_days.clear()
++	_day_rows.clear()
++	_receipt_frame = -1
++	_timings = FrameTimings.new()
++	_timings.attach(_host)
++	_host.simulation_day_records.connect(_record_days)
++	_host.simulation_ui_updated.connect(func(_from, day, _generation):
++		_ui_days.append(day)
++		_check(_receipt_frame == Engine.get_process_frames(), "UI publishes day %d on the receipt frame" % day))
++	_host.map_texture_published.connect(func(day): _texture_days.append(day))
++
++
++func _record_days(records: Array) -> void:
++	super(records)
++	_receipt_frame = Engine.get_process_frames()
++
++
++func _admit_fixture_day(date: int) -> int:
++	return int(_admit_day.call(mini(date, _calendar_limit + 1)))
++
++
++func _wait_for_runtime_day(day: int, map_day: int = -1, admitted_through: int = -1) -> bool:
++	var started := Time.get_ticks_usec()
++	while true:
++		# Frames run the WorldClock and RuntimeHost receive callback. Wait for
++		# the worker's commit as well as the records delivered by that callback.
++		var control := _generator.get_runtime_control_state()
++		var committed := int(control.get("simulation_committed_day", -1))
++		var received := _host.received_worker_day()
++		var recorded := int(_day_rows.back().day) if not _day_rows.is_empty() else -1
++		var published := int(_texture_days.back()) if not _texture_days.is_empty() else -1
++		var admitted := _host._calendar_admitted_through
++		if _host.is_runtime_fault_paused() or control.get("simulation_host_state") == "FAULTED":
++			_check(false, "runtime fault waiting for day %d: %s" % [day, _host.get_runtime_fault_diagnostics()])
++			return false
++		if committed >= day and received >= day and recorded >= day \
++				and published >= map_day and admitted >= admitted_through:
++			return true
++		if Time.get_ticks_usec() - started >= WATCHDOG_USEC:
++			_check(false, "waiting for day %d timed out: committed=%d received=%d recorded=%d map=%d admitted=%d" % [
++				day, committed, received, recorded, published, admitted])
++			return false
++		await process_frame
++	return false
++
++
++func _occupy_busy_frame() -> void:
++	if _hold_map and is_instance_valid(_host) and _host.is_runtime_ready_for_ticks():
++		OS.delay_usec(roundi(1_000_000.0 / TEST_FPS))
++
++
++func _atlas() -> Array:
++	var baker: MapBaker = _generator._baker
++	return [baker._cell_enum_lut_bytes_cache, baker._cell_dyn_lut_bytes_cache,
++		baker._cell_eco_lut_bytes_cache, baker._prev_weather_lut_bytes]
++
++
++func _check_identity_rejection(ext, publication: int, generation: int) -> void:
++	var map := _host.current_map()
++	var day := _host.received_worker_day()
++	var count := map.cell_count()
++	var wrong_map := MapData.new(WIDTH, HEIGHT)
++	_check(ext.finish_runtime_display_frame(true) == 0,
++		"an empty receipt cannot replace the installed map frame")
++	for request in [[wrong_map, publication, day, generation, count, "map_lut_map_mismatch"],
++			[map, publication - 1, day, generation, count, "map_lut_publication_mismatch"],
++			[map, publication, day - 1, generation, count, "map_lut_day_mismatch"],
++			[map, publication, day, generation + 1, count, "map_lut_generation_mismatch"],
++			[map, publication, day, generation, count - 1, "map_lut_cell_count_mismatch"],
++			[map, 0, day, generation, count, "map_lut_display_not_installed"]]:
++		var frame: Dictionary = ext.read_runtime_map_lut_frame(
++			request[0], request[1], request[2], request[3], request[4])
++		_check(frame == {"reason": request[5]}, "native reader reports %s with no texture data" % request[5])
++
++
++func _check_failed_map_publication(publication: int, generation: int) -> void:
++	var day := _host.received_worker_day()
++	var atlas := _atlas()
++	var texture_days := _texture_days.duplicate()
++	var log := MapPublicationLog.new()
++	OS.add_logger(log)
++	var published := _host._publish_worker_map({"map_lut_publication_id": publication, "map_lut_day": day,
++		"map_lut_generation": generation + 1}, day, Time.get_ticks_usec())
++	OS.remove_logger(log)
++	_check(not published and _atlas() == atlas and _texture_days == texture_days,
++		"a failed map read leaves the last textures published")
++	_check(log.errors == ["[worker-map] Day %d publication failed: map_lut_generation_mismatch" % day],
++		"a failed deferred read logs the day and the rejected generation check")
++
++
++func _check_lagged_inspector() -> void:
++	# Exercise the formal inspector with a submitted older picture in headless mode.
++	var map := _host.current_map()
++	var cell := map.cell_at(map.visible_arr.find(1))
++	_check(cell != null, "the settled world has a visible cell for the selection fixture")
++	if cell == null:
++		return
++	var ui: GameUIManager = current_scene.get_node("UI")
++	var frame := MapDrawnFrame.new()
++	frame.attach(map)
++	var visible := map.visible_arr.duplicate()
++	var explored := map.explored_arr.duplicate()
++	visible[cell.index] = 0
++	explored[cell.index] = 0
++	frame.received_day = WAITING_DAY
++	frame.staged_day = 1
++	frame.stage_vision(map.vision_revision - 1, visible, explored)
++	frame.submit(Transform2D.IDENTITY, Vector2(1600, 960))
++	frame.present()
++	_controller._on_tile_tapped(HexUtils.cube_to_world(cell.q, cell.r, _host.hex_size))
++	_check(ui._right_panel._cell_index == cell.index
++		and ui._right_panel._model.get("header", {}).get("title") == "未探索区域"
++		and ui._right_panel._model.get("tabs", []).is_empty(),
++		"clicking a cell uses the drawn fog and waits for matching details")
++	frame.staged_day = WAITING_DAY
++	frame.stage_vision(map.vision_revision, map.visible_arr, map.explored_arr)
++	frame.submit(Transform2D.IDENTITY, Vector2(1600, 960))
++	frame.present()
++	_controller.refresh_selected_map_view(frame.day)
++	_check(ui._selected_fog_state == VisionSolver.FOG_VISIBLE
++		and not ui._right_panel._model.get("tabs", []).is_empty(),
++		"the same selection gets details when the paused map catches up")
++	_controller.clear_selection()
++	frame.detach(map)
++
++
++func _check_load_discards_pending_map() -> void:
++	var offer: Dictionary = _controller.narrative_service().active_offer()
++	_hold_map = true
++	process_frame.connect(_occupy_busy_frame)
++	# The choice can release a day before the next process_frame callback.
++	_occupy_busy_frame()
++	var flow = _controller.narrative_flow()
++	flow.on_outcome_acknowledged()
++	var receipt: Dictionary = flow.on_option_chosen(int(offer.offer_id), int(offer.offer_generation), 0)
++	_check(receipt.get("ok", false) and int(receipt.effective_day) == WAITING_DAY + 1,
++		"player answer is admitted for the next day")
++	_clock.pause(false)
++	var next_day := WAITING_DAY + 1
++	var arrived := await _wait_for_runtime_day(next_day)
++	_clock.pause(true)
++	if arrived:
++		_check(_host.received_worker_day() == next_day, "only the answered day was delivered before save")
++		await _save_and_reload_pending_map(next_day)
++	process_frame.disconnect(_occupy_busy_frame)
++
++
++func _save_and_reload_pending_map(day: int) -> void:
++	_check(_host._presentation._map_updates.has_pending(),
++		"the next day has staged map data before save")
++	var save: Dictionary = await root.get_node("GameSave").request_manual_save("manual_1")
++	_check(save.get("ok", false), "save succeeds while map data is held")
++	if not save.get("ok", false):
++		return
++	var pending: bool = _host._presentation._map_updates.has_pending()
++	var copies: Array = _timings.take().map_copies
++	_check(pending and copies.is_empty(),
++		"save leaves the unneeded map copy pending (pending=%s, copies=%s)" % [pending, copies])
++	var old_map := _host.current_map()
++	var old_ext = _generator.get_data_core_world_ext()
++	var generation := _host._runtime_commit_generation
++	var publication := int(_host._runtime_last_commit.map_lut_publication_id)
++	var previous_id := current_scene.get_instance_id()
++	var game_flow := root.get_node("GameFlow")
++	var failures: Array[Dictionary] = []
++	var failed := func(info): failures.append(info)
++	game_flow.player_start_failed.connect(failed)
++	var loaded: Dictionary = game_flow.begin_load_game("manual_1")
++	if loaded.get("ok", false):
++		loaded = await _wait_for_player_scene(game_flow, previous_id, failures)
++	game_flow.player_start_failed.disconnect(failed)
++	_check(loaded.get("ok", false), "reopens the save through GameFlow")
++	if not loaded.get("ok", false):
++		return
++	_attach_scene()
++	_check(_host.current_map() != old_map and _host.received_worker_day() == day
++		and not _host._presentation._map_updates.has_pending()
++		and old_ext.read_runtime_map_lut_frame(old_map, publication, day, generation, old_map.cell_count())
++			== {"reason": "map_lut_publication_unavailable"},
++		"load restores the saved date and discards the previous scene's pending map")
++
++
++func _check(condition: bool, label: String) -> void:
++	if not condition:
++		_failures.append(label)
+diff --git a/Project/project-keynes/tests/game/player_scene_handoff_probe.gd b/Project/project-keynes/tests/game/player_scene_handoff_probe.gd
+index 6795fcfde..fb9fb4722 100644
+--- a/Project/project-keynes/tests/game/player_scene_handoff_probe.gd
++++ b/Project/project-keynes/tests/game/player_scene_handoff_probe.gd
+@@ -35,6 +35,11 @@ var _frames: Array = []
+ var _answers: Array[Dictionary] = []
+ var _draw_times: Array[int] = []
+ var _draw_lag_days: Array[int] = []
++var _map_draw_times: Array[int] = []
++var _map_draw_lag_days: Array[int] = []
++var _map_viewport: SubViewport
++var _map_draw_count := 0
++var _panel_feedback: FrameTimings.PanelFeedback
+ var _draw_count := 0
+ var _view_updates := 0
+ var _overload := false
+@@ -75,6 +80,10 @@ func _run() -> void:
+ 		push_error("--exercise-display requires --require-rendered, --overload and --fps=60")
+ 		quit(1)
+ 		return
++	if args.has("--panel-clicks") and (not require_rendered or target < 75 or not answer_story):
++		push_error("--panel-clicks requires --require-rendered, --through of at least 75 days and --answer-story")
++		quit(1)
++		return
+ 	var driver := RenderingServer.get_current_rendering_driver_name()
+ 	var rendered := DisplayServer.get_name() != "headless" and driver not in ["", "dummy"]
+ 	if require_rendered and not rendered:
+@@ -124,6 +133,12 @@ func _run() -> void:
+ 	_camera_zoom = _camera.zoom
+ 	_reset_camera()
+ 	_controller = scene.get_node("PlayerController")
++	_map_viewport = scene.get_node_or_null("MapViewport")
++	if _map_viewport != null:
++		_map_draw_count = int(_map_viewport.get("draw_count"))
++	if args.has("--panel-clicks"):
++		_panel_feedback = FrameTimings.PanelFeedback.new()
++		_panel_feedback.attach(scene)
+ 	# The same probe also measures older checkouts where UI and map shared a signal.
+ 	var ui_updates := Signal(_host, &"simulation_ui_updated") if _host.has_signal(&"simulation_ui_updated") else _host.simulation_view_updated
+ 	var ui_connections := ui_updates.get_connections()
+@@ -161,7 +176,7 @@ func _run() -> void:
+ 		"vsync": DisplayServer.window_get_vsync_mode(), "quality": graphics.render_quality,
+ 		"graphics": graphics, "fps_mode": fps_mode, "overload": _overload,
+ 		"renderer": RenderingServer.get_current_rendering_method(), "driver": driver, "start_day": start,
+-		"command_log": COMMAND_LOG if _check_commands else []}))
++		"command_log": COMMAND_LOG if _check_commands else [], "panel_clicks": _panel_feedback != null}))
+ 	if rendered:
+ 		RenderingServer.frame_post_draw.connect(_record_draw)
+ 	_host.execute_gm_command("time.speed", {"value": speed})
+@@ -175,6 +190,8 @@ func _run() -> void:
+ 		condition = "probe_command_receipt_mismatch"
+ 	if _display_checks != null and condition == "target":
+ 		condition = _display_checks.result()
++	if _panel_feedback != null and not _panel_feedback.complete() and condition == "target":
++		condition = "missing_panel_feedback"
+ 	_clock.pause(true)
+ 	_clock._runtime_calendar_admit = _admit_day
+ 	_host.simulation_view_updated.disconnect(_record_view)
+@@ -274,9 +291,19 @@ func _record_days(records: Array) -> void:
+ 
+ 
+ func _record_draw() -> void:
+-	_draw_times.append(Time.get_ticks_usec())
++	var now := Time.get_ticks_usec()
++	_draw_times.append(now)
+ 	var committed := int(_generator.get_runtime_control_state().get("simulation_committed_day", -1))
+ 	_draw_lag_days.append(maxi(0, committed - maxi(0, _host.presented_worker_day())))
++	if _map_viewport != null:
++		var map_draw_count := int(_map_viewport.get("draw_count"))
++		var drawn = _camera.get("drawn_frame")
++		if map_draw_count != _map_draw_count and drawn != null and drawn.valid:
++			_map_draw_count = map_draw_count
++			_map_draw_times.append(now)
++			_map_draw_lag_days.append(maxi(0, committed - maxi(0, drawn.day)))
++	if _panel_feedback != null and DisplayServer.window_can_draw():
++		_panel_feedback.observe_draw(now)
+ 	_draw_count += 1
+ 	if _display_checks != null:
+ 		_display_checks.check_draw(_host.presented_worker_day())
+@@ -342,6 +369,8 @@ func _capture(target: int, answer_story: bool) -> String:
+ 		var frame := {"usec": now, "frame_usec": now - previous_frame, "draw_times": _draw_times,
+ 			"window_drawable": window_drawable and window_drawable_now,
+ 			"draw_lag_days": _draw_lag_days, "view_updates": _view_updates,
++			"map_draw_times": _map_draw_times, "map_draw_lag_days": _map_draw_lag_days,
++			"panel_feedback": _panel_feedback.take() if _panel_feedback != null else [],
+ 			"presented": _host.presented_worker_day(), "effective_max_fps": Engine.max_fps,
+ 			"overload_us": _overload_us,
+ 			"sample_usec": Time.get_ticks_usec() - now, "display": _clock.day_index(),
+@@ -364,6 +393,8 @@ func _capture(target: int, answer_story: bool) -> String:
+ 		_frames.append(frame)
+ 		_draw_times = []
+ 		_draw_lag_days = []
++		_map_draw_times = []
++		_map_draw_lag_days = []
+ 		_view_updates = 0
+ 		_request = -1
+ 		_admit_usec = 0
+@@ -397,6 +428,8 @@ func _capture(target: int, answer_story: bool) -> String:
+ 			return "target"
+ 		if now - last_progress >= WATCHDOG_USEC:
+ 			return "unexplained_stall"
++		if _panel_feedback != null:
++			_panel_feedback.step(consumed, root)
+ 		_apply_overload(consumed)
+ 	return "unreachable"
+ 
+diff --git a/Project/project-keynes/tests/game/player_scene_handoff_timings.gd b/Project/project-keynes/tests/game/player_scene_handoff_timings.gd
+index 6381d7af3..ddc15f4ba 100644
+--- a/Project/project-keynes/tests/game/player_scene_handoff_timings.gd
++++ b/Project/project-keynes/tests/game/player_scene_handoff_timings.gd
+@@ -23,6 +23,7 @@ class TimedConsumer extends "res://scripts/game/world_runtime_daily_adapter_part
+ class TimedBridge extends "res://scripts/game/map_runtime_bridge.gd":
+ 	var receive_us := 0
+ 	var received_batches := 0
++	var map_copies: Array[Dictionary] = []
+ 
+ 	func poll_runtime_commit(after_generation: int = 0, take_days: bool = false) -> Dictionary:
+ 		var started := Time.get_ticks_usec()
+@@ -31,6 +32,11 @@ class TimedBridge extends "res://scripts/game/map_runtime_bridge.gd":
+ 		if take_days and not result.get("days", []).is_empty():
+ 			receive_us += elapsed
+ 			received_batches += 1
++			# Older builds copy the two lanes as part of day receipt delivery.
++			var lut: Dictionary = result.get("cell_lut_frame", {})
++			if not lut.is_empty():
++				map_copies.append({"day": result.committed_day, "ns": lut.get("copy_ns", -1),
++					"bytes": lut.transition_age.size() + lut.previous_vitality.size()})
+ 		return result
+ 
+ 
+@@ -48,11 +54,16 @@ class TimedClimateVisuals extends "res://scripts/simulation/climate/mapgen_nativ
+ 	var refresh_us := 0
+ 	var encode_us := 0
+ 	var immediate_texture_us := 0
++	var map_copies: Array[Dictionary] = []
+ 
+ 	func _init(generator) -> void:
+ 		super(generator)
+ 
+ 	func publish_worker_climate_visuals(defer_upload: bool, commit: Dictionary = {}) -> Dictionary:
++		if commit.has("map_lut_publication_id"):
++			var frame: Dictionary = commit.cell_lut_frame
++			map_copies.append({"day": commit.map_lut_day, "ns": frame.get("copy_ns", -1),
++				"bytes": frame.transition_age.size() + frame.previous_vitality.size()})
+ 		var started := Time.get_ticks_usec()
+ 		var result := super(defer_upload, commit)
+ 		refresh_us += Time.get_ticks_usec() - started
+@@ -74,6 +85,58 @@ class TimedUpload extends RendererWeatherState.CellLutUpload:
+ 			upload_us += Time.get_ticks_usec() - started
+ 
+ 
++class PanelFeedback extends RefCounted:
++	const CLICK_DAYS := [27, 30, 33, 36, 39, 41, 43, 45, 47, 49, 51, 53, 56, 59, 62]
++	var _button: Button
++	var _panel: Control
++	var _index := 0
++	var _started := 0
++	var _clicked_day := -1
++	var _shown := false
++	var _samples: Array[Dictionary] = []
++
++	func attach(scene: PlayerGame) -> void:
++		var ui: GameUIManager = scene.get_node("UI")
++		_button = ui._top_bar._dispatch_button
++		_panel = ui._colonization_panel
++
++	func step(day: int, viewport: Viewport) -> void:
++		if _shown:
++			_panel.close_panel()
++			_shown = false
++			return
++		if _started != 0 or _index == CLICK_DAYS.size() or day < CLICK_DAYS[_index]:
++			return
++		if not _button.is_visible_in_tree():
++			return
++		_clicked_day = day
++		_started = Time.get_ticks_usec()
++		for pressed in [true, false]:
++			var click := InputEventMouseButton.new()
++			click.button_index = MOUSE_BUTTON_LEFT
++			click.pressed = pressed
++			click.position = _button.get_global_rect().get_center()
++			viewport.push_input(click, true)
++
++	func observe_draw(usec: int) -> void:
++		if _started == 0 or not _panel.is_visible_in_tree() or _panel.modulate.a <= 0.0:
++			return
++		if _panel.get("_current_tab") != "expeditions":
++			return
++		_samples.append({"day": _clicked_day, "usec": usec - _started})
++		_started = 0
++		_index += 1
++		_shown = true
++
++	func take() -> Array[Dictionary]:
++		var samples := _samples
++		_samples = []
++		return samples
++
++	func complete() -> bool:
++		return _index == CLICK_DAYS.size()
++
++
+ var _consumer := TimedConsumer.new()
+ var _bridge := TimedBridge.new()
+ var _vision := TimedVision.new()
+@@ -85,6 +148,8 @@ func attach(host: WorldRuntimeHost) -> void:
+ 	var generator := host.get_generator()
+ 	_bridge._generator = generator
+ 	_bridge._main_steps = generator._get_map_runtime_bridge()._main_steps
++	if "measure_map_lut_copies" in _bridge:
++		_bridge.set("measure_map_lut_copies", true)
+ 	generator._map_runtime_bridge = _bridge
+ 	_visuals = TimedClimateVisuals.new(generator)
+ 	generator._mapgen_native_daily_runtime = _visuals
+@@ -100,6 +165,7 @@ func attach(host: WorldRuntimeHost) -> void:
+ func take() -> Dictionary:
+ 	var sample := {"consume_us": _consumer.consume_us,
+ 		"receive_us": _bridge.receive_us, "received_batches": _bridge.received_batches,
++		"map_copies": _bridge.map_copies + _visuals.map_copies,
+ 		"climate_install_us": _consumer.climate_install_us, "vision_install_us": _vision.install_us,
+ 		"cell_refresh_us": _visuals.refresh_us, "cell_encode_us": _visuals.encode_us,
+ 		"immediate_texture_us": _visuals.immediate_texture_us,
+@@ -108,10 +174,12 @@ func take() -> Dictionary:
+ 	_consumer.climate_install_us = 0
+ 	_bridge.receive_us = 0
+ 	_bridge.received_batches = 0
++	_bridge.map_copies.clear()
+ 	_vision.install_us = 0
+ 	_visuals.refresh_us = 0
+ 	_visuals.encode_us = 0
+ 	_visuals.immediate_texture_us = 0
++	_visuals.map_copies.clear()
+ 	if _upload != null:
+ 		_upload.set("upload_us", 0)
+ 	return sample
+diff --git a/Project/project-keynes/tests/runtime/simulation_presentation_coalescing_test.gd b/Project/project-keynes/tests/runtime/simulation_presentation_coalescing_test.gd
+index a58f9025e..303476841 100644
+--- a/Project/project-keynes/tests/runtime/simulation_presentation_coalescing_test.gd
++++ b/Project/project-keynes/tests/runtime/simulation_presentation_coalescing_test.gd
+@@ -21,8 +21,9 @@ class UiProbe extends RefCounted:
+ 
+ class CommitDisplay extends RefCounted:
+ 	var closed_frames := 0
+-	func finish_runtime_display_frame() -> void:
++	func finish_runtime_display_frame(_keep_for_map: bool = false) -> int:
+ 		closed_frames += 1
++		return closed_frames
+ 	func apply_runtime_economy_resource_writeback() -> Dictionary:
+ 		return {"ok": true, "applied": false}
+ 
+@@ -225,15 +226,19 @@ func _check_vision_uses_same_frame() -> bool:
+ 
+ func _check_executor_restart_keeps_held_cells() -> bool:
+ 	var presentation := preload("res://scripts/game/world_runtime_presentation.gd").new()
+-	presentation.queue_worker_commit(30, 31, 90, {"display_dirty_cells": PackedInt32Array([4])})
++	presentation.queue_worker_commit(30, 31, 90, {"display_dirty_cells": PackedInt32Array([4]),
++		"map_lut_publication_id": 84, "committed_day": 31, "generation": 90})
+ 	# The executor can start a new generation sequence within the same world.
+-	presentation.queue_worker_commit(31, 32, 1, {"display_dirty_cells": PackedInt32Array([7])})
++	presentation.queue_worker_commit(31, 32, 1, {"display_dirty_cells": PackedInt32Array([7]),
++		"map_lut_publication_id": 85, "committed_day": 32, "generation": 1})
+ 	var update: Dictionary = presentation._map_updates.collect(PackedInt32Array())
+ 	var dirty: PackedInt32Array = update.display_dirty_cells
+ 	var shown: Array[Array] = []
+ 	presentation._map_updates.applied(1, 2_000)
+ 	presentation.publish_worker_view(func(from, day, generation): shown.append([from, day, generation]))
+-	return shown == [[30, 32, 1]] and 4 in dirty and 7 in dirty
++	return shown == [[30, 32, 1]] and 4 in dirty and 7 in dirty \
++		and update.map_lut_publication_id == 85 and update.map_lut_day == 32 \
++		and update.map_lut_generation == 1 and not update.has("cell_lut_frame")
+ 
+ 
+ func _check_commit_without_map_keeps_held_cells() -> bool:
+diff --git a/Project/project-keynes/tests/ui/cell_lut_incremental_test.gd b/Project/project-keynes/tests/ui/cell_lut_incremental_test.gd
+index 9901cc15f..f4bfd6db2 100644
+--- a/Project/project-keynes/tests/ui/cell_lut_incremental_test.gd
++++ b/Project/project-keynes/tests/ui/cell_lut_incremental_test.gd
+@@ -40,6 +40,7 @@ func _run() -> void:
+ 	_test_incremental_lut(ext, dirty_world, map)
+ 	_test_worker_lut_upload_batch()
+ 	_test_worker_ecology_frame(ext, map)
++	_test_held_distinct_cells()
+ 
+ 
+ func _make_map() -> MapData:
+@@ -268,6 +269,50 @@ func _test_worker_lut_upload_batch() -> void:
+ 			bool(batched.ordered_flush) and bool(batched.replacement_isolated))
+ 
+ 
++func _test_held_distinct_cells() -> void:
++	var reference := _encode_distinct_days(false)
++	var held := _encode_distinct_days(true)
++	_expect("recovery processes both earlier-only and latest changed cells",
++		held.processed == 2 and reference.processed == 1)
++	_expect("the merged update produces the same class, dynamic and ecology bytes as daily builds",
++		held.atlas == reference.atlas and held.atlas[2][6] == 237)
++	_expect("the earlier-only temperature and latest vegetation survive the merge",
++		held.atlas[1][0] != held.opening_temperature
++		and held.atlas[0][5] == int(VegetationType.VEG.TEMPERATE_GRASSLAND))
++
++
++func _encode_distinct_days(hold: bool) -> Dictionary:
++	var map := _make_map()
++	var ext := DCWorldExt.new()
++	ext.bind_map_data(map)
++	var baker := RecordingBaker.new()
++	baker.set_world_ext(ext)
++	var world := WorldData.new()
++	world.lut_dims = Vector2i(4, 1)
++	baker.bake_cell_luts(map, world)
++	var opening_temperature := baker._cell_dyn_lut_bytes_cache[0]
++	var updates := preload("res://scripts/game/world_runtime_map_updates.gd").new()
++	var report: Dictionary
++	for day in [1, 2]:
++		var cell: int = day - 1
++		if day == 1:
++			ext.write_f32(ext.component_id(&"cell_temp"), cell, 0.8)
++		else:
++			ext.write_u8(ext.component_id(&"cell_vegetation"), cell, int(VegetationType.VEG.TEMPERATE_GRASSLAND))
++		var ages := PackedByteArray([0, 0, 0, 0])
++		ages[1] = 237 if day == 2 else 0
++		updates.queue({"display_dirty_cells": PackedInt32Array([cell]),
++			"display_class_cells": PackedInt32Array([cell]) if day == 2 else PackedInt32Array(),
++			"cell_lut_frame": {"transition_age": ages, "previous_vitality": PackedByteArray([128, 128, 128, 128])}})
++		if not hold or day == 2:
++			var update: Dictionary = updates.collect(PackedInt32Array())
++			report = DCCellLutBaker.refresh_cell_luts_daily(baker, map, world,
++				update.display_dirty_cells, false, true, false, update)
++			updates.applied(day, 0)
++	return {"processed": report.get("processed_cells", -1), "opening_temperature": opening_temperature,
++		"atlas": [baker._cell_enum_lut_bytes_cache, baker._cell_dyn_lut_bytes_cache, baker._cell_eco_lut_bytes_cache]}
++
++
+ func _run_worker_lut_days(batch: bool) -> Dictionary:
+ 	var map := _make_map()
+ 	var ext := DCWorldExt.new()
+diff --git a/docs/architecture/current-state.md b/docs/architecture/current-state.md
+index 69060fa1e..f56de80b2 100644
+--- a/docs/architecture/current-state.md
++++ b/docs/architecture/current-state.md
+@@ -94,8 +94,9 @@ Economy 新增稀疏的 per-(地块 × 职业) 组织度表（`StratumMobilizati
+ 
+ 验证范围见 [feature-status.md](feature-status.md)。
+ 
+-执行器打包变格、账目、通知历史和回执。领取推进时钟日期。贴图应用后推进界面显示日期。
+-贴图发布失败时界面日期继续前进，下一批地图数据到达时重画整图。
++执行器打包变格、账目、通知历史和回执。领取推进时钟日期，普通面板按各自的刷新设置
++使用已领取结果。地图在帧预算允许时才复制贴图专用的已发布数据。贴图发布失败时仍可
++领取后续日期，待显示的变格保留到整图恢复成功。
+ 
+ ## 十二域以外的推进
+ 
+diff --git a/docs/architecture/feature-guides.md b/docs/architecture/feature-guides.md
+index 23f77c149..1775709e9 100644
+--- a/docs/architecture/feature-guides.md
++++ b/docs/architecture/feature-guides.md
+@@ -625,19 +625,23 @@ OwnedState 已应用的 ADD_STOCK / REMOVE_STOCK 命令，在经济侧接回结
+ 
+ `WorldRuntimeHost.publication_reader` 决定何时领取已发布的批次。零间隔表示每个处理帧检查。
+ 固定间隔使用单调时钟，迟到时一次读取积累的结果，下次检查继续沿原定时间。年报和军事状态也在到期时检查。
+-普通面板首次刷新前保留开局或存档日期。普通面板和地图
+-分别记录待显示的日期。地图贴图保留最新的生态过渡数据，积累更新前所有变化格、分类格及整图标记。
+-只带日期的批次保留先前积压的变格和生态数据。宿主负责连接帧信号、发布贴图和记录耗时，
+-显示组件只接收视野变格和发布回调。
++普通面板首次刷新前保留开局或存档日期。普通面板和地图分别记录待显示的日期。
++领取批次时安装气候、视野和地块详情共用的分类，继续交付日记录、回执和待答事项。
++显示桥保留最近一次安装完成的只读发布。地图积累上次贴图应用后的变化格、分类格和整图标记。
++只带日期的批次保留先前积压。帧预算允许时，显示桥核对地图、格数、日期和提交编号，
++再复制贴图专用的生态过渡年龄和上日活力。每次安装另有一个发布编号，避免读档或换局后
++复用相同日期和提交编号时，旧请求误读新世界。宿主负责连接帧信号、发布贴图和记录耗时。
+ 合并后用已安装的最新气候、视野、风场和分类数据编码，提交前一张与最新一张天气图，
+ 天气表和云影共用该批风图。每日地图数据必须为每格提供过渡年龄和上日活力。
+-贴图提交失败时记录原因并保留最新数据，下次可提交时按整图重画，暂停日期期间也能恢复。普通面板仍可显示已领取的日期。
++取数或贴图提交失败时记录原因并保留已发布的贴图与未处理变格。下次可提交时按整图重画，
++暂停日期期间也能恢复。普通面板继续显示已领取的日期。
+ 玩家场景在独立的 `MapViewport` 中绘制地图，窗口叠加最近一次画出的地图和原尺寸界面。
+ `draw_enabled` 控制地图出图，`ui_refresh_enabled` 控制普通面板接收合并更新。两者默认开启。
+ 国家面板和顶栏状态的定时刷新也遵守界面开关。暂停刷新时积累变化，恢复后即使游戏日期没动也能更新。
+ 地图窗口拥有最近画出的视野、选格坐标和日期，随换局解除绑定。宿主通过信号通知领取日期和贴图提交结果。
+ 地图图层判断可见范围前先同步相机和窗口尺寸。画面落后时，地块面板先显示所点击的位置，相应画面画出后才读取详细资料。
+-换局、读档和关闭都丢弃上一个世界的待显示数据和缓存画面。
++换局、读档和关闭都丢弃上一个世界的待显示数据和缓存画面。同局重启保留积压，下一份新日期
++即使从更低的提交编号开始也会合并进来。
+ 
+ 桌面和移动设备的 30 / 60 帧档使用实际生效的上限，自适应档随现有设置在两者之间切换。
+ 绘制间隔连续超出档位时，地图更新逐步拉开到每四帧一次。帧内已用时间和最近贴图开销
+diff --git a/docs/architecture/feature-status.md b/docs/architecture/feature-status.md
+index 478982a84..41de7fff3 100644
+--- a/docs/architecture/feature-status.md
++++ b/docs/architecture/feature-status.md
+@@ -76,6 +76,69 @@ PR #74 审查回归中，旧实现把尚未绘制的视野当成未探索，丢
+ 两种情况各取 225 帧，窗口绘制的 CPU 耗时中位数分别为 0.144 ms 和 0.137 ms。
+ Metal 接口在这次测量中没有返回可用的 GPU 耗时。原始记录见 `composite/`。
+ 
++## 地图按需读取生态贴图数据（#83，2026-11-26）
++
++改前基线 `62ba798d6` 经 `GameFlow` 启动正式玩家场景。Godot 4.6.3，种子
++`20260718`，60×40 格、四国、高画质、60 帧档、50×。无窗口探针在领到第 40 日后
++开始占用每帧预算，直到领到第 55 日。第 41–55 日逐帧领取 15 批结果，地图贴图一直停在
++第 40 日，贴图准备和提交次数都是零。原生复制处记录了 15 对 2,400 字节的数组，
++共 72,000 字节。分配与复制合计 55.416 微秒，单次中位数 2.667 微秒，
++P95 为 16.917 微秒，范围 1.375–16.917 微秒。记录保存在
++`/private/tmp/keynes83-replay.4a3CtW/baseline-headless.jsonl` 及其 `.days` 文件。
++
++`DCWorldExt::poll_runtime_commit()` 在领取记录和回执时就为 `transition_age`、
++`previous_vitality` 分配并复制整列。两列只供生态贴图使用，帧预算直到
++`apply_pending_worker_map()` 才检查。地块分类也供详情面板使用，需随领取安装。
++macOS 的窗口启动在进入游戏前失败，以上时长只代表这次无窗口复现。
++
++改后用相同的正式场景复现。第 41–55 日仍逐帧领取 15 批，地图贴图停在第 40 日，
++两列的读取次数和复制字节都是零。恢复时最新已领取到第 56 日，一次读取 4,800 字节
++并应用第 56 日的贴图。旧版忙帧、改后正常帧和改后忙帧三次运行的第 1–75 日
++业务摘要、命令生效日及回执顺序完全相同。逐帧、逐日记录及对照汇总保存在
++`/private/tmp/keynes83-replay.4a3CtW/`，汇总为 `headless-comparison.json`。
++
++`player_map_publication_test.gd` 以每 100 ms 领取一次、5× 推进到正式玩家待答点。
++积压的第 2–20 日照常交付 19 天的记录，贴图列复制为零。后台已经获准推进到第 21 日，
++仍停在第 20 日等玩家选择。同局暂停并重启执行器后，只读取一次第 20 日，最终贴图字节
++与每日刷新的版本相同。用例还覆盖了错误发布身份、落后画面的选格视野和详情、
++积压期间保存、读档和换局清理。`cell_lut_incremental_test.gd` 在不同日分别改变
++两个地块，逐字节比较合并更新和每日更新。`simulation_presentation_coalescing_test.gd`
++验证视野变化的同帧优先规则，`independent_presentation_test.gd` 验证普通面板的独立刷新。
++
++macOS arm64 调试版和发布版均在临时副本构建。普通和表外推进的逐日校验在改前、
++改后各跑三轮，均与改前首轮一致。`check_replay_matrix.py` 的四组存档续跑通过。
++地图贴图测试通过 72 项，游戏设置通过 34 项，天气表通过 111 项并跳过两项图形读回。
++架构检查和 98 项性能工具测试通过。已导入的副本通过 12 项运行回归及正式存档往返，
++包括读档后处理待答剧情和继续一个完整经济结算周期。单独的编辑器导入检查遇到
++Godot 的 ObjectDB 快照目录错误。运行回归详见原始记录目录下的 `regression-runtime.log`。
++
++在已导入的项目副本复现无窗口路径。改前在 `poll_runtime_commit()` 的两次数组分配与
++`memcpy` 外计时，将耗时以纳秒写入 `cell_lut_frame.copy_ns`。改前改后使用同一份探针。
++补丁样本是原始记录目录下的
++`baseline-copy-timing.patch`。每次运行使用独立的存档目录。
++
++```sh
++PK_SAVE_DIR="$saves" godot --headless --path "$project" \
++  --script res://tests/game/player_scene_handoff_probe.gd -- \
++  --fps=60 --speed=50 --through=75 --answer-story --command-log \
++  --overload --simulate-frames --frames="$trace"
++```
++
++窗口对照由同一探针以 1600×960、高画质、开垂直同步和 60 帧档运行。两种负载各三组交替运行。
++统计两列读取次数、字节、分配与复制时长、派遣按钮点击到首个面板可见帧的时间、
++地图实际出图间隔、日提交速率和出图时落后天数。
++
++```sh
++python3 tools/perf/run_rendered_player_handoff.py "$base_project" "$candidate_project" \
++  --output "$normal_output" --fps 60 --map-reads
++python3 tools/perf/run_rendered_player_handoff.py "$base_project" "$candidate_project" \
++  --output "$busy_output" --fps 60 --map-reads --overload --expect-pacing
++```
++
++macOS 的 `open` 对两组测量及 `independent_presentation_window_test.gd` 都返回
++`kLSNoExecutableErr`；直接启动报窗口服务连接错误，桌面工具拒绝访问 Godot。
++可见窗口的样本量为 0，点击反馈、实际出图间隔、日提交速率及屏幕地图落后天数均未测得。
++
+ ## 按帧率推迟地图更新（#63，2026-11-24）
+ 
+ ### 改前取证
+diff --git a/gdext/src/world_ext.cpp b/gdext/src/world_ext.cpp
+index b0f3d01e2..f33d87433 100644
+--- a/gdext/src/world_ext.cpp
++++ b/gdext/src/world_ext.cpp
+@@ -116,6 +116,7 @@ Dictionary DCWorldExt::configure_country(const Dictionary &catalog,
+             static_cast<NativeIdeologyRuntime *>(_ideology_runtime)->clear_state();
+         _ideology_opinion_published_revision = 0;
+         _runtime_host = std::move(next);
++        clear_runtime_map_lut_frame();
+         if (_effect_forwarder)
+             _effect_forwarder->attach(static_cast<EffectRuntime *>(_effect_runtime), _runtime_host.get());
+         attach_country_ai_to_host();
+@@ -605,6 +606,7 @@ bool DCWorldExt::bind_map_data(Object *map_data) {
+         UtilityFunctions::push_error("[DCWorldExt] bind_map_data requires a stopped executor");
+         return false;
+     }
++    clear_runtime_map_lut_frame();
+     _native_daily_visual_commit_pending = false;
+     _pending_mark_dirty_all = false;
+     _pending_visual_dirty_mask = PackedByteArray();
+diff --git a/gdext/src/world_ext.h b/gdext/src/world_ext.h
+index 8c7b97677..218624aea 100644
+--- a/gdext/src/world_ext.h
++++ b/gdext/src/world_ext.h
+@@ -635,6 +635,9 @@ public:
+     godot::Dictionary poll_runtime_receipts(int max_items = 128);
+     godot::Dictionary set_runtime_qos_threaded(bool interactive);
+     godot::Dictionary poll_runtime_commit(int64_t after_generation, bool take_days = false);
++    godot::Dictionary read_runtime_map_lut_frame(godot::Object *map, int64_t publication_id,
++            int64_t day, int64_t generation, int cell_count, bool measure_copy = false) const;
++    void clear_runtime_map_lut_frame();
+     godot::Dictionary request_runtime_save(int64_t request_id);
+     godot::Dictionary poll_runtime_save(int64_t request_id);
+     godot::Dictionary restore_runtime_bundle(const godot::PackedByteArray &bytes,
+@@ -661,9 +664,11 @@ public:
+     // "generation" by the previous successful call. Non-blocking, and a no-op
+     // when the worker has not committed a newer day.
+     godot::Dictionary apply_runtime_climate_writeback(int64_t after_generation);
+-    void finish_runtime_display_frame();
++    int64_t finish_runtime_display_frame(bool keep_for_map = false);
+     RuntimeCommit _runtime_display_commit;
+     std::shared_ptr<const RuntimeResourceDisplayPatch> _runtime_display_resources;
++    RuntimeCommit _runtime_map_display_commit;
++    int64_t _runtime_map_display_id = 0; // Never recycled by a rebind or save restore.
+     // B8 P3: block until the worker has evaluated environment generation
+     // `after_environment_generation` (plan attempt, not necessarily a commit).
+     // timeout_ms < 0 waits until the condition or a terminal worker state;
+diff --git a/gdext/src/world_ext_bind_runtime.cpp b/gdext/src/world_ext_bind_runtime.cpp
+index d58b4bbf3..a16c312ac 100644
+--- a/gdext/src/world_ext_bind_runtime.cpp
++++ b/gdext/src/world_ext_bind_runtime.cpp
+@@ -70,9 +70,14 @@ void DCWorldExt::_bind_runtime_methods() {
+                          &DCWorldExt::submit_runtime_command);
+     ClassDB::bind_method(D_METHOD("poll_runtime_receipts", "max_items"),
+                          &DCWorldExt::poll_runtime_receipts, DEFVAL(128));
+-    ClassDB::bind_method(D_METHOD("finish_runtime_display_frame"), &DCWorldExt::finish_runtime_display_frame);
++    ClassDB::bind_method(D_METHOD("finish_runtime_display_frame", "keep_for_map"),
++                         &DCWorldExt::finish_runtime_display_frame, DEFVAL(false));
+     ClassDB::bind_method(D_METHOD("poll_runtime_commit", "after_generation", "take_days"),
+                          &DCWorldExt::poll_runtime_commit, DEFVAL(0), DEFVAL(false));
++    ClassDB::bind_method(D_METHOD("read_runtime_map_lut_frame", "map", "publication_id", "day", "generation",
++                                 "cell_count", "measure_copy"),
++                         &DCWorldExt::read_runtime_map_lut_frame, DEFVAL(false));
++    ClassDB::bind_method(D_METHOD("clear_runtime_map_lut_frame"), &DCWorldExt::clear_runtime_map_lut_frame);
+     ClassDB::bind_method(D_METHOD("profile_runtime_save_window", "active"), &DCWorldExt::profile_runtime_save_window);
+     ClassDB::bind_method(D_METHOD("request_runtime_save", "request_id"),
+                          &DCWorldExt::request_runtime_save);
+diff --git a/gdext/src/world_ext_simulation_host.cpp b/gdext/src/world_ext_simulation_host.cpp
+index 5054b63df..a0c80a72c 100644
+--- a/gdext/src/world_ext_simulation_host.cpp
++++ b/gdext/src/world_ext_simulation_host.cpp
+@@ -1385,19 +1385,6 @@ Dictionary DCWorldExt::poll_runtime_commit(int64_t after_generation, bool take_d
+     if (publication) {
+         out["display_dirty_cells"] = publication->changed_cells;
+         out["display_class_cells"] = publication->changed_classes;
+-        if (commit.day_tail && !commit.day_tail->cell_luts.transition_age.empty()) {
+-            const auto &model = commit.day_tail->cell_luts;
+-            const auto pack = [](const std::vector<uint8_t> &bytes) {
+-                PackedByteArray result;
+-                if (!bytes.empty() && result.resize(bytes.size()) == OK)
+-                    std::memcpy(result.ptrw(), bytes.data(), bytes.size());
+-                return result;
+-            };
+-            Dictionary frame;
+-            frame["transition_age"] = pack(model.transition_age);
+-            frame["previous_vitality"] = pack(model.previous_vitality);
+-            out["cell_lut_frame"] = frame;
+-        }
+         out["days"] = publication->records;
+         out["notice_history"] = publication->notices;
+         if (!publication->construction_receipts.is_empty())
+@@ -1410,8 +1397,62 @@ Dictionary DCWorldExt::poll_runtime_commit(int64_t after_generation, bool take_d
+     return out;
+ }
+ 
+-void DCWorldExt::finish_runtime_display_frame() {
++int64_t DCWorldExt::finish_runtime_display_frame(bool keep_for_map) {
++    int64_t publication_id = 0;
++    // Pin the accepted day after the shared display fields have been installed.
++    // A same-day receipt after a restart must not replace a pending map frame.
++    if (keep_for_map && _runtime_display_commit.day_tail &&
++        _runtime_display_commit.header.committed_day == _climate_writeback_applied_day) {
++        _runtime_map_display_commit = std::move(_runtime_display_commit);
++        publication_id = ++_runtime_map_display_id;
++    }
+     _runtime_display_commit = {};
++    return publication_id;
++}
++
++Dictionary DCWorldExt::read_runtime_map_lut_frame(Object *map, int64_t publication_id,
++        int64_t day, int64_t generation, int cell_count, bool measure_copy) const {
++    const auto fail = [](const char *reason) {
++        Dictionary failure;
++        failure["reason"] = reason;
++        return failure;
++    };
++    const auto &commit = _runtime_map_display_commit;
++    if (publication_id <= 0) return fail("map_lut_display_not_installed");
++    if (!commit.day_tail) return fail("map_lut_publication_unavailable");
++    if (!map || map != _map_data) return fail("map_lut_map_mismatch");
++    if (publication_id != _runtime_map_display_id) return fail("map_lut_publication_mismatch");
++    if (day != commit.header.committed_day) return fail("map_lut_day_mismatch");
++    if (generation <= 0 || static_cast<uint64_t>(generation) != commit.header.generation)
++        return fail("map_lut_generation_mismatch");
++    if (_climate_writeback_applied_day >= 0 && _climate_writeback_applied_day != day)
++        return fail("map_lut_climate_day_mismatch");
++    if (cell_count <= 0 || cell_count != _native_world_cell_count)
++        return fail("map_lut_cell_count_mismatch");
++
++    const auto &model = commit.day_tail->cell_luts;
++    const auto count = static_cast<size_t>(cell_count);
++    if (model.transition_age.size() != count || model.previous_vitality.size() != count)
++        return fail("map_lut_column_size_mismatch");
++
++    Dictionary frame;
++    using Clock = std::chrono::steady_clock;
++    const auto started = measure_copy ? Clock::now() : Clock::time_point{};
++    PackedByteArray ages, vitalities;
++    if (ages.resize(cell_count) != OK || vitalities.resize(cell_count) != OK)
++        return fail("map_lut_allocation_failed");
++    std::memcpy(ages.ptrw(), model.transition_age.data(), count);
++    std::memcpy(vitalities.ptrw(), model.previous_vitality.data(), count);
++    if (measure_copy)
++        frame["copy_ns"] = static_cast<int64_t>(
++            std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - started).count());
++    frame["transition_age"] = ages;
++    frame["previous_vitality"] = vitalities;
++    return frame;
++}
++
++void DCWorldExt::clear_runtime_map_lut_frame() {
++    _runtime_map_display_commit = {};
+ }
+ 
+ Dictionary DCWorldExt::request_runtime_stop(bool preserve_day_boundary) {
+diff --git a/gdext/src/world_ext_simulation_host_save.cpp b/gdext/src/world_ext_simulation_host_save.cpp
+index dd73a7dfc..8cb43507b 100644
+--- a/gdext/src/world_ext_simulation_host_save.cpp
++++ b/gdext/src/world_ext_simulation_host_save.cpp
+@@ -1638,6 +1638,7 @@ Dictionary DCWorldExt::restore_runtime_bundle(const PackedByteArray &bytes,
+         return out;
+     }
+     _runtime_host->reset_day_tail_for_world_change();
++    clear_runtime_map_lut_frame();
+     _climate_physics_committed.reset();
+     _climate_physics_capture_ready = false;
+     _climate_writeback_applied_generation = 0;
+diff --git a/tools/perf/analyze_player_handoff.py b/tools/perf/analyze_player_handoff.py
+index 350c67749..37ddd877a 100644
+--- a/tools/perf/analyze_player_handoff.py
++++ b/tools/perf/analyze_player_handoff.py
+@@ -81,6 +81,32 @@ def display_stats(sample, draw_intervals):
+     }
+ 
+ 
++def map_read_stats(sample, *, recording_frames=None):
++    copies = [copy for row in sample for copy in row["map_copies"]]
++    # A held window can have zero copies. A timed copy elsewhere in the same
++    # recording proves that the instrument was enabled for that run.
++    recorded = copies if recording_frames is None else [
++        copy for row in recording_frames for copy in row["map_copies"]]
++    if not recorded or any(copy["ns"] < 0 or copy["bytes"] <= 0 for copy in recorded):
++        raise ValueError("map copy timing requires an instrumented baseline and candidate")
++    draws = [usec for row in sample for usec in row["map_draw_times"]]
++    lags = sorted(lag for row in sample for lag in row["map_draw_lag_days"])
++    if len(draws) != len(lags) or len(draws) < 2:
++        raise ValueError("need two actual map draws with the corresponding published-day lag")
++    feedback = [click["usec"] for row in sample for click in row["panel_feedback"]]
++    return {
++        "map_reads": len(copies),
++        "map_copied_bytes": sum(copy["bytes"] for copy in copies),
++        "map_copy_total_ms": sum(copy["ns"] for copy in copies) / 1_000_000,
++        "map_copy": timing_stats([copy["ns"] / 1000 for copy in copies]),
++        "panel_feedback": timing_stats(feedback),
++        "map_draw": timing_stats([after - before for before, after in pairwise(draws)]),
++        "map_draw_lag": {"samples": len(lags), "median": median(lags),
++                         "p95": lags[math.ceil(0.95 * len(lags)) - 1],
++                         "range": [lags[0], lags[-1]]},
++    }
++
++
+ def summarize(frames, daily, first_day, last_day, *, require_rendered=False):
+     if first_day >= last_day or any(day not in daily for day in range(first_day, last_day + 1)):
+         raise ValueError(f"missing contiguous daily records for {first_day} through {last_day}")
+@@ -122,6 +148,8 @@ def summarize(frames, daily, first_day, last_day, *, require_rendered=False):
+             "ui_median_ms": positive_median("ui_us") / 1000}
+     if "view_updates" in sample[0]:
+         result.update(display_stats(sample, draw_intervals))
++    if require_rendered and any(row.get("panel_feedback") for row in sample[1:]):
++        result.update(map_read_stats(sample[1:], recording_frames=frames))
+     return result
+ 
+ 
+diff --git a/tools/perf/run_rendered_player_handoff.py b/tools/perf/run_rendered_player_handoff.py
+index 05ce38c82..ec5aff3be 100644
+--- a/tools/perf/run_rendered_player_handoff.py
++++ b/tools/perf/run_rendered_player_handoff.py
+@@ -68,7 +68,8 @@ def load_recording(prefix, speed, target):
+     return Recording(config, frames, {row["day"]: row for row in records})
+ 
+ 
+-def run_sample(godot, project, prefix, speed, target, fps_mode, overload, macos_app=None):
++def run_sample(godot, project, prefix, speed, target, fps_mode, overload, macos_app=None,
++               *, map_reads=False):
+     arguments = ["--path", str(project), "--windowed", "--resolution", "1600x960",
+                "--log-file", f"{prefix}.engine.log",
+                "--script", f"res://{PROBE}", "--", f"--speed={speed}", f"--through={target}",
+@@ -77,6 +78,8 @@ def run_sample(godot, project, prefix, speed, target, fps_mode, overload, macos_
+         arguments.append(f"--fps={fps_mode}")
+     if overload:
+         arguments.append("--overload")
++    if map_reads:
++        arguments.append("--panel-clicks")
+     paths = {"PK_SAVE_DIR": f"{prefix}.saves",
+                         "PK_RUNTIME_WATERFALL_CSV": f"{prefix}.waterfall.csv"}
+     logfile = prefix.with_suffix(".log")
+@@ -171,6 +174,21 @@ def check_display_pacing(frames):
+     raise ValueError("the map did not catch up in the recovery interval")
+ 
+ 
++def check_held_map_reads(frames, *, baseline):
++    held = [frame for before, frame in pairwise(frames)
++            if frame["overload_us"] > 0 and frame["consumed"] > before["consumed"]
++            and frame["presented"] == before["presented"] and frame["view_updates"] == 0
++            and frame["received_batches"] > 0 and frame["cell_refresh_us"] == 0]
++    if not held:
++        raise ValueError("need a busy frame that received days and deferred its map update")
++    copies = [copy for frame in held for copy in frame["map_copies"]]
++    if baseline and not copies:
++        raise ValueError("the baseline did not copy map columns while holding map updates")
++    if not baseline and copies:
++        raise ValueError("the candidate copied map columns while holding map updates")
++    return {"frames": len(held), "reads": len(copies), "bytes": sum(row["bytes"] for row in copies)}
++
++
+ def main():
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("baseline", type=Path)
+@@ -181,6 +199,8 @@ def main():
+     parser.add_argument("--fps", choices=FRAME_LIMITS, action="append", help="frame rate modes to compare")
+     parser.add_argument("--overload", action="store_true", help="inject main-thread delay in the 50× case")
+     parser.add_argument("--expect-pacing", action="store_true", help="verify hold, merge and recovery on the candidate")
++    parser.add_argument("--map-reads", action="store_true",
++                        help="measure map copies and panel feedback at 50× with an instrumented baseline")
+     args = parser.parse_args()
+     if (args.overload and not args.fps) or (args.expect_pacing and not args.overload):
+         parser.error("--overload requires --fps and --expect-pacing requires --overload")
+@@ -196,8 +216,10 @@ def main():
+         trials = []
+         expected_by_speed = {}
+         for fps_mode, (speed, (target, windows)) in product(args.fps or [""], SCENARIOS.items()):
+-            if args.overload and speed != 50:
++            if (args.overload or args.map_reads) and speed != 50:
+                 continue
++            if args.map_reads:
++                windows = ((25, 75), (41, 55)) if args.overload else ((25, 75),)
+             for trial in range(1, 4):
+                 order = tuple(projects) if trial % 2 else tuple(reversed(projects))
+                 samples = {}
+@@ -206,7 +228,7 @@ def main():
+                     prefix = output / f"{name}-{speed}x{mode}-{trial}"
+                     print(f"Recording {prefix.name}", flush=True)
+                     sample = run_sample(args.godot, projects[name], prefix, speed, target, fps_mode,
+-                                        args.overload, args.macos_app)
++                                        args.overload, args.macos_app, map_reads=args.map_reads)
+                     daily = fingerprint(sample, target)
+                     if daily != expected_by_speed.setdefault(speed, daily):
+                         raise ValueError(f"{prefix.name} has different daily hashes or receipts")
+@@ -214,8 +236,19 @@ def main():
+                 baseline, candidate = samples["baseline"], samples["candidate"]
+                 if args.expect_pacing:
+                     check_display_pacing(candidate.frames)
+-                trials.append({"trial": trial, "config": baseline.config,
+-                               "windows": compare_recordings(baseline, candidate, windows)})
++                result = {"trial": trial, "config": baseline.config,
++                          "windows": compare_recordings(baseline, candidate, windows)}
++                if args.map_reads:
++                    for window in result["windows"]:
++                        for side in projects:
++                            if window[side].get("panel_feedback", {}).get("samples", 0) == 0:
++                                raise ValueError(f"{side} missing panel feedback in {window['requested_days']}")
++                    if args.overload:
++                        result["held_map_reads"] = {
++                            side: check_held_map_reads(samples[side].frames, baseline=side == "baseline")
++                            for side in projects
++                        }
++                trials.append(result)
+         if 1 in expected_by_speed and expected_by_speed[1] != expected_by_speed[50][:SCENARIOS[1][0]]:
+             raise ValueError("1× and 50× daily hashes or receipts differ on the shared days")
+         summary = output / "summary.json"
+diff --git a/tools/perf/tests/test_analyze_player_handoff.py b/tools/perf/tests/test_analyze_player_handoff.py
+index 8f6503cee..37a86fd1d 100644
+--- a/tools/perf/tests/test_analyze_player_handoff.py
++++ b/tools/perf/tests/test_analyze_player_handoff.py
+@@ -6,9 +6,9 @@ from tempfile import TemporaryDirectory
+ import unittest
+ from unittest.mock import patch
+ 
+-from tools.perf.analyze_player_handoff import summarize
++from tools.perf.analyze_player_handoff import map_read_stats, summarize
+ from tools.perf.run_rendered_player_handoff import (
+-    Recording, check_display_pacing, compare_recordings, load_recording, run_sample,
++    Recording, check_display_pacing, check_held_map_reads, compare_recordings, load_recording, run_sample,
+ )
+ 
+ 
+@@ -190,6 +190,28 @@ class RenderedHandoffComparisonTest(unittest.TestCase):
+         self.assertEqual(window["baseline"]["observed_waits"]["calendar_wait"], {"count": 1, "max_ms": 1.0})
+         self.assertEqual(window["candidate"]["observed_waits"]["calendar_wait"], {"count": 0, "max_ms": 0.0})
+ 
++    def test_map_read_comparison_rejects_a_recording_with_no_samples(self):
++        baseline = self.sample([4, 5, 6, 7, 8, 9, 10])
++        candidate = self.sample([4, 5, 6, 7, 8, 9, 10])
++        for sample in (baseline, candidate):
++            for frame in sample.frames:
++                frame.update(map_copies=[], map_draw_times=frame.get("draw_times", []),
++                             map_draw_lag_days=[0] * len(frame.get("draw_times", [])), panel_feedback=[])
++            sample.frames[2]["panel_feedback"] = [{"usec": 900}]
++        candidate.frames[2]["map_copies"] = [{"bytes": 4800, "ns": 750}]
++
++        with self.assertRaisesRegex(ValueError, "requires an instrumented baseline"):
++            compare_recordings(baseline, candidate, [(5, 9)])
++
++        # The candidate recorded a copy after the held window. Zero in the
++        # measured window is now evidence of a hold, not missing instrumentation.
++        baseline.frames[2]["map_copies"] = candidate.frames[2]["map_copies"]
++        candidate.frames[-1]["map_copies"] = candidate.frames[2]["map_copies"]
++        candidate.frames[2]["map_copies"] = []
++        window, = compare_recordings(baseline, candidate, [(5, 9)])
++        self.assertEqual(window["baseline"]["map_reads"], 1)
++        self.assertEqual(window["candidate"]["map_reads"], 0)
++
+ 
+ class RenderedHandoffLaunchTest(unittest.TestCase):
+     def test_macos_launch_failure_preserves_system_error(self):
+@@ -223,6 +245,18 @@ class DisplayPacingTraceTest(unittest.TestCase):
+     def test_receives_during_overload_merges_and_recovers(self):
+         check_display_pacing(self.frames)
+ 
++    def test_held_frame_rejects_a_copy_even_when_no_map_update_was_drawn(self):
++        self.frames[1]["map_copies"] = [{"bytes": 4800, "ns": 900}]
++        self.assertEqual(check_held_map_reads(self.frames, baseline=True),
++                         {"frames": 1, "reads": 1, "bytes": 4800})
++        with self.assertRaisesRegex(ValueError, "candidate copied"):
++            check_held_map_reads(self.frames, baseline=False)
++        self.frames[1]["map_copies"] = []
++        self.assertEqual(check_held_map_reads(self.frames, baseline=False),
++                         {"frames": 1, "reads": 0, "bytes": 0})
++        with self.assertRaisesRegex(ValueError, "baseline did not copy"):
++            check_held_map_reads(self.frames, baseline=True)
++
+     def test_receiving_less_often_is_not_display_pacing(self):
+         self.frames[1]["consumed"] = 39
+         self.frames[1]["received_batches"] = 0
+@@ -240,5 +274,28 @@ class DisplayPacingTraceTest(unittest.TestCase):
+             check_display_pacing(self.frames)
+ 
+ 
++class MapReadStatsTest(unittest.TestCase):
++    def test_reports_copies_feedback_and_actual_map_draws_independently(self):
++        frames = [
++            {"map_copies": [{"bytes": 4800, "ns": 750}], "panel_feedback": [],
++             "map_draw_times": [1000], "map_draw_lag_days": [0]},
++            {"map_copies": [], "panel_feedback": [{"usec": 900}],
++             "map_draw_times": [3000], "map_draw_lag_days": [4]},
++        ]
++        result = map_read_stats(frames)
++        self.assertEqual(result["map_reads"], 1)
++        self.assertEqual(result["map_copied_bytes"], 4800)
++        self.assertEqual(result["map_copy"]["median_ms"], 0.00075)
++        self.assertEqual(result["panel_feedback"]["median_ms"], 0.9)
++        self.assertEqual(result["map_draw"]["median_ms"], 2.0)
++        self.assertEqual(result["map_draw_lag"], {"samples": 2, "median": 2, "p95": 4, "range": [0, 4]})
++        frames[0]["map_copies"][0]["ns"] = -1
++        with self.assertRaisesRegex(ValueError, "requires an instrumented baseline"):
++            map_read_stats(frames)
++        frames[0]["map_copies"] = []
++        with self.assertRaisesRegex(ValueError, "requires an instrumented baseline"):
++            map_read_stats(frames)
++
++
+ if __name__ == "__main__":
+     unittest.main()

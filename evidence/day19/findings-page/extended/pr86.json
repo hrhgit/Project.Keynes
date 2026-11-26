@@ -1,0 +1,321 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/86",
+ "git_provider": null,
+ "finding_count": 5,
+ "review_session": {
+  "run_id": 2158185,
+  "status": "completed",
+  "commit_sha": "fd6c564de581f85765bb454a055ebde394f1f6c4",
+  "started_at": "2026-11-25T14:36:17.319657Z",
+  "git_provider": "github",
+  "review_complete": true
+ },
+ "findings": [
+  {
+   "category": "Reliability",
+   "id": "32cd9ef7-f02f-46ec-80e7-dde9a6b031c0",
+   "git_sha": "e43d27d596858809ab9d680b885ddce485f0bcf2",
+   "action_level": "remediation_recommended",
+   "title": "A failed ps lookup now fails the whole measurement",
+   "attribution_status": "implemented",
+   "description": "`executable_table()` calls `run([\"ps\", \"-axo\", \"pid=,comm=\"])` with the default `check=True`, so any non-zero `ps` exit raises `StepFailed`. `wait_for_quiet_machine()` calls it on every poll, including polls where the machine is already quiet and the hint is never used, so the error propagates to `main()`, which reports `PERF_CHECK_RESULT` with status `fail`.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[476-487]",
+      "citation": "def run(args: list[str], cwd: Path | None = None, env: dict | None = None,\n        log: Path | None = None, check: bool = True) -> subprocess.CompletedProcess:\n    full_env = {**os.environ, **(env or {})}\n    if log is None:\n        done = subprocess.run(args, cwd=cwd, env=full_env, text=True, capture_output=True, check=False)\n    else:\n        with log.open(\"w\") as handle:\n            done = subprocess.run(args, cwd=cwd, env=full_env, text=True, stdout=handle,\n                                  stderr=subprocess.STDOUT, check=False)\n    if check and done.returncode != 0:\n        detail = log.read_text(errors=\"replace\")[-2000:] if log else (done.stderr or done.stdout)[-2000:]\n        raise StepFailed(f\"{' '.join(map(str, args))} exited {done.returncode}\\n{detail}\")"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[589-589]",
+      "citation": "    return run([\"ps\", \"-axo\", \"pid=,comm=\"]).stdout"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[622-631]",
+      "citation": "        load1 = os.getloadavg()[0]\n        idle = cpu_idle()\n        cpus = os.cpu_count() or 0\n        table, executables, mine = process_table(), parse_executables(executable_table()), os.getpid()\n        competing = competing_processes(table, mine, executables=executables)\n        busiest = [] if competing else busiest_processes(table, mine, executables)\n        reasons = load_gate(idle, competing, args.min_idle, busiest)\n        sample = {\"at\": now(), \"cpu_idle\": None if idle is None else round(idle, 3),\n                  \"load1\": round(load1, 2), \"cpus\": cpus, \"busy\": reasons}\n        check_budget(args)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[1264-1270]",
+      "citation": "    except Deferred as error:\n        print(f\"PERF_CHECK_RESULT={json.dumps({'status': 'deferred', 'reasons': [str(error)]})}\")\n        return EXIT_DEFERRED\n    except StepFailed as error:\n        print(f\"PERF_CHECK_RESULT={json.dumps({'status': 'fail', 'reasons': [str(error)[:1500]]})}\")\n        return EXIT_FAIL\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/tests/test_perf_change_check.py[382-392]",
+      "citation": "    def test_refuses_quiet_sample_when_executable_lookup_fails(self):\n        args = argparse.Namespace(wait_left=0, budget=0, min_idle=0.5)\n        table = \"  15     1  90.0 /Users/me/My Tools/scons -j8\"\n        failed = pc.subprocess.CompletedProcess([\"ps\", \"-axo\", \"pid=,comm=\"], 1,\n                                                stdout=\"\", stderr=\"ps: permission denied\\n\")\n        with mock.patch.object(pc, \"cpu_idle\", return_value=0.9), \\\n             mock.patch.object(pc, \"process_table\", return_value=table), \\\n             mock.patch.object(pc.subprocess, \"run\", return_value=failed), \\\n             self.assertRaisesRegex(pc.StepFailed, r\"ps -axo pid=,comm= exited 1\\nps: permission denied\"):\n            pc.wait_for_quiet_machine(args, [])\n… (1 more lines)"
+     }
+    ],
+    "explanation": "The PR says the diagnostic list never changes the go/no-go decision, but a diagnostic-only `ps` call can now turn a quiet, measurable machine into a hard `fail` verdict. The sibling `process_table()` uses `check=False` and tolerates failure, so the two calls in the same loop handle the same kind of failure in opposite ways."
+   },
+   "location": {
+    "file_path": "tools/perf/perf_change_check.py",
+    "start_line": 589,
+    "end_line": 589,
+    "side": "right",
+    "code_snippet": "+    return run([\"ps\", \"-axo\", \"pid=,comm=\"]).stdout"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "category": "Reliability",
+   "id": "d99e4f8c-2fb5-4faf-9a01-87001e67e237",
+   "git_sha": "2c3a01c22b3c19ca8baf09635cda3f19e5075ad9",
+   "action_level": "remediation_recommended",
+   "title": "Failed ps lookup goes unlogged",
+   "attribution_status": "dismissed",
+   "description": "`executable_table()` runs `ps` with `check=False` and ignores the return code, so a failed `ps -axo pid=,comm=` yields an empty table. `competing_processes` and `busiest_processes` then fall back to `command.split()[0]` for every process without logging anything, truncating paths with spaces such as `/Users/me/My Tools/scons` and letting a competing build go undetected.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_type": "rule",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_id": "4948321"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[588-590]",
+      "citation": "def executable_table() -> str:\n    return subprocess.run([\"ps\", \"-axo\", \"pid=,comm=\"], text=True,\n                          capture_output=True, check=False).stdout"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[527-527]",
+      "citation": "        executable = executables.get(pid) or command.split()[0]"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[562-565]",
+      "citation": "    executables = executables or {}\n    found = sorted(busy_processes(ps_output, mine, min_cpu), key=lambda p: (-p[1], p[0]))\n    return [f\"{pid} {process_name(executables.get(pid) or command.split()[0])} {cpu:.0f}% cpu\"\n            for pid, cpu, command in found[:limit]]"
+     },
+     {
+      "source_type": "pr_knowledge",
+      "source": "tools/perf/perf_change_check.py[583-586]",
+      "citation": "`executable_table()` runs `ps -axo pid=,comm=` with `check=False` and returns stdout without checking the return code, so a failed call yields an empty table."
+     },
+     {
+      "source_type": "pr_knowledge",
+      "source": "tools/perf/perf_change_check.py[564-564]",
+      "citation": "`busiest_processes` uses the same `executables.get(pid) or command.split()[0]` fallback, so its hint also shows a truncated name such as `Google` for a spaced app path when the pid is missing."
+     },
+     {
+      "source_type": "pr_knowledge",
+      "source": "tools/perf/tests/test_perf_change_check.py[368-381]",
+      "citation": "The new spaced-path test always supplies the executable table, so the fallback branch that the commit message is meant to replace is not exercised by any test."
+     }
+    ],
+    "explanation": "`executable_table` ignores the return code, so an empty result is indistinguishable from a successful run with no processes. `competing_processes` (line 527) and `busiest_processes` (line 564) then fall back to `command.split()[0]` with no log, reproducing the space-in-path miss the PR claims to fix whenever `ps -o comm=` fails or the table is incomplete. Nothing reports that the fallback was used, so the gate can measure beside a competing build with no trace; the likelihood is low because `ps` normally succeeds, so this is informational."
+   },
+   "location": {
+    "file_path": "tools/perf/perf_change_check.py",
+    "start_line": 524,
+    "end_line": 527,
+    "side": "right",
+    "code_snippet": "+    executables = executables or {}\n+    found = []\n+    for pid, cpu, command in busy_processes(ps_output, mine, min_cpu):\n+        executable = executables.get(pid) or command.split()[0]"
+   },
+   "dismiss_reason": "rejected",
+   "dismiss_explanation": "Disputed by the factory agent (Codex), whose judgement takes precedence: At the reviewed commit e43d27d59, tools/perf/perf_change_check.py:589 calls run() with the default check=True. tools/perf/perf_change_check.py:485 raises on a nonzero exit before parsing, and tools/perf/perf_change_check.py:1267 reports the ps error in PERF_CHECK_RESULT."
+  },
+  {
+   "category": "Correctness",
+   "id": "a4e49601-1531-49f1-9beb-b7d56eae66fe",
+   "git_sha": "10619932f53fe2c7f0f29c9f8630478e3e80adee",
+   "action_level": "remediation_recommended",
+   "title": "Busy hint can name an argument as the app",
+   "attribution_status": "implemented",
+   "description": "`process_name()` searches the full `ps` command for an `.app/` path, so it can return a bundle name from an argument instead of the executable’s name. When a busy tool such as `find` or `rsync` receives an app-bundle path as an argument, that name reaches the quiet-machine wait log if idle is low and no competitor is found.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[535-549]",
+      "citation": "def process_name(command: str) -> str:\n    \"\"\"A readable name for a `ps` command line. A macOS app is named by its bundle, because its\n    path holds spaces (\"/Applications/Google Chrome.app/...\"); otherwise the executable's basename.\"\"\"\n    bundle = APP_BUNDLE.search(command)\n    if bundle:\n        return bundle.group(1)\n    return command.split()[0].rsplit(\"/\", 1)[-1]\n\n\ndef busiest_processes(ps_output: str, mine: int, limit: int = 3,\n                      min_cpu: float = BUSIEST_MIN_CPU) -> list[str]:\n    \"\"\"The busiest processes that are not ours, of any kind, busiest first. They name what is\n    using the CPU when the idle figure is low but no known competitor is running.\"\"\"\n    found = sorted(busy_processes(ps_output, mine, min_cpu), key=lambda p: (-p[1], p[0]))\n    return [f\"{pid} {process_name(command)} {cpu:.0f}% cpu\" for pid, cpu, command in found[:limit]]"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[552-563]",
+      "citation": "def busy_processes(ps_output: str, mine: int, min_cpu: float) -> list[tuple[int, float, str]]:\n    \"\"\"(pid, %cpu, command) for `ps -axo pid=,ppid=,%cpu=,command=` rows at or above min_cpu,\n    leaving out this process and its children. Malformed rows are skipped.\"\"\"\n    rows = []\n    for line in ps_output.splitlines():\n        parts = line.strip().split(None, 3)\n        if len(parts) < 4 or not parts[0].isdigit() or not parts[1].isdigit():\n            continue\n        pid, ppid, cpu, command = int(parts[0]), int(parts[1]), to_number(parts[2]), parts[3]\n        if pid == mine or ppid == mine or cpu is None or cpu < min_cpu:\n            continue\n        rows.append((pid, cpu, command))"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[602-617]",
+      "citation": "        load1 = os.getloadavg()[0]\n        idle = cpu_idle()\n        cpus = os.cpu_count() or 0\n        table, mine = process_table(), os.getpid()\n        reasons = load_gate(idle, competing_processes(table, mine), args.min_idle,\n                            busiest_processes(table, mine))\n        sample = {\"at\": now(), \"cpu_idle\": None if idle is None else round(idle, 3),\n                  \"load1\": round(load1, 2), \"cpus\": cpus, \"busy\": reasons}\n        check_budget(args)\n        if not reasons:\n            args.wait_left = max(0.0, deadline - time.monotonic())\n            return sample\n        log.append(sample)\n        if time.monotonic() + args.poll_seconds > deadline:\n            raise Deferred(f\"machine still busy and the {args.budget:g}-minute budget leaves no time \"\n                           f\"to wait: \" + \"; \".join(reasons))"
+     },
+     {
+      "source_type": "skill",
+      "source": "project-keynes-perf-change-check",
+      "citation": "project-keynes-perf-change-check"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[604-618]",
+      "citation": "        cpus = os.cpu_count() or 0\n        table, mine = process_table(), os.getpid()\n        reasons = load_gate(idle, competing_processes(table, mine), args.min_idle,\n                            busiest_processes(table, mine))\n        sample = {\"at\": now(), \"cpu_idle\": None if idle is None else round(idle, 3),\n                  \"load1\": round(load1, 2), \"cpus\": cpus, \"busy\": reasons}\n        check_budget(args)\n        if not reasons:\n            args.wait_left = max(0.0, deadline - time.monotonic())\n            return sample\n        log.append(sample)\n        if time.monotonic() + args.poll_seconds > deadline:\n            raise Deferred(f\"machine still busy and the {args.budget:g}-minute budget leaves no time \"\n                           f\"to wait: \" + \"; \".join(reasons))\n        print(f\"machine busy, waiting: {'; '.join(reasons)}\", flush=True)"
+     }
+    ],
+    "explanation": "The parser retains the full `ps` command field, and the busiest-process formatter passes it to `process_name()`, whose unanchored bundle search can match argument paths. The wait loop then prints that result as its explanation for a busy machine when idle is low and no competitor is found."
+   },
+   "location": {
+    "file_path": "tools/perf/perf_change_check.py",
+    "start_line": 538,
+    "end_line": 540,
+    "side": "right",
+    "code_snippet": "+    bundle = APP_BUNDLE.search(command)\n+    if bundle:\n+        return bundle.group(1)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "category": "Observability",
+   "id": "8a40c3be-00f2-44ab-9116-5c86c8eb1ca7",
+   "git_sha": "8c8e07eabed19d8a9783fbcf92bfda749ba43d99",
+   "action_level": "remediation_recommended",
+   "title": "Busiest-process hint vanishes for moderate CPU users",
+   "attribution_status": "implemented",
+   "description": "`busiest_processes()` reuses `COMPETING_CPU` (20%) as its minimum CPU floor, so only processes at or above 20% are listed. When idle CPU is below the limit because load is spread across one or more processes each under 20%, `busiest` is empty, the `and busiest` guard in `load_gate()` drops the hint, and the wait log still shows only the bare `cpu N% idle, below 50%` line this PR was meant to explain.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[61-62]",
+      "citation": "COMPETING = re.compile(r\"(^|/)(godot|Godot|scons|clang\\+\\+|clang|cc1plus|ld|ld64)(\\s|$)\")\nCOMPETING_CPU = 20.0"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[526-532]",
+      "citation": "def busiest_processes(ps_output: str, mine: int, limit: int = 3,\n                      min_cpu: float = COMPETING_CPU) -> list[str]:\n    \"\"\"The busiest processes that are not ours, of any kind, busiest first. They name what is\n    using the CPU when the idle figure is low but no known competitor is running.\"\"\"\n    found = sorted(busy_processes(ps_output, mine, min_cpu), key=lambda p: (-p[1], p[0]))\n    return [f\"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu\"\n            for pid, cpu, executable in found[:limit]]"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[391-392]",
+      "citation": "        if not competing and busiest:\n            reasons.append(\"busiest processes: \" + \", \".join(busiest))"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/tests/test_perf_change_check.py[368-381]",
+      "citation": "    def test_busiest_names_any_busy_process_busiest_first_but_not_ours(self):\n        table = \"\\n\".join([\n            \"  20     1  40.0 /usr/bin/python3 tools/x.py\",\n            \"  21     1  95.0 /Applications/Xcode.app/Contents/MacOS/Xcode\",\n            \"  22   500  99.0 /opt/homebrew/bin/godot --headless\",\n            \"  500    1  99.0 /usr/bin/python3 perf_change_check.py\",\n            \"  23     1   5.0 /usr/sbin/idle_daemon\",\n            \"  24     1  60.0 /usr/bin/swift-frontend -c a.swift\",\n            \"  25     x  90.0 /bin/broken\",\n            \"garbage line\",\n        ])\n        self.assertEqual(pc.busiest_processes(table, mine=500, limit=2),\n                         [\"21 Xcode 95% cpu\", \"24 swift-frontend 60% cpu\"])\n        self.assertEqual(pc.busiest_processes(\"\", mine=500), [])"
+     },
+     {
+      "source_type": "skill",
+      "source": "project-keynes-perf-change-check",
+      "citation": "project-keynes-perf-change-check"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[62-62]",
+      "citation": "COMPETING_CPU = 20.0"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[526-535]",
+      "citation": "def busiest_processes(ps_output: str, mine: int, limit: int = 3,\n                      min_cpu: float = COMPETING_CPU) -> list[str]:\n    \"\"\"The busiest processes that are not ours, of any kind, busiest first. They name what is\n    using the CPU when the idle figure is low but no known competitor is running.\"\"\"\n    found = sorted(busy_processes(ps_output, mine, min_cpu), key=lambda p: (-p[1], p[0]))\n    return [f\"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu\"\n            for pid, cpu, executable in found[:limit]]\n\n\ndef busy_processes(ps_output: str, mine: int, min_cpu: float) -> list[tuple[int, float, str]]:"
+     }
+    ],
+    "explanation": "The skill defines the quiet-machine gate as waiting while less than half the CPU is idle or while another heavy process runs, and this PR's new diagnostic reports that wait. `COMPETING_CPU` (line 62) is 20%, and `busiest_processes` (lines 526-535) passes it as the minimum to `busy_processes`, so diffuse load yields an empty list and `load_gate` (lines 535-546) adds no explanation. The PR's stated purpose is to name what uses the CPU when no competitor does, but the reused competitor threshold hides exactly the low-to-mid CPU consumers that can sum to a low idle figure."
+   },
+   "location": {
+    "file_path": "tools/perf/perf_change_check.py",
+    "start_line": 526,
+    "end_line": 527,
+    "side": "right",
+    "code_snippet": "+def busiest_processes(ps_output: str, mine: int, limit: int = 3,\n+                      min_cpu: float = COMPETING_CPU) -> list[str]:"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "category": "Observability",
+   "id": "219fd468-02b1-4d56-8bb9-1a06ce399da9",
+   "git_sha": "8c8e07eabed19d8a9783fbcf92bfda749ba43d99",
+   "action_level": "informational",
+   "title": "Process names with spaces are cut to one word",
+   "attribution_status": "implemented",
+   "description": "`busy_processes()` takes `command.split()[0]` as the executable, so a macOS app path containing spaces is truncated at the first space before `rsplit('/')` runs. The hint then reports a fragment such as `Google` or `Visual` instead of the real application name, which is the only detail the new message exists to provide.",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[535-546]",
+      "citation": "def busy_processes(ps_output: str, mine: int, min_cpu: float) -> list[tuple[int, float, str]]:\n    \"\"\"(pid, %cpu, executable) for `ps -axo pid=,ppid=,%cpu=,command=` rows at or above min_cpu,\n    leaving out this process and its children. Malformed rows are skipped.\"\"\"\n    rows = []\n    for line in ps_output.splitlines():\n        parts = line.strip().split(None, 3)\n        if len(parts) < 4 or not parts[0].isdigit() or not parts[1].isdigit():\n            continue\n        pid, ppid, cpu, command = int(parts[0]), int(parts[1]), to_number(parts[2]), parts[3]\n        if pid == mine or ppid == mine or cpu is None or cpu < min_cpu:\n            continue\n        rows.append((pid, cpu, command.split()[0]))"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[526-532]",
+      "citation": "def busiest_processes(ps_output: str, mine: int, limit: int = 3,\n                      min_cpu: float = COMPETING_CPU) -> list[str]:\n    \"\"\"The busiest processes that are not ours, of any kind, busiest first. They name what is\n    using the CPU when the idle figure is low but no known competitor is running.\"\"\"\n    found = sorted(busy_processes(ps_output, mine, min_cpu), key=lambda p: (-p[1], p[0]))\n    return [f\"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu\"\n            for pid, cpu, executable in found[:limit]]"
+     }
+    ],
+    "explanation": "`ps -axo command=` prints full macOS bundle paths, which often contain spaces, so the displayed name is misleading for the processes most likely to be unfamiliar."
+   },
+   "location": {
+    "file_path": "tools/perf/perf_change_check.py",
+    "start_line": 545,
+    "end_line": 546,
+    "side": "right",
+    "code_snippet": "             continue\n-        executable = command.split()[0]\n-        if COMPETING.search(executable + \" \"):\n-            names.append(f\"{pid} {executable.rsplit('/', 1)[-1]} {cpu:.0f}% cpu\")\n-    return names\n+        rows.append((pid, cpu, command.split()[0]))"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2158185,
+   "commit_sha": "fd6c564de581f85765bb454a055ebde394f1f6c4",
+   "started_at": "2026-11-25T14:36:17.319657Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2157237,
+   "commit_sha": "e43d27d596858809ab9d680b885ddce485f0bcf2",
+   "started_at": "2026-11-25T13:58:00.556027Z",
+   "status": "completed",
+   "review_effort": "lite",
+   "review_complete": true
+  },
+  {
+   "run_id": 2156267,
+   "commit_sha": "2c3a01c22b3c19ca8baf09635cda3f19e5075ad9",
+   "started_at": "2026-11-25T13:19:29.428752Z",
+   "status": "completed",
+   "review_effort": "lite",
+   "review_complete": true
+  },
+  {
+   "run_id": 2155462,
+   "commit_sha": "d3036c5ddabce877c0446623706aa1ece3e30753",
+   "started_at": "2026-11-25T12:43:23.723362Z",
+   "status": "skipped",
+   "review_effort": null,
+   "review_complete": false
+  },
+  {
+   "run_id": 2154490,
+   "commit_sha": "d3036c5ddabce877c0446623706aa1ece3e30753",
+   "started_at": "2026-11-25T11:59:19.841478Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2154366,
+   "commit_sha": "10619932f53fe2c7f0f29c9f8630478e3e80adee",
+   "started_at": "2026-11-25T11:52:55.580144Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2154229,
+   "commit_sha": "8c8e07eabed19d8a9783fbcf92bfda749ba43d99",
+   "started_at": "2026-11-25T11:46:56.759925Z",
+   "status": "completed",
+   "review_effort": "lite",
+   "review_complete": true
+  }
+ ]
+}

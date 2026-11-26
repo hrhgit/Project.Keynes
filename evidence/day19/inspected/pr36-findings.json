@@ -1,0 +1,157 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/36",
+ "git_provider": null,
+ "finding_count": 2,
+ "review_session": {
+  "run_id": 2089280,
+  "status": "completed",
+  "commit_sha": "7c6bfa07fd3ab922bff07c407bdb85116cd0d601",
+  "started_at": "2026-11-21T21:13:07.088324Z",
+  "git_provider": "github",
+  "review_complete": true
+ },
+ "findings": [
+  {
+   "id": "bb5fed6b-a480-4f17-8c8e-ff17031c1c76",
+   "action_level": "action_required",
+   "attribution_status": "implemented",
+   "title": "UI open failure is logged as a warning, not an error",
+   "description": "In `_select_report`, the branch that detects a failed annual-report window open was changed from `push_error` to `push_warning`. The failure is still swallowed into a retry path (`_reopen_pending = true`), so the only trace of a broken UI is a warning that is easy to miss in the console. Any later presentation failure of this kind will be reported at the same lower severity, which hides a real fault from operators.",
+   "git_sha": "c109cc0e523127df8cb5834dc71cb0422b62d17c",
+   "category": "Reliability",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/annual/annual_report_flow.gd[139-144]",
+      "citation": "\tif _ui.has_method(\"is_annual_report_open\") and not bool(_ui.is_annual_report_open()):\n\t\tpush_warning(\"[annual] report workspace failed to open for id=%d\" % id)\n\t\t_open = false\n\t\t# The executor still owns this confirmation point. Keep the published report\n\t\t# and let the normal presentation hooks retry instead of losing the queue.\n\t\t_reopen_pending = true"
+     }
+    ],
+    "explanation": "The compliance rule requires that a failed UI call be reported with `push_error` while the operation stops and keeps the previous state. The PR keeps the state-preserving retry but replaces `push_error` with `push_warning`, so the failure is no longer reported at error level."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/annual/annual_report_flow.gd",
+    "start_line": 139,
+    "end_line": 142,
+    "side": "right",
+    "code_snippet": " \tif _ui.has_method(\"is_annual_report_open\") and not bool(_ui.is_annual_report_open()):\n-\t\tpush_error(\"[annual] report workspace failed to open for id=%d\" % id)\n+\t\tpush_warning(\"[annual] report workspace failed to open for id=%d\" % id)\n \t\t_open = false\n+\t\t# The executor still owns this confirmation point. Keep the published report"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "id": "fa90c460-722a-4087-8ce6-2f1086828f15",
+   "action_level": "action_required",
+   "attribution_status": "implemented",
+   "title": "Players stay blocked after a failed report open",
+   "description": "`_select_report()` sets `_reopen_pending` when the workspace fails to open, but the flag does not schedule another `try_present()` call. If the UI remains unavailable through the confirmation-update and simulation-commit hooks, the executor can remain blocked at confirmation; an unchanged confirmation emits no new update, and no subsequent day can commit to trigger a retry when the UI returns.",
+   "git_sha": "c109cc0e523127df8cb5834dc71cb0422b62d17c",
+   "category": "Correctness",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/annual/annual_report_flow.gd[82-98]",
+      "citation": "func try_present() -> void:\n\tif _host == null or _ui == null or _open:\n\t\treturn\n\tvar reason := _confirmation_reason()\n\tif not reason.is_empty() and reason != \"annual_report_confirmation_required\":\n\t\treturn\n\tif _reopen_pending:\n\t\tif not bool(_host.annual_report_status().get(\"ok\", false)):\n\t\t\treturn\n\t\t_reopen_pending = false\n\t\t_show(_report_id, false)\n\telif _queued > 0 and reason == \"annual_report_confirmation_required\":\n\t\tvar id := _queued\n\t\t_queued = 0\n\t\t_show(id, true)\n\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/annual/annual_report_flow.gd[139-144]",
+      "citation": "\tif _ui.has_method(\"is_annual_report_open\") and not bool(_ui.is_annual_report_open()):\n\t\tpush_warning(\"[annual] report workspace failed to open for id=%d\" % id)\n\t\t_open = false\n\t\t# The executor still owns this confirmation point. Keep the published report\n\t\t# and let the normal presentation hooks retry instead of losing the queue.\n\t\t_reopen_pending = true"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/annual/annual_report_session.gd[37-46]",
+      "citation": "func poll() -> void:\n\tif not _configured:\n\t\treturn\n\tvar state: Dictionary = _ext.get_annual_report_status()\n\tif not bool(state.get(\"ok\", false)):\n\t\treturn\n\tvar report_id: int = int(state.get(\"ready_report_id\", 0))\n\tif report_id > 0 and report_id != _last_announced:\n\t\t_last_announced = report_id\n\t\treport_ready.emit(report_id)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_host.gd[761-775]",
+      "citation": "func _publish_player_confirmation(report: Dictionary) -> void:\n\tif int(report.get(\"player_block_day\", -1)) > maxi(0, _runtime_commit_day):\n\t\treturn\n\tvar view := {\n\t\t\"reason\": String(report.get(\"player_block_reason\", \"\")),\n\t\t\"hide_popups\": bool(report.get(\"player_popups_suppressed\", false)),\n\t\t\"family_offer\": report.get(\"family_founding_offer\", {}),\n\t\t\"ideology_generation\": int(report.get(\"ideology_offer_generation\", 0)),\n\t}\n\tif view == _player_confirmation_view:\n\t\treturn\n\tvar old_hidden := bool(_player_confirmation_view.get(\"hide_popups\", false))\n\t_player_confirmation_view = view\n\tplayer_confirmation_updated.emit(view)\n\tif bool(view.hide_popups) != old_hidden:"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/player_controller.gd[771-776]",
+      "citation": "func _on_player_confirmation_updated(_view: Dictionary) -> void:\n\t_sync_era_reward_offer()\n\t_sync_family_founding_offer()\n\t_sync_ideology_draw()\n\t_annual_report_flow.try_present()\n\t_narrative_flow.try_present()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/player_controller.gd[808-821]",
+      "citation": "func _on_simulation_committed(_from_day: int, _to_day: int, _generation: int) -> void:\n\tif _runtime_host == null or _world_clock == null:\n\t\treturn\n\tif _music_situation != null:\n\t\t_music_situation.refresh_global_from_commit()\n\t_sync_era_reward_offer()\n\t_sync_family_founding_offer()\n\t_sync_ideology_draw()\n\t_sync_era_music()\n\t_sync_event_audio()\n\t_refresh_era_advancement()\n\t_narrative_service.consume_committed()\n\t_annual_report_flow.try_present()\n\t_narrative_flow.try_present()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/ui/annual_report_ui_test.gd[319-335]",
+      "citation": "\tvar failed_open_host := HostStub.new()\n\tvar failed_open_ui := UiStub.new()\n\tfailed_open_ui.fail_next_open = true\n\tvar failed_open_flow := Flow.new()\n\tfailed_open_flow.configure(ControllerStub.new(), failed_open_host, failed_open_ui)\n\tfailed_open_flow.queue_report(1)\n\tvar failed_open_state: Dictionary = failed_open_flow.capture()\n\t_expect(\"failed report opening preserves the executor confirmation for retry\",\n\t\tnot failed_open_flow.is_open() and failed_open_state.get(\"open\", false)\n\t\tand failed_open_state.get(\"report_id\", 0) == 1\n\t\tand failed_open_host.marked_ids.is_empty())\n\tfailed_open_flow.try_present()\n\t_expect(\"a later presentation hook reopens the failed report\",\n\t\tfailed_open_flow.is_open() and failed_open_ui.opened == 2)\n\tfailed_open_ui.annual_report_closed.emit(1)\n\t_expect(\"closing the reopened report acknowledges the executor stop\",\n\t\tfailed_open_host.marked_ids == [1])"
+     },
+     {
+      "source_type": "skill",
+      "source": "project-keynes-ui-development",
+      "citation": "project-keynes-ui-development"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/annual/annual_report_flow.gd[82-97]",
+      "citation": "func try_present() -> void:\n\tif _host == null or _ui == null or _open:\n\t\treturn\n\tvar reason := _confirmation_reason()\n\tif not reason.is_empty() and reason != \"annual_report_confirmation_required\":\n\t\treturn\n\tif _reopen_pending:\n\t\tif not bool(_host.annual_report_status().get(\"ok\", false)):\n\t\t\treturn\n\t\t_reopen_pending = false\n\t\t_show(_report_id, false)\n\telif _queued > 0 and reason == \"annual_report_confirmation_required\":\n\t\tvar id := _queued\n\t\t_queued = 0\n\t\t_show(id, true)\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/player_controller.gd[771-778]",
+      "citation": "func _on_player_confirmation_updated(_view: Dictionary) -> void:\n\t_sync_era_reward_offer()\n\t_sync_family_founding_offer()\n\t_sync_ideology_draw()\n\t_annual_report_flow.try_present()\n\t_narrative_flow.try_present()\n\t_sync_time_ui()\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/player_controller.gd[808-822]",
+      "citation": "func _on_simulation_committed(_from_day: int, _to_day: int, _generation: int) -> void:\n\tif _runtime_host == null or _world_clock == null:\n\t\treturn\n\tif _music_situation != null:\n\t\t_music_situation.refresh_global_from_commit()\n\t_sync_era_reward_offer()\n\t_sync_family_founding_offer()\n\t_sync_ideology_draw()\n\t_sync_era_music()\n\t_sync_event_audio()\n\t_refresh_era_advancement()\n\t_narrative_service.consume_committed()\n\t_annual_report_flow.try_present()\n\t_narrative_flow.try_present()\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_host.gd[761-774]",
+      "citation": "func _publish_player_confirmation(report: Dictionary) -> void:\n\tif int(report.get(\"player_block_day\", -1)) > maxi(0, _runtime_commit_day):\n\t\treturn\n\tvar view := {\n\t\t\"reason\": String(report.get(\"player_block_reason\", \"\")),\n\t\t\"hide_popups\": bool(report.get(\"player_popups_suppressed\", false)),\n\t\t\"family_offer\": report.get(\"family_founding_offer\", {}),\n\t\t\"ideology_generation\": int(report.get(\"ideology_offer_generation\", 0)),\n\t}\n\tif view == _player_confirmation_view:\n\t\treturn\n\tvar old_hidden := bool(_player_confirmation_view.get(\"hide_popups\", false))\n\t_player_confirmation_view = view\n\tplayer_confirmation_updated.emit(view)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_worker.cpp[372-397]",
+      "citation": "            const bool awaiting_player = player_confirmation_block() != nullptr;\n            if (awaiting_player || (climate_driven && !climate_pending) ||\n                (!climate_driven && (paused || speed <= 0.0 || !std::isfinite(speed)))) {\n                if (_stop_requested.load(std::memory_order_acquire)) break;\n                _state.store(RuntimeWorkerState::PAUSED, std::memory_order_release);\n                last = std::chrono::steady_clock::now();\n                std::unique_lock<std::mutex> lock(_control_mutex);\n                _worker_timing.set(awaiting_player ? RuntimeWorkerTiming::PAUSED :\n                    (climate_driven && !_world_environment ? RuntimeWorkerTiming::ENVIRONMENT_WAIT\n                                                          : RuntimeWorkerTiming::CLOCK_WAIT));\n                _control_cv.wait(lock, [&] {\n                    const bool blocked = awaiting_player;\n                    const bool ready = _stop_requested.load(std::memory_order_acquire) ||\n                        _save_requested.load(std::memory_order_acquire) ||\n                        player_requests_pending_locked() ||\n                        (_economy_read_view_requested && !retained_day_pending) ||\n                        (!blocked && (climate_driven ?\n                            daily_work_ready() :\n                            (!_paused.load(std::memory_order_acquire) &&\n                             _speed_days_per_second.load(std::memory_order_acquire) > 0.0)));\n                    if (!ready && climate_driven && !_world_environment && !blocked &&\n                            !_paused.load(std::memory_order_acquire))\n                        _worker_timing.observe_main_wait(committed_day_value() + 1,\n                            RuntimeWorkerTiming::ENVIRONMENT_INPUT);\n                    return ready;\n                });"
+     }
+    ],
+    "explanation": "The pending flag is consumed only by `try_present()`. Production calls it on confirmation updates and simulation commits, but the report-ready session announces each report ID once, an unchanged confirmation view emits no further update, and the executor may block before another commit. The added test calls `try_present()` directly, so it does not establish that a retry occurs after those hooks have passed."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/annual/annual_report_flow.gd",
+    "start_line": 144,
+    "end_line": 144,
+    "side": "right",
+    "code_snippet": "+\t\t_reopen_pending = true"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2089280,
+   "commit_sha": "7c6bfa07fd3ab922bff07c407bdb85116cd0d601",
+   "started_at": "2026-11-21T21:13:07.088324Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2087113,
+   "commit_sha": "c109cc0e523127df8cb5834dc71cb0422b62d17c",
+   "started_at": "2026-11-21T14:58:21.623233Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  }
+ ]
+}

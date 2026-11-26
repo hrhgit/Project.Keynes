@@ -1,0 +1,396 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/52",
+ "git_provider": null,
+ "finding_count": 8,
+ "review_session": {
+  "run_id": 2109007,
+  "status": "completed",
+  "commit_sha": "e7efccb911eff1450e0e8a3573514aea24029ce4",
+  "started_at": "2026-11-23T11:11:15.187604Z",
+  "git_provider": "github",
+  "review_complete": true
+ },
+ "findings": [
+  {
+   "action_level": "action_required",
+   "id": "6ad90e29-a60a-44df-b85e-307e25e320a0",
+   "description": "`weather_field_solve_pure` 在按新增门槛完成分类后，仍仅凭水域和气旋抬升量把结果覆盖为风暴。气旋格若未达到降水率、云层、云水或水汽条件，就会绕过这次新增的风暴判据，后续降水清理也不会将其视为非降水天气。",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "气旋格仍可显示无雨风暴",
+   "git_sha": "8b126ea8bfafcfe6ce2dcd9d57584fb62fc01965",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "skill",
+      "source": "project-keynes-climate-runtime",
+      "citation": "project-keynes-climate-runtime"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_climate_pass_math.h[1077-1084]",
+      "citation": "    // W4：两段门合成一段 —— 降水率 + 三项支持条件。旧实现里 `precip > precip_gate`\n    // 是**无条件**通过的，等于「下一点就报雨」；这是「到处都是降水图标」的直接成因之一。\n    // 门槛值来自 ClimateProfile（陆/水各一档），缺省保持旧的 0.040 / 0.032 以便回滚。\n    const float precip_gate = is_water ? gate_water : gate_land;\n    const bool meaningful_precip = precip > precip_gate &&\n        effective_cloud > mp_cloud_gate &&\n        precip_cloud_mass > mp_cloud_gate * 0.35f &&\n        vapor > mp_vapor_gate;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_climate_passes_weather.cpp[879-894]",
+      "citation": "        uint8_t wt = wf_classify_field_weather_at(\n            temp, vapor, cloud, cloud_water, precip, instability,\n            ocean_an, wind_len, temp_anom_i,\n            std::max(onshore_moist_flux, coastal_monsoon_flux),\n            cold_precip_as_blizzard, snow_classification_margin, on_water, snow_cover_cls,\n            knobs.classify_gate_land, knobs.classify_gate_water);\n        if (cyclone_lift >= 0.58f && on_water) {\n            wt = cyclone_storm_type_id;\n        }\n        if (!wf_is_precip_weather_type(wt) && precip > 0.0f) {\n            vapor += precip * 0.65f;\n            if (vapor > 1.0f) vapor = 1.0f;\n            vapor_after_precip = vapor;\n            precip = 0.0f;\n        } else if (precip > 0.0f) {\n            // Stage6 放电：实际降水抽干本格水汽→自发停雨/消散+随上风水汽移动+海面自生成。镜像 field_solver.gd。"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": ".claude/skills/project-keynes-climate-runtime/references/algorithms-and-data.md[193-197]",
+      "citation": "\n- `field_solver.gd` 与 `world_ext_weather.cpp` 是 SAME_SOURCE 镜像。\n- 近地风辐合用邻格风速加权的净流入除以总流量，负值归零。均匀流应接近零；原生缓存版、直接计算版和脚本版共用口径。\n- 雨、风暴和季风须同时达到降水率、云层、云水和水汽条件。地球预设的陆地和水域降水率门槛为 0.095 和 0.076，降水空间平滑为 0.30。\n- 非降水类型的残余 precip 在 solve 后回流 vapor 并归零；distribute/hydrology 再按 RAIN/STORM/BLIZZARD/MONSOON gate。"
+     }
+    ],
+    "explanation": "气候技能要求雨、风暴和季风同时满足四项条件；新增参数传入分类器后，既有的气旋覆盖仍可无条件改写其结果，且后续清理按覆盖后的天气类型判断。"
+   },
+   "location": {
+    "file_path": "gdext/src/runtime_climate_passes_weather.cpp",
+    "start_line": 883,
+    "end_line": 884,
+    "side": "right",
+    "code_snippet": "+            cold_precip_as_blizzard, snow_classification_margin, on_water, snow_cover_cls,\n+            knobs.classify_gate_land, knobs.classify_gate_water);"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "b4fcd43a-6d3e-4065-8c8b-2a569b497f5f",
+   "description": "The assertion in `_test_moderate_warm_humid_open_ocean_releases_latent_rain` used to accept only `RAIN` or `STORM`, and after the W3 recalibration moved this cell to `MONSOON` the PR added `MONSOON` to the accepted set instead of keeping the original comparison and showing the root cause. The new `precip > 0.06` floor tightens the check somewhat, but the widened type whitelist is the loosening the rule forbids, and a real misclassification to `MONSOON` would now pass.",
+   "attribution_status": "implemented",
+   "category": "Testability",
+   "title": "Rain test now accepts monsoon type",
+   "git_sha": "8b126ea8bfafcfe6ce2dcd9d57584fb62fc01965",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948320?state=active",
+      "id": 4948320,
+      "platform_entity_id": "4948320",
+      "citation": "Keynes: fix the root cause instead of relaxing the check",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/world/weather_field_solver_test.gd[118-124]",
+      "citation": "\t# 断言「release latent marine rain」这个性质，而不是某一个具体雨种：MONSOON(7) 也是降水类型\n\t# （wf_is_precip_weather_type 含 7），暖湿海面 + instability 0.61 判成热带暴雨属合理结果。\n\t# W3 重标定后该格由 RAIN 变 MONSOON（precip 0.105）。判据改为「是降水类型 且 precip > 0.06」，\n\t# 比原白名单多了一条降水率下限 —— 是加严，不是放宽。\n\t_expect(wt in [WeatherType.WT.RAIN, WeatherType.WT.STORM, WeatherType.WT.MONSOON]\n\t\t\tand float(q2.get(\"precip\", 0.0)) > 0.06,\n\t\t\"moderate warm humid open ocean should release latent marine rain (type=%d precip=%.3f cloud_water=%.3f cloud=%.3f vapor=%.3f instability=%.3f)\" % ["
+     }
+    ],
+    "explanation": "The comment says the cell changed from RAIN to MONSOON after the W3 recalibration (precip 0.105), and the assertion was changed from a two-type whitelist to a three-type whitelist. The PR gives no root-cause reproduction for why the classifier now picks MONSOON for this cell, and the classifier thresholds in feedback.gd and the C++ solver were tuned in the same PR."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/world/weather_field_solver_test.gd",
+    "start_line": 122,
+    "end_line": 124,
+    "side": "right",
+    "code_snippet": "+\t_expect(wt in [WeatherType.WT.RAIN, WeatherType.WT.STORM, WeatherType.WT.MONSOON]\n+\t\t\tand float(q2.get(\"precip\", 0.0)) > 0.06,\n \t\t\"moderate warm humid open ocean should release latent marine rain (type=%d precip=%.3f cloud_water=%.3f cloud=%.3f vapor=%.3f instability=%.3f)\" % ["
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "e362d139-3e46-4542-893b-28bddb84c370",
+   "description": "`_market_rows` 用本次入选五行的最大储量计算条长，但看板没有显示这一动态上限或条的相对含义。入选物资变化时，同一储量会对应不同条长，玩家无法从图形判断满格代表多少储量。",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "储量条的满格含义不明",
+   "git_sha": "8b126ea8bfafcfe6ce2dcd9d57584fb62fc01965",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "skill",
+      "source": "project-keynes-ui-development",
+      "citation": "project-keynes-ui-development"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/cell_board_view_model.gd[229-251]",
+      "citation": "\tvar max_stock := 0.0\n\tfor index in picked:\n\t\tmax_stock = maxf(max_stock, stock_units[index])\n\tvar rows: Array = []\n\tfor cursor in range(picked.size()):\n\t\tvar index := picked[cursor]\n\t\tvar stable_id := String(good_ids[index])\n\t\tvar raw_price := int(price[index]) if index < price.size() else 0\n\t\tvar anchor_raw := int(anchor_price[index]) if index < anchor_price.size() else 0\n\t\tvar profile = GoodProfileRegistry.profile_by_id(stable_id)\n\t\tvar display_name := String(profile.display_name) if profile != null \\\n\t\t\tand String(profile.display_name) != \"\" else stable_id\n\t\tvar price_index := float(raw_price) / float(anchor_raw) if anchor_raw > 0 else 1.0\n\t\trows.append({\n\t\t\t\"role\": roles[cursor],\n\t\t\t\"id\": stable_id,\n\t\t\t\"name\": display_name,\n\t\t\t\"icon\": String(GoodProfileRegistry.icon_key(stable_id)),\n\t\t\t\"stock_units\": stock_units[index],\n\t\t\t\"stock_text\": UITokens.format_compact_number_cn(stock_units[index], 2),\n\t\t\t# 五行同屏共享一条量程：本轮最大储备做满格。\n\t\t\t\"stock_ratio\": clampf(stock_units[index] / max_stock, 0.0, 1.0) \\\n\t\t\t\tif max_stock > EPSILON else 0.0,"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/components/cell_board.gd[196-214]",
+      "citation": "func _apply_market_rows(rows: Array) -> void:\n\tvar visible_count := mini(rows.size(), _market_slots.size())\n\tfor index in _market_slots.size():\n\t\tvar slot: Dictionary = _market_slots[index]\n\t\tvar root := slot[\"root\"] as Control\n\t\troot.visible = index < visible_count\n\t\tif not root.visible:\n\t\t\tcontinue\n\t\tvar row: Dictionary = rows[index]\n\t\t(slot[\"badge\"] as IconBadge).set_semantic(StringName(row.get(\"icon\", \"\")))\n\t\t(slot[\"name\"] as Label).text = String(row.get(\"name\", \"\"))\n\t\t(slot[\"stock\"] as Label).text = String(row.get(\"stock_text\", \"\"))\n\t\tvar price_label := slot[\"price\"] as Label\n\t\tprice_label.text = String(row.get(\"price_text\", \"\"))\n\t\tvar accent: Color = row.get(\"price_accent\", UITokens.DOSSIER_INK)\n\t\tprice_label.add_theme_color_override(\"font_color\", accent)\n\t\t_set_ratio(slot[\"bar\"], float(row.get(\"stock_ratio\", 0.0)))\n\t_market_header.visible = visible_count > 0\n\t_market_card.visible = _show_market and visible_count > 0"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scenes/ui/cell_board.tscn[80-90]",
+      "citation": "[node name=\"Stock\" type=\"Label\" parent=\"Slide/Column/MarketCard/Margin/Body/Header\"]\nlayout_mode = 2\nmouse_filter = 2\ncustom_minimum_size = Vector2(80, 26)\nautowrap_mode = 0\nhorizontal_alignment = 2\nvertical_alignment = 1\ntheme_override_colors/font_color = Color(0.4, 0.31, 0.22, 0.92)\ntheme_override_font_sizes/font_size = 16\ntheme_type_variation = &\"PKDossierKicker\"\ntext = \"储量\""
+     }
+    ],
+    "explanation": "界面技能明确要求自适应数据条标出上限；新增储量条采用入选行的最大值归一化，但标题和渲染代码均未呈现该上限。"
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/ui/cell_board_view_model.gd",
+    "start_line": 249,
+    "end_line": 251,
+    "side": "right",
+    "code_snippet": "+\t\t\t# 五行同屏共享一条量程：本轮最大储备做满格。\n+\t\t\t\"stock_ratio\": clampf(stock_units[index] / max_stock, 0.0, 1.0) \\\n+\t\t\t\tif max_stock > EPSILON else 0.0,"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "eac17f1c-c629-4040-bcd7-67b4086468cb",
+   "description": "`wf_wind_convergence_idx_xy` and its cached variant now produce a signed net-inflow ratio with a median near 0.016, but cyclone genesis, the cyclone bridge, and storm-wake injection still use convergence cutoffs of 0.30 or 0.34 calibrated to the old metric. When convergence is below those cutoffs and instability does not satisfy the alternative gate—including ocean storm centers below 0.55 instability—cyclone births and storm-wake current perturbations are suppressed without changes to their own settings.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Tropical cyclones form far less often after the rain retune",
+   "git_sha": "8b126ea8bfafcfe6ce2dcd9d57584fb62fc01965",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_climate_passes_cyclone.cpp[120-127]",
+      "citation": "        if (lanes.temp[i] < knobs.min_temp) { ++stats.fail_temp; continue; }\n        if (lanes.precip[i] < knobs.precip_gate) { ++stats.fail_precip; continue; }\n        if (lanes.cloud[i] < knobs.cloud_gate) { ++stats.fail_cloud; continue; }\n        if (lanes.instability[i] < knobs.min_instability &&\n            lanes.convergence[i] < 0.30f) {\n            ++stats.fail_instability;\n            continue;\n        }"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_climate_cyclone_bridge.cpp[380-384]",
+      "citation": "            if (T[idx] < (native_entity_enabled ? min_temp : 0.56f)) continue;\n            if (W_PRECIP[idx] < 0.05f) continue;\n            if (W_CLOUD[idx] < 0.22f) continue;\n            if (W_INST[idx] < (native_entity_enabled ? min_instability : 0.48f) && W_CONV[idx] < 0.30f) continue;\n            if (front_speed_norm < 0.16f && intensity < 0.82f) continue;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/weather/front_advect.gd[118-127]",
+      "citation": "\t\tif cell.temperature < 0.58:\n\t\t\tcontinue\n\t\tif cell.weather_precip < 0.07:\n\t\t\tcontinue\n\t\tif cell.weather_cloud < 0.25:\n\t\t\tcontinue\n\t\tif cell.weather_instability < 0.55 and cell.weather_convergence < 0.34:\n\t\t\tcontinue\n\t\tif front_speed_norm < 0.20 and front.intensity < 0.88:\n\t\t\tcontinue"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_climate_pass_math.h[920-933]",
+      "citation": "// ─── 风场辐合：有符号净流入 ─────────────────────────────────────────────────\n//\n// 旧实现（半波整流均值 `mean_d max(0, cos(self→nb, wind_nb))`）已在 W9 退役：\n// 六角格 6 个等间隔方向上它恒在 0.29–1.25，**与风场有没有辐合无关** ——\n// 均匀流（零辐散）实测读 0.3333。回归：tests/world/weather_convergence_metric_test.gd\n//\n// 现行口径：\n//   w_d     = clamp(|v_nb| / 1.2, 0, 1.25)\n//   inflow  = Σ_d max(0,  cos_in_d) · w_d\n//   outflow = Σ_d max(0, -cos_in_d) · w_d\n//   conv    = clamp((inflow - outflow) / (inflow + outflow), 0, 1)\n//\n// 均匀流 ⇒ 0；辐合中心 ⇒ 1；辐散 ⇒ 钳 0。输出 [0,1]，消费者阈值按此分布标定\n// （p50≈0.016 / p90≈0.458 / p95≈0.636），见 docs/architecture/feature-guides.md。"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/weather/field_solver_physics.gd[92-114]",
+      "citation": "## 与 C++ `wf_wind_speed_norm` + 净流入口径的权重逐字对应：\n##   wsp = wind_speed > 0 ? wind_speed : |wind|；speed_w = clamp(wsp / 1.2, 0, 1.25)\nstatic func _convergence_speed_weight(nb: HexCell, wind: Vector2) -> float:\n\tvar wsp: float = float(nb.wind_speed)\n\tif wsp <= 0.0001:\n\t\twsp = sqrt(wind.length_squared())\n\tvar speed_w: float = wsp / 1.2\n\tif speed_w < 0.0:\n\t\tspeed_w = 0.0\n\telif speed_w > 1.25:\n\t\tspeed_w = 1.25\n\treturn speed_w\n\n\n## 与 C++ 尾部一致：denom 过小返回 0，net<0（辐散）钳 0。\nstatic func _convergence_net_value(net_in: float, net_out: float) -> float:\n\tvar denom: float = net_in + net_out\n\tif denom <= 0.0001:\n\t\treturn 0.0\n\tvar net: float = (net_in - net_out) / denom\n\tif net <= 0.0:\n\t\treturn 0.0\n\treturn minf(net, 1.0)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/weather/field_solver.gd[558-562]",
+      "citation": "\t\t\t\ttemp_max = maxf(temp_max, nb_temp_cell)\n\t\tvar temp_gradient: float = temp_max - temp_min\n\t\tvar relative_humidity: float = maxf(vapor / maxf(vapor_capacity, 0.001), 0.0)\n\t\tvar frontal_convergence: float = smoothstep(0.02, 0.46, convergence)  # W3: 旧 0.14 按 p50=0.376 的假基线标的；net p50=0.016/p90=0.458\n\t\tvar humidity_front_gate: float = smoothstep(0.25, 0.78, relative_humidity)  # Stage2: 0.38→0.25 让冷湿锋面也成雨(温带过境雨团/冷区降雪)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/weather/front_advect.gd[104-140]",
+      "citation": "\t\tif front.type != WeatherType.WT.STORM:\n\t\t\tcontinue\n\t\tif front.intensity < 0.8:\n\t\t\tcontinue\n\t\t# 找 front 中心所在 cell\n\t\tvar center: Vector2 = front.center\n\t\tvar cube := HexUtils.world_to_cube(center, hex_size)\n\t\tvar cell = map.get_cell_by_cube(cube)\n\t\tif cell == null:\n\t\t\tcontinue\n\t\t# 仅海面 cell 注入\n\t\tif not _is_water_terrain(int(cell.terrain)):\n\t\t\tcontinue\n\t\tvar front_speed_norm: float = front.velocity.length() / maxf(hex_size, 0.001)\n\t\tif cell.temperature < 0.58:\n\t\t\tcontinue\n\t\tif cell.weather_precip < 0.07:\n\t\t\tcontinue\n\t\tif cell.weather_cloud < 0.25:\n\t\t\tcontinue\n\t\tif cell.weather_instability < 0.55 and cell.weather_convergence < 0.34:\n\t\t\tcontinue\n\t\tif front_speed_norm < 0.20 and front.intensity < 0.88:\n\t\t\tcontinue\n\t\t# 扰动向量：风向顺时针旋 90° 得切向，按 intensity 缩放到 [-0.6, 0.6] 范围\n\t\tvar wind: Vector2 = front.velocity\n\t\tif wind.length_squared() < 1e-4:\n\t\t\twind = Vector2(1.0, 0.0)\n\t\tvar tangent := Vector2(-wind.y, wind.x).normalized()\n\t\tvar perturb: Vector2 = tangent * float(front.intensity) * 0.6\n\t\tvar key2: int = cell.q * 10000 + cell.r\n\t\tocean_current_perturbation[key2] = {\n\t\t\t\"vec\": perturb,\n\t\t\t\"vec_init\": perturb,\n\t\t\t\"days_left\": cyclone_wake_days,\n\t\t\t\"init_days\": cyclone_wake_days,\n\t\t}"
+     }
+    ],
+    "explanation": "The convergence calculation changed from a positive-inflow average to net inflow minus outflow, moving the median from roughly 0.376 to 0.016; the new 90th percentile is about 0.458. Other field-solver consumers were recalibrated, but the cyclone genesis gate at `gdext/src/runtime_climate_passes_cyclone.cpp:123-127`, the bridge gate at `gdext/src/runtime_climate_cyclone_bridge.cpp:383`, and the storm-wake gate at `Project/project-keynes/scripts/weather/front_advect.gd:124-125` retain old cutoffs. The former 0.30 cutoff was near the old minimum, while the unchanged wake gate requires at least 0.34 convergence when instability is below 0.55."
+   },
+   "location": {
+    "file_path": "gdext/src/runtime_climate_pass_math.h",
+    "start_line": 969,
+    "end_line": 973,
+    "side": "right",
+    "code_snippet": "+    const float denom = inflow + outflow;\n+    if (denom <= 1e-4f) return 0.0f;\n+    const float net = (inflow - outflow) / denom;\n+    if (net <= 0.0f) return 0.0f;\n+    return (net > 1.0f) ? 1.0f : net;"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "452b8e7e-0c1b-4e89-a144-a25415f530f9",
+   "description": "`SavePreviewCodec.encode` returns the 1x1 transparent `fallback()` image when the source is empty or the JPEG save returns an empty buffer, and `decode` returns an empty `Image` for unknown signatures, with no `push_error` on either path. The blank thumbnail is then written into the save slot as if it were valid, so a real encoding fault leaves no trace of its cause.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Save preview goes blank without any log",
+   "git_sha": "8b126ea8bfafcfe6ce2dcd9d57584fb62fc01965",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/save_preview_codec.gd[11-28]",
+      "citation": "static func encode(source: Image) -> PackedByteArray:\n\tif source == null or source.is_empty():\n\t\treturn fallback()\n\tvar image := Image.new()\n\timage.copy_from(source)\n\tvar width := image.get_width()\n\tvar height := image.get_height()\n\tif width > MAX_WIDTH and height > 0:\n\t\tvar scaled_height := maxi(1, int(round(\n\t\t\tfloat(height) * float(MAX_WIDTH) / float(width))))\n\t\timage.resize(MAX_WIDTH, scaled_height, Image.INTERPOLATE_BILINEAR)\n\t# JPEG has no alpha channel and Godot refuses the conversion implicitly.\n\tif image.get_format() != Image.FORMAT_RGB8:\n\t\timage.convert(Image.FORMAT_RGB8)\n\tvar jpeg := image.save_jpg_to_buffer(JPEG_QUALITY)\n\tif not jpeg.is_empty():\n\t\treturn jpeg\n\treturn fallback()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/save_modules/player_state.gd[30-37]",
+      "citation": "\treturn _result(true, \"ok\", \"\")\n\nfunc _capture_preview(context: Dictionary) -> PackedByteArray:\n\tvar viewport: Viewport = context.viewport\n\tif DisplayServer.get_name() != \"headless\" and viewport != null \\\n\t\t\tand viewport.get_texture() != null:\n\t\treturn SavePreviewCodec.encode(viewport.get_texture().get_image())\n\treturn SavePreviewCodec.fallback()"
+     }
+    ],
+    "explanation": "`encode` falls back to `fallback()` at lines 12-13 and 26-28 whenever the input is empty or the JPEG save fails, and `decode` silently returns an empty image for unrecognised bytes. The player-state capture path returns `SavePreviewCodec.fallback()` with no logging. The preview is cosmetic, so the impact is limited, but the failure is not recorded."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/save_preview_codec.gd",
+    "start_line": 25,
+    "end_line": 28,
+    "side": "right",
+    "code_snippet": "+\tvar jpeg := image.save_jpg_to_buffer(JPEG_QUALITY)\n+\tif not jpeg.is_empty():\n+\t\treturn jpeg\n+\treturn fallback()"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "69c00518-10ba-4e28-b1c0-f9e376e8b53a",
+   "description": "Only `earth_like.tres` sets `weather_precip_classify_gate_land/water` (0.095/0.076). `earth_like_mobile_complex.tres` sets neither, so it falls back to the `ClimateProfile` defaults of 0.040/0.032. Meanwhile the classifier now requires all four of precipitation rate, cloud, cloud water and vapour to pass, and STORM and MONSOON now also require that check. As a result, mobile games use a precipitation calibration the PR documents as valid for neither preset, and rain, storm and monsoon frequencies differ from desktop on the same world.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Mobile Earth preset keeps the old rain gates",
+   "git_sha": "8b126ea8bfafcfe6ce2dcd9d57584fb62fc01965",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/data/world/earth_like_mobile_complex.tres[1-53]",
+      "citation": "[gd_resource type=\"Resource\" script_class=\"ClimateProfile\" format=3]\n\n[ext_resource type=\"Script\" uid=\"uid://c8gt72y6lui8l\" path=\"res://scripts/data/climate_profile.gd\" id=\"1\"]\n\n[resource]\nscript = ExtResource(\"1\")\ndynamic_visual_atlas_upload_stride = 8\nnative_daily_sim_mode = 2\nnative_runtime_graph_mode = 2\nnative_daily_sim_stride = 20\nnative_daily_perf_target_ms = 1.5\nnative_daily_spread_across_ticks = true\nnative_daily_commit_lag_budget_days = 20\nnative_daily_max_slices_per_tick = 1\nnative_daily_split_weather_node_enabled = true\nnative_daily_sea_ice_spread_dt_cap_days = 20.0\nnative_daily_finalizer_slice_enabled = true\nnative_daily_spread_starve_ticks = 16\nsim_frame_budget_ms = 8.0\nsim_stagger_bucket_stride = 16\nsim_stagger_climate_phase = 1\nsim_stagger_ocean_phase = 0\nsim_stagger_native_environment_phase = 0\nsim_stagger_dynamic_visual_phase = 5\nsim_stagger_enum_atlas_phase = 13\nsim_stagger_sea_ice_phase = 6\nseason_refresh_period_ticks = 60\nsea_ice_daily_stride = 2\nweather_albedo_stride = 20\nweather_vegetation_dynamics_stride = 10\nweather_feedback_stride = 20\nnative_climate_round_active_owner_enabled = true\nnative_weather_transaction_active_owner_enabled = true\nnative_ocean_physical_active_owner_enabled = true\nnative_season_refresh_active_owner_enabled = true\nnative_daily_legacy_daily_production_retired = true\nocean_daily_wind_period_ticks = 6\nocean_currents_period_ticks = 60\nocean_currents_slice_count = 16\nocean_pixel_subslice_count = 16\nsuccession_upgrade_days = 200\nweather_field_advect_steps = 4\nweather_condensation_gain = 0.3\nweather_ocean_evap_gain = 0.45\nnatural_resource_daily_stride = 10\nruntime_hydrology_enabled = true\ndemo_thermal_gradient_path = 1\nthermal_monsoon_enabled = true\nnative_tropical_cyclone_enabled = true\ntropical_cyclone_capacity = 12\ntropical_cyclone_births_per_commit = 1\nenso_basin_modes_enabled = true\nenso_max_basins = 3"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/data/climate_profile.gd[833-838]",
+      "citation": "# 陆地和水域的降水率门槛，还须有云层、云水和水汽。\n# 地球预设的陆地值取上游采样降水率的第 80 百分位。\n@export_range(0.0, 0.5, 0.001) var weather_precip_classify_gate_land: float = 0.040\n@export_range(0.0, 0.5, 0.001) var weather_precip_classify_gate_water: float = 0.032\n# 降水空间平滑系数。0 为关闭，削峰权重为填洞权重的 30%。\n@export_range(0.0, 0.8, 0.01) var weather_field_precip_spatial_smooth: float = 0.30"
+     }
+    ],
+    "explanation": "The mobile preset file has no gate keys, and the profile defaults are the old 0.040/0.032. The skill doc states that the Earth preset gates are 0.095/0.076. sources.json even updates the mobile preset's hash, although the file itself is unchanged in this PR."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/data/world/earth_like.tres",
+    "start_line": 57,
+    "end_line": 60,
+    "side": "right",
+    "code_snippet": "+; W4：RAIN 判定降水率门槛（W3 实测陆地降水率 p80 = 0.0949 ≈ 0.095；水域按同倍率 0.032×2.37 = 0.076）\n+weather_precip_classify_gate_land = 0.095\n+weather_precip_classify_gate_water = 0.076\n+weather_field_precip_spatial_smooth = 0.30"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "965c2cc0-72b8-48fc-8c74-91ac0e0342a8",
+   "description": "`sources.json` adds hashes for two scripts that are not present in the repository. In editor builds, manifest validation hashes every listed path, so these missing files make validation fail and force source compilation on every launch.",
+   "attribution_status": "pending",
+   "category": "Performance",
+   "title": "Editor launches discard the catalog cache",
+   "git_sha": "8b126ea8bfafcfe6ce2dcd9d57584fb62fc01965",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/data/loading_catalog_v1/sources.json[939-939]",
+      "citation": "\t\"res://scripts/economy/economy_command_result_text.gd\": \"f84a4405986232b57a4bc5cf148f41ea800e89de774efa27a668f2968fcf6a3e\","
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/data/loading_catalog_v1/sources.json[974-974]",
+      "citation": "\t\"res://scripts/ideology/ideology_card_face_text.gd\": \"ee53f54cf606509252266911b903be30e33c0d55feef649aeed888a95a31db13\","
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/geography/native_loading_tasks.gd[61-68]",
+      "citation": "\t\t\"catalog_manifest\":\n\t\t\tfor path in input.get(\"files\", {}):\n\t\t\t\tif frame_gate != null and frame_gate.canceled:\n\t\t\t\t\treturn {\"valid\": false, \"canceled\": true}\n\t\t\t\tif FileAccess.get_sha256(path) != input.files[path]:\n\t\t\t\t\treturn {\"valid\": false}\n\t\t\t\tif tree != null:\n\t\t\t\t\tawait (frame_gate.next_frame() if frame_gate != null else tree.process_frame)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/loading_catalog_cache.gd[72-78]",
+      "citation": "\t\tvar validated: Dictionary = await NativeLoadingTasks.compute(ext,\"catalog_manifest\", {\"files\":manifest}, frame_gate)\n\t\tif frame_gate != null and frame_gate.canceled:\n\t\t\treturn\n\t\tif not bool(validated.get(\"valid\",false)):\n\t\t\t_miss(\"快照清单与当前源文件指纹不一致（%d 条指纹，可能改过 scripts/ 或 data/）\" % (manifest as Dictionary).size())\n\t\t\treturn\n\tvar missing := PackedStringArray()"
+     }
+    ],
+    "explanation": "Neither newly listed script exists in the PR branch. The editor validation path compares each listed file's SHA-256 with its manifest entry and rejects the cache when a comparison fails."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/data/loading_catalog_v1/sources.json",
+    "start_line": 939,
+    "end_line": 939,
+    "side": "right",
+    "code_snippet": "+\t\"res://scripts/economy/economy_command_result_text.gd\": \"f84a4405986232b57a4bc5cf148f41ea800e89de774efa27a668f2968fcf6a3e\","
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "d4b1c230-693b-4359-9ad9-da3599f548c1",
+   "description": "`init_continent_floor_cells` is packed into the native knobs, but the GDScript deposit fallback in `map_resource_initializer.gd` uses global ranked distribution without landmass labelling or a quota pass. When an old native library is used or the native deposit pass fails, qualifying landmasses can have fewer tin, zinc, salt, limestone or silica sand cells than their profiles require, and the native-only quota diagnostics do not report the divergence.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Fallback map generation skips the mineral quota",
+   "git_sha": "8b126ea8bfafcfe6ce2dcd9d57584fb62fc01965",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/simulation/economy/map_resource_initializer.gd[36-60]",
+      "citation": "\tvar neighbor_indices: PackedInt32Array = map_ref.neighbor_indices_packed()\n\tvar have_neighbors: bool = neighbor_indices.size() >= n_cells * 6\n\t# habitat 掩码 / 河口羽流两段纯几何派生量：融合 pass 在 C++ 里与矿藏 pass\n\t# 一次算完；这里保留 GDScript 实现作为旧 DLL 兜底与 A/B 参考。\n\tvar habitat_arr: PackedByteArray = await _collect_resource_habitat_mask(map_ref, cooperative)\n\tmap_ref.resource_habitat_mask_arr = habitat_arr\n\t# River mouths are geography-derived productivity inputs, not resource access:\n\t# every cell still owns and exposes only its own reserve. Mark the river cell,\n\t# its ocean outlet, and a weaker one-ring marine plume.\n\tvar estuary_strength_arr: PackedFloat32Array = await _collect_estuary_strength(\n\t\tmap_ref, cooperative)\n\t# native-first：整段矿藏储量（O(资源 × cell) + 每资源排名分配）交给 C++ 一次算完。\n\t# 失败（旧 DLL / 形状不符）时继续走下面的 GDScript 路径，行为与迁移前一致。\n\tif _generator._try_bootstrap_natural_resources_native(map_ref, cfg, habitat_arr, estuary_strength_arr):\n\t\treturn\n\tvar base_seed: int = 0\n\tif cfg != null and cfg.get(\"seed\") != null:\n\t\tbase_seed = int(cfg.get(\"seed\"))\n\tvar province_noises: Dictionary = {}\n\tvar belt_noises: Dictionary = {}\n\tfor p in ResourceProfileRegistry.ordered():\n\t\tvar field: String = ResourceProfileRegistry.reserve_map_field(p)\n\t\tif field == \"\":\n\t\t\tcontinue\n\t\tvar arr: PackedFloat32Array = map_ref.get(field)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/simulation/economy/map_resource_initializer.gd[200-285]",
+      "citation": "\t\t\t\tif not is_equal_approx(float(a.suit), float(b.suit)):\n\t\t\t\t\treturn float(a.suit) > float(b.suit)\n\t\t\t\treturn int(a.cell) < int(b.cell))\n\t\t\tif use_ranked_distribution:\n\t\t\t\tfor ranked in ranked_cells:\n\t\t\t\t\tarr[int(ranked.cell)] = 0.0\n\t\t\t\tvar micro_target := mini(\n\t\t\t\t\tranked_cells.size() - target_cells,\n\t\t\t\t\tceili(float(ranked_cells.size()) * clampf(\n\t\t\t\t\t\tfloat(p.init_micro_coverage), 0.0, 1.0)))\n\t\t\t\tvar micro_cells := _select_micro_deposit_cells(\n\t\t\t\t\tranked_cells, target_cells, micro_target,\n\t\t\t\t\tneighbor_indices, have_neighbors)\n\t\t\t\tvar core_cells: Array = ranked_cells.slice(0, target_cells)\n\t\t\t\tvar minimum_reserve := maxf(floor_reserve, float(p.init_min_reserve) * \\\n\t\t\t\t\tResourceProfileRegistry.CELL_AREA_RESOURCE_SCALE)\n\t\t\t\tvar micro_minimum_reserve := maxf(\n\t\t\t\t\tfloat(p.init_micro_min_reserve), 0.0) * \\\n\t\t\t\t\tResourceProfileRegistry.CELL_AREA_RESOURCE_SCALE\n\t\t\t\tvar reserve_density := maxf(float(p.init_target_reserve_density), 0.0) * \\\n\t\t\t\t\tResourceProfileRegistry.CELL_AREA_RESOURCE_SCALE\n\t\t\t\tvar target_mean_reserve := maxf(float(p.init_target_mean_reserve), 0.0) * \\\n\t\t\t\t\tResourceProfileRegistry.CELL_AREA_RESOURCE_SCALE\n\t\t\t\tif reserve_density > 0.0 or target_mean_reserve > 0.0:\n\t\t\t\t\tvar target_total_reserve := reserve_density * ranked_cells.size() \\\n\t\t\t\t\t\tif reserve_density > 0.0 else target_mean_reserve * target_cells\n\t\t\t\t\tvar core_floor_total := minimum_reserve * core_cells.size()\n\t\t\t\t\tvar micro_floor_total := micro_minimum_reserve * micro_cells.size()\n\t\t\t\t\tvar total_reserve := maxf(\n\t\t\t\t\t\ttarget_total_reserve, core_floor_total + micro_floor_total)\n\t\t\t\t\tvar micro_budget := total_reserve * clampf(\n\t\t\t\t\t\tfloat(p.init_micro_reserve_share), 0.0, 0.5) \\\n\t\t\t\t\t\tif not micro_cells.is_empty() else 0.0\n\t\t\t\t\tmicro_budget = maxf(micro_budget, micro_floor_total)\n\t\t\t\t\tmicro_budget = minf(micro_budget, total_reserve - core_floor_total)\n\t\t\t\t\t_allocate_ranked_deposit_budget(\n\t\t\t\t\t\tarr, core_cells, total_reserve - micro_budget,\n\t\t\t\t\t\tminimum_reserve, maxf(float(p.init_richness_exponent), 0.1))\n\t\t\t\t\t_allocate_ranked_deposit_budget(\n\t\t\t\t\t\tarr, micro_cells, micro_budget,\n\t\t\t\t\t\tmicro_minimum_reserve, 0.65)\n\t\t\t\telse:\n\t\t\t\t\tfor rank in range(target_cells):\n\t\t\t\t\t\tvar cell := int(ranked_cells[rank].cell)\n\t\t\t\t\t\tarr[cell] = maxf(arr[cell], minimum_reserve)\n\t\t\t\t\tfor ranked in micro_cells:\n\t\t\t\t\t\tarr[int(ranked.cell)] = maxf(\n\t\t\t\t\t\t\tarr[int(ranked.cell)], micro_minimum_reserve)\n\t\t\telse:\n\t\t\t\tfor rank in range(target_cells):\n\t\t\t\t\tvar cell := int(ranked_cells[rank].cell)\n\t\t\t\t\tarr[cell] = maxf(arr[cell], float(p.init_min_reserve) * \\\n\t\t\t\t\t\tResourceProfileRegistry.CELL_AREA_RESOURCE_SCALE)\n\t\tmap_ref.set(field, arr)\n\n\n## 把整段矿藏储量生成交给 C++（`DCWorldExt.run_resource_deposit_pass`）。\n##\n## 旧 GDScript 路径是 O(资源 × cell)：2400 cell 实测 1.2s，桌面允许的 200k cell\n## 会到分钟级；每格还要 append 一个 Dictionary，每资源一次 sort_custom(lambda)。\n##\n## 与旧路径同值的保证：噪声实例按旧路径同样的 seed（`base_seed ^ hash(id)`）\n## 与 frequency 构造后传进 C++，C++ 只调用 `Noise.get_noise_2d()`；排名、小微\n## 矿点、预算分配的规则逐行复刻（唯一差异是近似并列带的排序改成严格序）。\n##\n## 返回 true 表示已把每种资源的 reserve 列写回 MapData。\n\nfunc _deposit_noise_instance(cache_key: String, seed_value: int,\n\t\tfrequency: float) -> FastNoiseLite:\n\tvar cached = _generator._deposit_noise_cache.get(cache_key)\n\tif cached != null:\n\t\treturn cached\n\tvar noise := FastNoiseLite.new()\n\tnoise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH\n\tnoise.seed = seed_value\n\tnoise.frequency = maxf(0.0001, frequency)\n\t_generator._deposit_noise_cache[cache_key] = noise\n\treturn noise\n\n\n## 构造 run_resource_deposit_pass 的 knobs（**不含** habitat_mask / estuary 两列）。\n## 这两列是纯几何派生量：融合 pass `run_boot_facade_pass` 会在 C++ 里现算后直接\n## 填进同一份 knobs；旧 DLL 兜底路径仍由 `_bootstrap_natural_resource_deposits()`\n## 的 GDScript 段现算后填入。两侧 knobs 除这两列外逐键相同，数值因此同源。\n## 返回 {} 表示形状不支持（cell<=0 / 资源数为 0 / 标量表超限）。\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_resource_deposits.cpp[679-718]",
+      "citation": "        // ── 大陆保底配额：只对 continent_floor_cells>0 的资源；两种分布分支都已算完。\n        // 判据是「储量 ≥ min_reserve 的格数」，不是「>0 的格数」——散布型的零头格本来\n        // 就该算作没矿。补的格直接写 values[cell]，不进 allocate_ranked_budget：\n        // 不动 cutoff_suit、不改已入选格，只可能把零头抬到最小真矿（逐格只增不减）。\n        // float 与 float 比：floor_v 与 values[] 同为 float32，写进去的就是同一个值。\n        const float floor_v = float(p.min_reserve);\n        if (apply_landmass_quota) {\n            const int floor_n = std::max(1, int(std::lround(p.continent_floor_cells)));\n            std::vector<int32_t> have(landmass_size.size(), 0);\n            std::vector<int32_t> need(landmass_size.size(), 0);\n            int total_need = 0;\n            for (int i = 0; i < n; ++i) {\n                const int32_t l = landmass_of[size_t(i)];\n                if (l > 0 && values[i] >= floor_v) ++have[size_t(l)];\n            }\n            for (size_t l = 1; l < landmass_size.size(); ++l) {\n                if (landmass_size[l] < kMinQuotaCells) continue;\n                const int q = std::min(floor_n,\n                        std::max(1, int(std::ceil(0.01 * double(landmass_size[l])))));\n                if (have[l] < q) {\n                    need[l] = q - have[l];\n                    total_need += need[l];\n                }\n            }\n            for (size_t rank = 0; rank < ranked.size() && total_need > 0; ++rank) {\n                const int32_t cell = ranked[rank].cell;\n                const int32_t l = landmass_of[size_t(cell)];\n                if (l <= 0 || need[size_t(l)] <= 0) continue;\n                if (values[cell] >= floor_v) continue;\n                values[cell] = floor_v;\n                --need[size_t(l)];\n                --total_need;\n                ++quota_added;\n            }\n            // 遍历完 ranked 还没补满 → 必须报出来，不许悄悄降级。\n            quota_unmet += total_need;\n        }\n        quota_field_cells[r] = quota_added;\n        quota_cells_total += quota_added;\n        quota_unmet_total += quota_unmet;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/simulation/economy/map_resource_initializer.gd[6-55]",
+      "citation": "func _bootstrap_natural_resource_deposits(map_ref, cfg, cooperative: bool = false) -> void:\n\tif map_ref == null:\n\t\treturn\n\tvar n_cells: int = map_ref.cell_count()\n\tif n_cells <= 0:\n\t\treturn\n\tvar temp_arr: PackedFloat32Array = map_ref.temp_arr\n\tvar moist_arr: PackedFloat32Array = map_ref.moisture_arr\n\tvar terrain_arr: PackedByteArray = map_ref.terrain_arr\n\tvar elev_arr: PackedFloat32Array = map_ref.elevation_arr\n\tvar lf_arr: PackedByteArray = map_ref.landform_arr\n\tvar veg_arr: PackedByteArray = map_ref.vegetation_arr\n\tvar river_arr: PackedByteArray = map_ref.has_river_arr\n\tvar lake_arr: PackedByteArray = map_ref.is_lake_seed_arr\n\tvar volcano_arr: PackedByteArray = map_ref.has_volcano_arr\n\tvar ocean_x_arr: PackedFloat32Array = map_ref.ocean_current_x_arr\n\tvar ocean_y_arr: PackedFloat32Array = map_ref.ocean_current_y_arr\n\tvar upwelling_arr: PackedFloat32Array = map_ref.upwelling_strength_arr\n\tvar posx_arr: PackedFloat32Array = map_ref.cell_pos_x_arr\n\tvar posy_arr: PackedFloat32Array = map_ref.cell_pos_y_arr\n\tvar have_terrain: bool = terrain_arr.size() >= n_cells\n\tvar have_elev: bool = elev_arr.size() >= n_cells\n\tvar have_lf: bool = lf_arr.size() >= n_cells\n\tvar have_veg: bool = veg_arr.size() >= n_cells\n\tvar have_river: bool = river_arr.size() >= n_cells\n\tvar have_lake: bool = lake_arr.size() >= n_cells\n\tvar have_volcano: bool = volcano_arr.size() >= n_cells\n\tvar have_ocean_current: bool = ocean_x_arr.size() >= n_cells and ocean_y_arr.size() >= n_cells\n\tvar have_upwelling: bool = upwelling_arr.size() >= n_cells\n\tvar have_pos: bool = posx_arr.size() >= n_cells and posy_arr.size() >= n_cells\n\tvar neighbor_indices: PackedInt32Array = map_ref.neighbor_indices_packed()\n\tvar have_neighbors: bool = neighbor_indices.size() >= n_cells * 6\n\t# habitat 掩码 / 河口羽流两段纯几何派生量：融合 pass 在 C++ 里与矿藏 pass\n\t# 一次算完；这里保留 GDScript 实现作为旧 DLL 兜底与 A/B 参考。\n\tvar habitat_arr: PackedByteArray = await _collect_resource_habitat_mask(map_ref, cooperative)\n\tmap_ref.resource_habitat_mask_arr = habitat_arr\n\t# River mouths are geography-derived productivity inputs, not resource access:\n\t# every cell still owns and exposes only its own reserve. Mark the river cell,\n\t# its ocean outlet, and a weaker one-ring marine plume.\n\tvar estuary_strength_arr: PackedFloat32Array = await _collect_estuary_strength(\n\t\tmap_ref, cooperative)\n\t# native-first：整段矿藏储量（O(资源 × cell) + 每资源排名分配）交给 C++ 一次算完。\n\t# 失败（旧 DLL / 形状不符）时继续走下面的 GDScript 路径，行为与迁移前一致。\n\tif _generator._try_bootstrap_natural_resources_native(map_ref, cfg, habitat_arr, estuary_strength_arr):\n\t\treturn\n\tvar base_seed: int = 0\n\tif cfg != null and cfg.get(\"seed\") != null:\n\t\tbase_seed = int(cfg.get(\"seed\"))\n\tvar province_noises: Dictionary = {}\n\tvar belt_noises: Dictionary = {}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/map_runtime_bridge.gd[1203-1211]",
+      "citation": "\t# 让帧（Web 非 headless 下每次等 4 帧）。现在整链压成一次 `run_boot_facade_pass`：\n\t# habitat 掩码 / 河口羽流两段 per-cell 循环搬进 C++，中间量不出语言边界。\n\t# native 不可用（旧 DLL）或任一段被拒 → 逐段走下面原链路，行为逐位不变。\n\t_generator._loading_profile_step(\"_bootstrap_world_facades\")\n\tvar _fused_boot = _generator._bootstrap_world_facades(map, cfg)\n\t_generator._loading_profile_step(\"natural_resource_deposits\")\n\tif not _fused_boot:\n\t\tawait _generator._get_map_resource_initializer()._bootstrap_natural_resource_deposits(map, cfg, true)\n\tawait _generator._yield_generation_frame()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_resource_deposits.cpp[679-715]",
+      "citation": "        // ── 大陆保底配额：只对 continent_floor_cells>0 的资源；两种分布分支都已算完。\n        // 判据是「储量 ≥ min_reserve 的格数」，不是「>0 的格数」——散布型的零头格本来\n        // 就该算作没矿。补的格直接写 values[cell]，不进 allocate_ranked_budget：\n        // 不动 cutoff_suit、不改已入选格，只可能把零头抬到最小真矿（逐格只增不减）。\n        // float 与 float 比：floor_v 与 values[] 同为 float32，写进去的就是同一个值。\n        const float floor_v = float(p.min_reserve);\n        if (apply_landmass_quota) {\n            const int floor_n = std::max(1, int(std::lround(p.continent_floor_cells)));\n            std::vector<int32_t> have(landmass_size.size(), 0);\n            std::vector<int32_t> need(landmass_size.size(), 0);\n            int total_need = 0;\n            for (int i = 0; i < n; ++i) {\n                const int32_t l = landmass_of[size_t(i)];\n                if (l > 0 && values[i] >= floor_v) ++have[size_t(l)];\n            }\n            for (size_t l = 1; l < landmass_size.size(); ++l) {\n                if (landmass_size[l] < kMinQuotaCells) continue;\n                const int q = std::min(floor_n,\n                        std::max(1, int(std::ceil(0.01 * double(landmass_size[l])))));\n                if (have[l] < q) {\n                    need[l] = q - have[l];\n                    total_need += need[l];\n                }\n            }\n            for (size_t rank = 0; rank < ranked.size() && total_need > 0; ++rank) {\n                const int32_t cell = ranked[rank].cell;\n                const int32_t l = landmass_of[size_t(cell)];\n                if (l <= 0 || need[size_t(l)] <= 0) continue;\n                if (values[cell] >= floor_v) continue;\n                values[cell] = floor_v;\n                --need[size_t(l)];\n                --total_need;\n                ++quota_added;\n            }\n            // 遍历完 ranked 还没补满 → 必须报出来，不许悄悄降级。\n            quota_unmet += total_need;\n        }"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/data/resources/tin_ore.tres[10-15]",
+      "citation": "init_reserve_scale = 8\ninit_min_coverage = 0.03\ninit_min_reserve = 2479445.0\ninit_continent_floor_cells = 3\ninit_target_coverage = 0.03\ninit_target_reserve_density = 37191700"
+     }
+    ],
+    "explanation": "The new scalar reaches the native quota pass, which returns early on success. When native boot or deposit processing fails, generation instead runs the GDScript ranked distribution; that implementation does not read `init_continent_floor_cells` or apply per-landmass quotas."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/simulation/economy/map_resource_initializer.gd",
+    "start_line": 374,
+    "end_line": 374,
+    "side": "right",
+    "code_snippet": "+\t\tscalars[base + 30] = float(p.init_continent_floor_cells)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2109007,
+   "commit_sha": "e7efccb911eff1450e0e8a3573514aea24029ce4",
+   "started_at": "2026-11-23T11:11:15.187604Z",
+   "status": "completed",
+   "review_effort": "lite",
+   "review_complete": true
+  },
+  {
+   "run_id": 2108749,
+   "commit_sha": "8ff2722bb909e0ba6ea731a211fcedc16fc90884",
+   "started_at": "2026-11-23T10:59:12.659785Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  },
+  {
+   "run_id": 2107856,
+   "commit_sha": "8b126ea8bfafcfe6ce2dcd9d57584fb62fc01965",
+   "started_at": "2026-11-23T10:19:17.506727Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  }
+ ]
+}

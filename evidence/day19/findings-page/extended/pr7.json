@@ -1,0 +1,515 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/7",
+ "git_provider": null,
+ "finding_count": 11,
+ "review_session": {
+  "run_id": 2064125,
+  "status": "completed",
+  "commit_sha": "1db870baae485eab1dd21ee062bce76c215199c6",
+  "started_at": "2026-11-19T21:14:05.388704Z",
+  "git_provider": "github",
+  "review_complete": false
+ },
+ "findings": [
+  {
+   "action_level": "action_required",
+   "id": "9642985e-1cfb-4542-8947-c4bc2c73ac10",
+   "description": "`_load_ideology_catalog_cooperative()` passes `true` as the finished flag when checking a newly started request, so the helper treats its initially null result as a completed load failure. On a normal successful threaded start, it returns before polling the resource, and the subsequent facade configuration receives a null catalog.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Every world starts without ideology",
+   "git_sha": "a5ea66422fb6aafc85d1e5dd318444e5a3130dca",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/loading_resource_request.gd[8-25]",
+      "citation": "var finished := false\nvar result: Resource\nvar start_error := OK\nvar _path: String\nvar _tree: SceneTree\n\nfunc _init(path: String, type_hint: String = \"Resource\") -> void:\n\t_path = path\n\t_tree = Engine.get_main_loop() as SceneTree\n\tstart_error = ERR_UNAVAILABLE if _tree == null \\\n\t\telse ResourceLoader.load_threaded_request(path, type_hint)\n\tif start_error != OK:\n\t\tfinished = true\n\t\treturn\n\t_pending[get_instance_id()] = self\n\tpending_count += 1\n\t_tree.process_frame.connect(_poll)\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/country/map_country_initializer.gd[289-312]",
+      "citation": "\tvar request := preload(\"res://scripts/game/loading_resource_request.gd\").new(IDEOLOGY_CATALOG_PATH)\n\tvar start_failure := _ideology_catalog_request_failure(request.start_error, true, null)\n\tif not start_failure.is_empty():\n\t\tpush_error(\"[country-init] %s\" % start_failure)\n\t\treturn null\n\twhile not request.finished:\n\t\tawait _generator._yield_generation_frame()\n\t\tif _generator._loading_frames.canceled:\n\t\t\treturn null\n\tvar result_failure := _ideology_catalog_request_failure(OK, request.finished, request.result)\n\tif not result_failure.is_empty():\n\t\tpush_error(\"[country-init] %s: %s\" % [result_failure, IDEOLOGY_CATALOG_PATH])\n\t\treturn null\n\t# Keep the threaded result while load_default applies the profile/test hook.\n\treturn IdeologyFacadeScript.IdeologyCatalogScript.load_default(request.result)\n\n\nstatic func _ideology_catalog_request_failure(start_error: int, finished: bool,\n\t\tresult: Resource) -> String:\n\tif start_error != OK:\n\t\treturn \"failed to start ideology catalog load (%s)\" % error_string(start_error)\n\tif finished and result == null:\n\t\treturn \"ideology catalog load finished without a resource\"\n\treturn \"\""
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/country/map_country_initializer.gd[136-151]",
+      "citation": "\tif _generator._loading_frames.canceled:\n\t\treturn\n\t_generator._loading_profile_step(\"ideology_facade.configure(\")\n\tvar ideology_configured: Dictionary = ideology_facade.configure(\n\t\t_generator._data_core_world_ext, _generator._country_facade.native_catalog(), ideology_catalog,\n\t\t_generator._economy_facade.native_catalog(), seed_value)\n\tif bool(ideology_configured.get(\"ok\", false)):\n\t\t_generator._ideology_facade = ideology_facade\n\telse:\n\t\tpush_error(\"[ideology] configure failed: %s\" % String(\n\t\t\tideology_configured.get(\"reason\", \"unknown\")))\n\tif not _generator._gameplay_start_context.is_empty():\n\t\tawait _generator._yield_generation_frame()\n\t\t_generator._loading_profile_step(\"country_ai_init\")\n\t\t_configure_country_ai(map, seed_value, _gameplay_player_country_handles())\n\t\tawait _generator._yield_generation_frame()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ideology/ideology_facade.gd[20-29]",
+      "citation": "var _configured := false\nvar _receipt_cursor := 0\n\nfunc configure(world_ext: DCWorldExt, country_catalog: Dictionary,\n\t\tcatalog: Resource = null, economy_catalog: Dictionary = {},\n\t\tworld_seed: int = 0) -> Dictionary:\n\t_world_seed = world_seed\n\t_world_ext = world_ext\n\t_country_catalog = country_catalog.duplicate(false)\n\t_economy_catalog = economy_catalog.duplicate(false)"
+     }
+    ],
+    "explanation": "A successful request leaves `finished` false and `result` null until `_poll` completes, but the literal `true` makes the helper return the null-result error immediately. The caller then passes that null catalog to facade configuration instead of installing a configured ideology facade."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/country/map_country_initializer.gd",
+    "start_line": 290,
+    "end_line": 290,
+    "side": "right",
+    "code_snippet": "+\tvar start_failure := _ideology_catalog_request_failure(request.start_error, true, null)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "b6604d56-5be8-41e0-b385-68a3d2862dc4",
+   "description": "`_covers_viewport()` reads `item.size` while `item` is declared as `CanvasItem`, which has no `size` property; the condition above it does not cast the variable to `Control`. Because the player scene attaches this script to `WorldRoot`, compiling the scene encounters the invalid property access before the map can be shown.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "The player world fails to load",
+   "git_sha": "0f9b520ac07c84f034361e042d2cfcfff8280052",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/map_draw_visibility.gd[24-40]",
+      "citation": "func _covers_viewport(backdrop: ColorRect) -> bool:\n\tvar canvas_layer := backdrop.get_canvas_layer_node()\n\tif canvas_layer != null and not canvas_layer.visible:\n\t\treturn false\n\tif backdrop.color.a < 1.0 or backdrop.self_modulate.a < 1.0 or backdrop.material != null:\n\t\treturn false\n\tvar view := get_viewport_rect()\n\tvar item: CanvasItem = backdrop\n\twhile item != null:\n\t\tif item.modulate.a < 1.0:\n\t\t\treturn false\n\t\tif item == backdrop or (item is Control and item.clip_contents):\n\t\t\tvar to_screen := item.get_global_transform_with_canvas()\n\t\t\tif to_screen.x.y != 0.0 or to_screen.y.x != 0.0 or not (\n\t\t\t\t\tto_screen * Rect2(Vector2.ZERO, item.size)).encloses(view):\n\t\t\t\treturn false\n\t\titem = item.get_parent() as CanvasItem"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scenes/player_game.tscn[37-46]",
+      "citation": "[ext_resource type=\"Script\" path=\"res://scripts/rendering/map_draw_visibility.gd\" id=\"38_map_visibility\"]\n\n[node name=\"PlayerGame\" type=\"Node2D\" unique_id=198229795]\nscript = ExtResource(\"1_player\")\n\n[node name=\"WorldRoot\" type=\"Node2D\" parent=\".\" unique_id=1950342253]\nscript = ExtResource(\"38_map_visibility\")\n\n[node name=\"HexRenderer\" type=\"Node2D\" parent=\"WorldRoot\" unique_id=1885530707]\nshow_behind_parent = true"
+     }
+    ],
+    "explanation": "The helper explicitly types each traversed item as `CanvasItem` and then accesses `size`, a `Control` property. The scene attaches the helper to its world root, making the access part of the player scene's script-compilation path."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/rendering/map_draw_visibility.gd",
+    "start_line": 38,
+    "end_line": 38,
+    "side": "right",
+    "code_snippet": "+\t\t\t\t\tto_screen * Rect2(Vector2.ZERO, item.size)).encloses(view):"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "f2a803da-70b9-4a70-b5d1-373d06d0e8c6",
+   "description": "`_load_ideology_catalog_cooperative` starts a threaded load through `loading_resource_request.gd` but never checks `request.start_error` or `request.result`; once `request.finished` is true it unconditionally returns `IdeologyCatalogScript.load_default()`, which performs a synchronous `ResourceLoader.load` of the same catalog. When the threaded request fails or yields null, the country initializer quietly takes this second loading path with no `push_error`, so the failure never reaches the log and the rest of economy setup proceeds as if the catalog loaded normally.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Failed ideology catalog load silently falls back to a sync load",
+   "git_sha": "0f9b520ac07c84f034361e042d2cfcfff8280052",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/country/map_country_initializer.gd[289-295]",
+      "citation": "\tvar request := preload(\"res://scripts/game/loading_resource_request.gd\").new(IDEOLOGY_CATALOG_PATH)\n\twhile not request.finished:\n\t\tawait _generator._yield_generation_frame()\n\t\tif _generator._loading_frames.canceled:\n\t\t\treturn null\n\t# Keep the result alive while load_default applies the profile/test hook.\n\treturn IdeologyFacadeScript.IdeologyCatalogScript.load_default()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ideology/ideology_catalog.gd[63-67]",
+      "citation": "static func load_default() -> Resource:\n\tvar loaded := ResourceLoader.load(DEFAULT_PATH, \"Resource\")\n\tif loaded != null and not support_gate_enabled and loaded.profile != null:\n\t\tvar profile: Resource = loaded.profile.duplicate()\n\t\tprofile.support_gate_enabled = false"
+     }
+    ],
+    "explanation": "The previous code returned null when the threaded load did not reach LOADED, and the new code drops that failure branch. `start_error` and `result` are never inspected, so a failed load is replaced by a synchronous reload of the same resource without any logging, which is the silent switch of code path that rule 4948321 forbids."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/country/map_country_initializer.gd",
+    "start_line": 289,
+    "end_line": 295,
+    "side": "right",
+    "code_snippet": "+\tvar request := preload(\"res://scripts/game/loading_resource_request.gd\").new(IDEOLOGY_CATALOG_PATH)\n+\twhile not request.finished:\n \t\tawait _generator._yield_generation_frame()\n-\tif ResourceLoader.load_threaded_get_status(IDEOLOGY_CATALOG_PATH) == \\\n-\t\t\tResourceLoader.THREAD_LOAD_LOADED:\n-\t\tvar loaded: Resource = ResourceLoader.load_threaded_get(IDEOLOGY_CATALOG_PATH)\n-\t\t# Preserve the catalog's profile/test hook after its threaded load. The\n-\t\t# local reference keeps ResourceLoader's cached object alive here.\n-\t\treturn IdeologyFacadeScript.IdeologyCatalogScript.load_default() if loaded != null else null\n+\t\tif _generator._loading_frames.canceled:\n+\t\t\treturn null\n+\t# Keep the result alive while load_default applies the profile/test hook.\n \treturn IdeologyFacadeScript.IdeologyCatalogScript.load_default()"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "161ec176-1bee-4a2e-9c50-961afbe6868d",
+   "description": "The publish loop `for layer in [...]` silently `continue`s when `images[layer]` is null, and the function still reports `cell_table_published` and `ok`. `_cell_table_image` returns null on a byte-length mismatch, so a failed layer build leaves that layer stale on the GPU while the report says it succeeded. The old code returned `layer_payload_mismatch` and unbound the table in this case.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Skipped null layer images can publish a stale table",
+   "git_sha": "d04a76b7114c6da3e657119203156c539e6e7e1d",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/bakers/cell_lut_baker.gd[721-722]",
+      "citation": "\t\tif images[layer] == null:\n\t\t\tcontinue"
+     }
+    ],
+    "explanation": "The removed PR-base code returned early with `cell_table_bound = false` and reason `layer_payload_mismatch` when `class_image`, `aux_image`, `class_index_image` or `state_image` was null. The new loop at lines 721-722 skips null images without any error, and the final report is set to published if any layer was updated."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/rendering/bakers/cell_lut_baker.gd",
+    "start_line": 721,
+    "end_line": 722,
+    "side": "right",
+    "code_snippet": "+\t\tif images[layer] == null:\n+\t\t\tcontinue"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "cd33a047-8124-4bec-b703-a4fff5d5b47b",
+   "description": "In `_publish_cell_table`, the new `class_by_index` path calls `by_index.resize(map_w * map_h * bytes_per_cell)` to force the byte count to fit. The old code checked the payload size, raised `push_error` on mismatch, and marked the index space unusable. Now a wrong-length payload is silently padded with zeros or truncated and then published as `ok`, so the render layer receives data that was never validated.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Missing class_by_index payload is padded silently",
+   "git_sha": "d04a76b7114c6da3e657119203156c539e6e7e1d",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/bakers/cell_lut_baker.gd[684-686]",
+      "citation": "\t\t\t\tvar by_index := classes.to_byte_array()\n\t\t\t\tby_index.resize(map_w * map_h * bytes_per_cell)\n\t\t\t\timages[CellTableCodecScript.LAYER_CLASS_BY_INDEX] = _cell_table_image("
+     }
+    ],
+    "explanation": "The removed lines in the PR base checked `class_index_bytes.size() != map_w * map_h * bytes_per_cell`, called `push_error`, and set `index_space_ok = false`. The new code replaces that check with an unconditional resize and no error report, so the fallback to a silently repaired payload is not reported."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/rendering/bakers/cell_lut_baker.gd",
+    "start_line": 684,
+    "end_line": 686,
+    "side": "right",
+    "code_snippet": "+\t\t\t\tvar by_index := classes.to_byte_array()\n+\t\t\t\tby_index.resize(map_w * map_h * bytes_per_cell)\n+\t\t\t\timages[CellTableCodecScript.LAYER_CLASS_BY_INDEX] = _cell_table_image("
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "08a9bec3-a910-4a9d-b756-178b221aecb1",
+   "description": "After each weather LUT publication, `_upload_curtain_instances` rewrites the whole compacted draw set one instance at a time. That is two `MultiMesh.set_instance_*` server calls per instance per layer, about 7.9k instances on day 30, and `_refresh_curtain_instances` also walks every map cell in GDScript first. Before this change the upload ran once per map; now it runs on each sim-day publication, and on desktop or blend boundaries the work is multiplied by layers and repeated, so phones get a periodic main-thread frame spike, worse during fast-forward.",
+   "attribution_status": "implemented",
+   "category": "Performance",
+   "title": "Weather publications re-upload every curtain instance",
+   "git_sha": "ee3c10f9d10528af3c3320db2f0a7e6659b82f18",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/weather_layer.gd[347-366]",
+      "citation": "\t\t\t# 时间平滑:weather_lerp 按 LUT 的【实际更新节奏】推进 0→1,与 prev/curr 严格对齐(不再复用 front blend)。\n\t\t\tvar _now_us: int = Time.get_ticks_usec()\n\t\t\tvar _upd: int = int(_world_ref.weather_lut_update_usec)\n\t\t\tif _upd != _wx_lut_last_usec:\n\t\t\t\tif _wx_lut_last_usec > 0:\n\t\t\t\t\tvar _gap: float = float(_upd - _wx_lut_last_usec)\n\t\t\t\t\tif _gap > 1000.0 and _gap < 5000000.0:\n\t\t\t\t\t\t_wx_commit_interval_usec = lerpf(_wx_commit_interval_usec, _gap, 0.3)  # IIR 自适应\n\t\t\t\t_wx_lut_last_usec = _upd\n\t\t\t\t_wx_lut_t0_usec = _now_us\n\t\t\tvar _wlerp: float = 1.0\n\t\t\tif _wx_commit_interval_usec > 1.0:\n\t\t\t\t_wlerp = clampf(float(_now_us - _wx_lut_t0_usec) / _wx_commit_interval_usec, 0.0, 1.0)\n\t\t\t# 只在变化超过 1/512 时推，稳态下每帧的 uniform 写回到 0。\n\t\t\tif absf(_wlerp - _wx_pushed_lerp) > 0.002 or _wx_pushed_lerp < 0.0:\n\t\t\t\t_wx_pushed_lerp = _wlerp\n\t\t\t\t_overlay_mat.set_shader_parameter(\"weather_lerp\", _wlerp)\n\t\t\t\tfor mat in _curtain_mats:\n\t\t\t\t\tmat.set_shader_parameter(\"weather_lerp\", _wlerp)\n\t\t\t_refresh_curtain_instances(_upd, _wx_pushed_lerp < 0.999)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/weather_layer.gd[1708-1770]",
+      "citation": "func _refresh_curtain_instances(update_usec: int, blending: bool) -> void:\n\tif _curtain_multimeshes.is_empty():\n\t\treturn\n\tif update_usec == _curtain_lut_update and blending == _curtain_lut_blending:\n\t\treturn\n\t_curtain_lut_update = update_usec\n\t_curtain_lut_blending = blending\n\n\tvar current := PackedByteArray()\n\tvar previous := PackedByteArray()\n\tif _world_ref != null and _weather_lut_tex != null and _weather_lut_tex == _world_ref.weather_lut_tex \\\n\t\t\tand _weather_lut_dims == _world_ref.lut_dims:\n\t\tvar pair: Array = _weather_lut_tex.get_meta(DCCellLutBaker.WEATHER_CURTAIN_LUT_PAIR, [])\n\t\tif pair.size() == 2:\n\t\t\tprevious = pair[0]\n\t\t\tcurrent = pair[1]\n\t# The shader uses the current type throughout the blend. Rain and snow\n\t# still contribute at zero intensity. Fog and lightning need positive G.\n\tvar tier := _weather_shader_tier() if DCFeatureFlags.uses_shader_quality_tier() else \"\"\n\tvar intensity_effects := tier.is_empty() or tier == \"MOBILE_QUALITY_HIGH\"\n\tvar flags := _weather_profile_flags()\n\tvar draw_cells := PackedInt32Array()\n\tfor index in range(_curtain_cells.size()):\n\t\tvar at := int(_curtain_cells[index].w) * 4\n\t\t# Standalone callers may supply a texture without CPU data. Keep those\n\t\t# instances and let the shader decide, including any out-of-range ids.\n\t\tif at + 3 < current.size():\n\t\t\tvar type := current[at]\n\t\t\tvar effects := flags[type] if type < flags.size() else 0\n\t\t\tvar has_intensity := current[at + 1] > 0 or (blending and\n\t\t\t\t\t(at + 1 >= previous.size() or previous[at + 1] > 0))\n\t\t\tif (effects & (_FLAG_RAIN | _FLAG_SNOW)) == 0 and not (\n\t\t\t\t\tintensity_effects and has_intensity and (effects & (_FLAG_FOG | _FLAG_LIGHTNING)) != 0):\n\t\t\t\tcontinue\n\t\tdraw_cells.append(index)\n\tif draw_cells == _curtain_draw_cells:\n\t\treturn\n\t_curtain_draw_cells = draw_cells\n\t_upload_curtain_instances()\n\t_update_curtain_visibility()\n\n\nfunc _upload_curtain_instances() -> void:\n\tvar count := _curtain_draw_cells.size() * _curtain_offsets.size()\n\tvar layer_count := _curtain_multimeshes.size()\n\tfor layer_idx in range(layer_count):\n\t\tvar mm := _curtain_multimeshes[layer_idx]\n\t\tvar depth := float(layer_idx) / (layer_count - 1) if layer_count > 1 else 0.5\n\t\tvar half_w := _hex_size * _CURTAIN_PATCH_SCALE * lerpf(0.96, 1.18, depth)\n\t\tvar half_h := _hex_size * _CURTAIN_PATCH_SCALE * lerpf(1.10, 1.36, depth)\n\t\tvar transform := Transform2D(Vector2(half_w, 0.0), Vector2(0.0, half_h), Vector2.ZERO)\n\t\tvar write_idx := 0\n\t\tfor index in _curtain_draw_cells:\n\t\t\tvar cell := _curtain_cells[index]\n\t\t\tvar custom := _curtain_custom_data(int(cell.w), cell.z, depth)\n\t\t\tfor offset in _curtain_offsets:\n\t\t\t\ttransform.origin = Vector2(cell.x, cell.y) + Vector2(offset, 0.0)\n\t\t\t\tmm.set_instance_transform_2d(write_idx, transform)\n\t\t\t\tmm.set_instance_custom_data(write_idx, custom)\n\t\t\t\twrite_idx += 1\n\t\tmm.visible_instance_count = count\n\t_curtain_instance_count = count * layer_count\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/bakers/cell_lut_baker.gd[1213-1221]",
+      "citation": "\t\tprevious: PackedByteArray, current: PackedByteArray) -> void:\n\tworld.weather_lut_prev_tex = baker._lut_tex_from_data(\n\t\t\tprevious, lw, lh, Image.FORMAT_RGBA8, world.weather_lut_prev_tex)\n\tworld.weather_lut_tex = baker._lut_tex_from_data(\n\t\t\tcurrent, lw, lh, Image.FORMAT_RGBA8, world.weather_lut_tex)\n\t# Keep the exact bytes used by the rain/snow meshes available without a GPU readback.\n\tworld.weather_lut_tex.set_meta(WEATHER_CURTAIN_LUT_PAIR, [previous, current])\n\tbaker._prev_weather_lut_bytes = current\n\tworld.weather_lut_update_usec = Time.get_ticks_usec()"
+     }
+    ],
+    "explanation": "`_process` calls `_refresh_curtain_instances(_upd, ...)` every frame. Its early return only skips the work when `weather_lut_update_usec` and the blending flag are both unchanged, and `cell_lut_baker` bumps `weather_lut_update_usec` on every weather LUT publication. When the draw set differs, the upload loop calls `set_instance_transform_2d` and `set_instance_custom_data` for every instance of every layer. The old `_rebuild_curtain_layers` did this only once, when the map, hex size or layer count changed."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/rendering/weather_layer.gd",
+    "start_line": 1763,
+    "end_line": 1767,
+    "side": "right",
+    "code_snippet": "+\t\t\tfor offset in _curtain_offsets:\n+\t\t\t\ttransform.origin = Vector2(cell.x, cell.y) + Vector2(offset, 0.0)\n+\t\t\t\tmm.set_instance_transform_2d(write_idx, transform)\n+\t\t\t\tmm.set_instance_custom_data(write_idx, custom)\n+\t\t\t\twrite_idx += 1"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "5cc89ae4-4bde-4012-bd4e-a6af740bbefa",
+   "description": "`_update_navigation_limit` sets `Engine.max_fps` to 30 whenever there is no camera motion, touch or gesture, and the new mobile `auto` preset now uses `ADAPTIVE_FPS`. Under the `main_day_tail_gate` the worker waits for each day's main-thread tail work, and the PR's own measurements say at most one day settles between two draws, so on phones a running simulation that the player is just watching now has its days-per-second cap cut in half (60→30).",
+   "attribution_status": "implemented",
+   "category": "Performance",
+   "title": "Fast-forward slows to half speed when the map is still",
+   "git_sha": "0f9b520ac07c84f034361e042d2cfcfff8280052",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_generation_adapter.gd[396-397]",
+      "citation": "\t# worker 等本线程跑完第 D 天的军事、资源恢复再开始 D+1。\n\tconfig[\"main_day_tail_gate\"] = climate_authority_active and not want_inline"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/graphics_quality_settings.gd[41-46]",
+      "citation": "\t\t\"cloud_shadow\": detail >= (2 if mobile else 1),\n\t\t\"frame_rate_limit\": (30 if preset == \"low\" else 60) if mobile else 0,\n\t}\n\tif mobile and preset == \"auto\":\n\t\tresult.frame_rate_limit = ADAPTIVE_FPS\n\tvar custom = settings.get(\"graphics_custom\", false)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/architecture/feature-status.md[795-798]",
+      "citation": "Apple M2、Godot 4.6.3、Release 原生库。种子 20260718 的 96×64 四国开局在 1600×960\n高画质窗口以 100 倍运行。两次新版试跑连续结算 180 天，31 种资源均走后台路径。第 5 至\n180 天实测 7.85 和 8.31 天/秒，旧版两次为 8.04 和 17.35 天/秒。机器同时有其他任务，\n各次负载有差异。两次绘制之间最多结算一天。"
+     }
+    ],
+    "explanation": "The idle check looks only at camera and input state. It ignores whether the clock is running or how fast. The worker is gated on the main thread finishing each day's tail work, and that work is driven per frame. The PR's benchmark notes confirm that no more than one day settles per draw. A lower frame rate therefore directly lowers simulation throughput, and mobile auto now defaults to this adaptive mode."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/game_settings_service.gd",
+    "start_line": 193,
+    "end_line": 197,
+    "side": "right",
+    "code_snippet": "+func _update_navigation_limit(moved: bool) -> void:\n+\tvar active := moved or _gesture_event or not _held_inputs.is_empty() or _map_camera.is_animating_view()\n+\tvar limit := 60 if active else 30\n+\tif Engine.max_fps != limit:\n+\t\tEngine.max_fps = limit"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "8d1d7248-bc93-4b9b-93fd-4dc302152a1a",
+   "description": "In `_configure`, when `shader.get_shader_uniform_list()` returns empty for one of the three generated variants, the code clears `_reader`, `_writers` and sets `_eligible = false`, then returns. The land base cache is silently disabled and the renderer keeps drawing through the original land path, so a broken variant compile (for example the 17-varying compatibility-mode failure the PR description mentions) leaves no trace in the log.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Missing land cache shader falls back with no error log",
+   "git_sha": "0f9b520ac07c84f034361e042d2cfcfff8280052",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/land_base_cache.gd[77-81]",
+      "citation": "\t\tif shader.get_shader_uniform_list().is_empty():\n\t\t\t_reader = null\n\t\t\t_writers.clear()\n\t\t\t_eligible = false\n\t\t\treturn"
+     }
+    ],
+    "explanation": "The compile-failure branch sets `_eligible = false` and returns with no `push_error`, so the cache is disabled silently. The rule requires a logged cause whenever a code path is switched, and this switch is not documented as intended behaviour."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/rendering/land_base_cache.gd",
+    "start_line": 77,
+    "end_line": 81,
+    "side": "right",
+    "code_snippet": "+\t\tif shader.get_shader_uniform_list().is_empty():\n+\t\t\t_reader = null\n+\t\t\t_writers.clear()\n+\t\t\t_eligible = false\n+\t\t\treturn"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "f3eb4579-c93a-458d-ab92-b0d056edbf65",
+   "description": "The new early return `if host._runtime_climate_writeback_last_day < commit_day: return` drops the polled commit whenever the writeback cursor did not reach the commit day. `_apply_climate_writeback_if_authoritative` only advances that cursor when the native result reports `applied` (at least one field written), so a snapshot that is consumed without writing any fields (missing slots, or a slot with the wrong type or size) leaves the cursor behind for good, and every later call returns before `simulation_committed` or the day-tail work runs.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Simulation can freeze when a climate writeback applies nothing",
+   "git_sha": "0f9b520ac07c84f034361e042d2cfcfff8280052",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[31-42]",
+      "citation": "\tvar commit_day := int(commit.get(\"committed_day\", -1))\n\tif received_new_commit and bool(report.get(\"climate_worker_authoritative\", false)):\n\t\t# A worker can commit between the status read and the commit poll.\n\t\t# Apply the weather for the polled day before exposing that day to scripts.\n\t\tif int(report.get(\"simulation_committed_day\", -1)) != commit_day:\n\t\t\treport = report.duplicate(false)\n\t\t\treport[\"simulation_committed_day\"] = commit_day\n\t\thost._apply_climate_writeback_if_authoritative(report)\n\t\tif host._runtime_climate_writeback_last_day < commit_day:\n\t\t\treturn\n\telif report_override.is_empty():\n\t\thost._apply_climate_writeback_if_authoritative(report)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[368-383]",
+      "citation": "\t\tpush_warning(\"[climate-authority] writeback rejected: %s\" % String(\n\t\t\tapplied.get(\"code\", \"unknown\")))\n\t\treturn\n\tif not bool(applied.get(\"applied\", false)):\n\t\treturn\n\tpreload(\"res://scripts/game/world_runtime_climate_restore.gd\").apply(host._generator, applied)\n\thost._runtime_climate_writeback_generation = int(applied.get(\n\t\t\"generation\", host._runtime_climate_writeback_generation))\n\t# Older compatible runtimes may omit committed_day from the apply result;\n\t# the worker report driving this consume is the same committed generation.\n\thost._runtime_climate_writeback_last_day = int(applied.get(\n\t\t\"committed_day\", report.get(\"simulation_committed_day\", -1)))\n\thost._runtime_climate_writeback_days += 1\n\t# A field the slot guards reject is a field the worker owns but never\n\t# publishes, so MapData silently keeps the pre-promotion value. Kept for\n\t# diagnostics rather than warned about per day: the set is constant for a"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_simulation_host_climate.cpp[668-704]",
+      "citation": "    _runtime_host->release_climate_writeback(slot);\n\n    flush_slots_to_map_keys(touched_slots);\n    _climate_physics_committed = apply_physics ? std::move(physics) : nullptr;\n    _climate_physics_map_id = _map_data->get_instance_id();\n    // B8 诊断（一次性）：确认天气场在 writeback 之后是否真的进了 MapData。用它\n    // 区分\"flush 没写进去\"与\"写进去之后被同 tick 的主线程写者覆盖\"。\n    {\n        static std::atomic<int> s_weather_wb_reports_left{4};\n        if (s_weather_wb_reports_left.fetch_sub(1, std::memory_order_relaxed) > 0) {\n            const Variant map_vapor = _map_data->get(StringName(\"weather_vapor_arr\"));\n            float map_first = 0.0f;\n            float store_first = 0.0f;\n            if (map_vapor.get_type() == Variant::PACKED_FLOAT32_ARRAY) {\n                const PackedFloat32Array arr = map_vapor;\n                if (arr.size() > 0) map_first = arr[0];\n            }\n            store_first = applied_vapor_first;\n            std::fprintf(stderr,\n                \"[climate/writeback][b8] day=%lld vapor store0=%.6g map0=%.6g \"\n                \"dirty_fields=%d applied=%d\\n\",\n                static_cast<long long>(applied_day), store_first, map_first,\n                static_cast<int>(touched_slots.size()), applied_fields);\n            std::fflush(stderr);\n        }\n    }\n    const auto flush_done = std::chrono::steady_clock::now();\n    const double copy_ms = std::chrono::duration<double, std::milli>(\n        copy_done - writeback_start).count();\n    const double flush_ms = std::chrono::duration<double, std::milli>(\n        flush_done - copy_done).count();\n    const double total_ms = std::chrono::duration<double, std::milli>(\n        flush_done - writeback_start).count();\n\n    _climate_writeback_applied_generation = applied_generation;\n    _climate_writeback_applied_day = applied_day;\n    out[\"last_applied_day\"] = applied_day;"
+     }
+    ],
+    "explanation": "The new guard makes consuming the commit depend on the climate cursor moving forward. The cursor moves only when `applied` is true. Natively, `applied = applied_fields > 0` after the newest snapshot has already been taken from the ring. So once a snapshot is consumed with zero fields written, no snapshot remains that could ever move the cursor to that day."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd",
+    "start_line": 38,
+    "end_line": 40,
+    "side": "right",
+    "code_snippet": "+\t\thost._apply_climate_writeback_if_authoritative(report)\n+\t\tif host._runtime_climate_writeback_last_day < commit_day:\n+\t\t\treturn"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "informational",
+   "id": "61befc9d-ef91-4776-ae99-08d1963d10a4",
+   "description": "`_upload_curtain_instances` builds a compact array of only the active instances, then calls `compact.resize(mm.instance_count * _INSTANCE_STRIDE)` before `mm.buffer = compact`. So every slot sized to the whole map goes to the render server, per layer, on every weather publication, which contradicts the comment at line 174. The render-thread upload is set by map size, not by how many cells have rain or snow, and the zero padding plus allocation is repeated each sim day, including during fast-forward.",
+   "attribution_status": "pending",
+   "category": "Performance",
+   "title": "Each weather day still sends full-map curtain buffers",
+   "git_sha": "5560e8465103289780ae70023ba938de8b5311b8",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/weather_cell_curtains.gd[174-176]",
+      "citation": "TBD"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/weather_cell_curtains.gd[230-248]",
+      "citation": "TBD"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/rendering/bakers/cell_lut_baker.gd[1212-1221]",
+      "citation": "TBD"
+     }
+    ],
+    "explanation": "`rebuild` sets `mm.instance_count` to every valid cell times every wrap offset and says only the prefix is submitted. The upload path pads the compact array back to that full count and assigns it as the whole buffer, so the visible-count limit only cuts drawing, not the size of the upload. Publications come from `_upload_weather_lut_pair`, which bumps `weather_lut_update_usec` on each weather commit."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/rendering/weather_cell_curtains.gd",
+    "start_line": 243,
+    "end_line": 245,
+    "side": "right",
+    "code_snippet": "+\t\t\tvar mm := multimeshes[layer_index]\n+\t\t\tcompact.resize(mm.instance_count * _INSTANCE_STRIDE)\n+\t\t\tmm.buffer = compact"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "informational",
+   "id": "b5bd440f-57cc-4152-b75b-1899637aaa27",
+   "description": "feature-guides.md gains a second `## 电脑和手机画质设置` section whose bullets duplicate the existing section at around line 758, which this PR also edits. The anchor `feature-guides.md#电脑和手机画质设置` used by module-map.md now resolves to the first copy, so future edits made to one copy will silently drift from the other.",
+   "attribution_status": "pending",
+   "category": "Maintainability",
+   "title": "Graphics settings guide now has two sections with the same heading",
+   "git_sha": "0f9b520ac07c84f034361e042d2cfcfff8280052",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/architecture/feature-guides.md[396-408]",
+      "citation": "## 电脑和手机画质设置\n\n- 主菜单与暂停菜单共用 `GraphicsQualityOptions`。预设位于\n  `graphics_quality_settings.gd`，单项修改从当前预设复制显示值并切到自定义。\n  `GameSettings` 保存预设及自定义选项到 `user://settings.cfg`，用同一份解析结果\n  应用帧率上限。地图贴图烘焙仍读取原预设，地图清晰度单独决定陆地/水面绘制尺寸。\n- 地图清晰度低于 100% 时，`terrain_render_scale.gd` 只缩放陆地和水面平面，\n  合成图放回地图原绘制位置。相机、选区、地图标记与界面继续使用主画布。切回\n  100% 归还两个平面；水面材质重建后也放入当前绘制目标。渲染验证使用\n  `tests/rendering/terrain_render_scale_test.gd`，检查图层顺序、缩放、平移和调整窗口。\n- 迷雾清晰度、天气表现、植被与点缀密度、水面、云影分别由各渲染层应用；\n  关闭云影仍保留天气云的风场输入。切档验证入口为\n  `tests/game/game_settings_service_test.gd` 和 `tests/rendering/cloud_weather_quality_test.gd`。"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/architecture/feature-guides.md[758-768]",
+      "citation": "## 电脑和手机画质设置\n\n手机「自动」在正式地图静止时上限为 30 帧，按下、拖动、缩放和惯性移动时为 60 帧。玩家也可在自定义设置选同一模式。固定帧率和跟随屏幕继续按玩家选择执行。帧率由 GameSettings 统一应用，退出玩家场景时解除静止上限。\n\n迷雾为 50% 或 75% 清晰度时，固定镜头复用上一张雾图，每秒更新 15 次。镜头移动、缩放、雾层改尺寸、重新显示或视野贴图发布时，在下一次绘制之前刷新。100% 迷雾直接画到屏幕。年度报告桌面和加载页只有在实际覆盖整个窗口且完全不透明时才隐藏地图。淡出和安全区留边都需要继续画地图。\n\n原生 Metal/Vulkan 的分离陆地材质在镜头停稳后复用地貌底色、细纹、法线和粗糙度。连续移动期间直接绘制。静态地块重新发布、换图、绘制尺寸或变换改变时，先画当前输入，再生成可复用的画面。光照、积雪和河流仍使用当前帧。缓存跟随陆地所在视口的颜色空间，兼容和 Web 路径沿用直接绘制。实绘回归入口为 `tests/rendering/land_base_cache_test.gd`，设置切换由 `tests/game/game_settings_service_test.gd` 覆盖。\n\n- 主菜单与暂停菜单共用 `GraphicsQualityOptions`。预设位于\n  `graphics_quality_settings.gd`，单项修改从当前预设复制显示值并切到自定义。\n  `GameSettings` 保存预设及自定义选项到 `user://settings.cfg`，用同一份解析结果"
+     }
+    ],
+    "explanation": "Lines 396-408 repeat the bullet text of the existing section at lines 758-768 nearly word for word, under the same heading."
+   },
+   "location": {
+    "file_path": "docs/architecture/feature-guides.md",
+    "start_line": 396,
+    "end_line": 401,
+    "side": "right",
+    "code_snippet": "+## 电脑和手机画质设置\n+\n+- 主菜单与暂停菜单共用 `GraphicsQualityOptions`。预设位于\n+  `graphics_quality_settings.gd`，单项修改从当前预设复制显示值并切到自定义。\n+  `GameSettings` 保存预设及自定义选项到 `user://settings.cfg`，用同一份解析结果\n+  应用帧率上限。地图贴图烘焙仍读取原预设，地图清晰度单独决定陆地/水面绘制尺寸。"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2064125,
+   "commit_sha": "1db870baae485eab1dd21ee062bce76c215199c6",
+   "started_at": "2026-11-19T21:14:05.388704Z",
+   "status": "completed",
+   "review_effort": "skip",
+   "review_complete": false
+  },
+  {
+   "run_id": 2056889,
+   "commit_sha": "3a765ade2f1d99b615c967ad194193fc2cf58b0c",
+   "started_at": "2026-11-19T14:46:33.271904Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2056850,
+   "commit_sha": "a46b9343dfd0e56be1177b74be88b8d1c0d397d1",
+   "started_at": "2026-11-19T14:45:04.895478Z",
+   "status": "aborted",
+   "review_effort": null,
+   "review_complete": null
+  },
+  {
+   "run_id": 2056436,
+   "commit_sha": "28fc7d8d9da7ba104b2c30a4be299605fbe427c9",
+   "started_at": "2026-11-19T14:28:25.940967Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2055810,
+   "commit_sha": "d04a76b7114c6da3e657119203156c539e6e7e1d",
+   "started_at": "2026-11-19T14:01:30.404663Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2054211,
+   "commit_sha": "5560e8465103289780ae70023ba938de8b5311b8",
+   "started_at": "2026-11-19T12:51:59.700452Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  },
+  {
+   "run_id": 2054065,
+   "commit_sha": "243dbe65de41bfd7180e9f93a6a16a445626782b",
+   "started_at": "2026-11-19T12:45:06.831226Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2053750,
+   "commit_sha": "a5ea66422fb6aafc85d1e5dd318444e5a3130dca",
+   "started_at": "2026-11-19T12:32:27.501715Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2053017,
+   "commit_sha": "ee3c10f9d10528af3c3320db2f0a7e6659b82f18",
+   "started_at": "2026-11-19T12:01:29.190744Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  },
+  {
+   "run_id": 2052937,
+   "commit_sha": "17ec2aab88bb3cffcd78031198bd5965156351ae",
+   "started_at": "2026-11-19T11:57:09.608294Z",
+   "status": "skipped",
+   "review_effort": null,
+   "review_complete": false
+  },
+  {
+   "run_id": 2051800,
+   "commit_sha": "0f9b520ac07c84f034361e042d2cfcfff8280052",
+   "started_at": "2026-11-19T10:56:14.731736Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  }
+ ]
+}

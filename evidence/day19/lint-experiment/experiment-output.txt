@@ -1,0 +1,111 @@
+== Finding locations (flag within 3 lines?)
+PR 74 41b96796 Project/project-keynes/scripts/geography/vision_solver.gd:317 -> HIT [314, 317, 319]  (Invalid frame reads as unexplored fog)
+PR 88 665d91a0 Project/project-keynes/scripts/simulation/climate/mapgen_native_daily_runtime.gd:69 -> HIT [69]  (Failed map reads drop out with no error)
+PR 59 162dd0f5 Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd:23 -> HIT [23]  (Setup failure quits without any message)
+PR 38 82a5d2c1 Project/project-keynes/scripts/geography/map_data.gd:610 -> HIT [610]  (Missing season history goes unlogged)
+PR 52 452b8e7e Project/project-keynes/scripts/game/save_preview_codec.gd:25 -> HIT [26]  (Save preview goes blank without any log)
+PR 73 963d6938 Project/project-keynes/scripts/rendering/bakers/cell_lut_baker.gd:562 -> MISS  (Missing ecology data falls back silently)
+PR 36 bb5fed6b Project/project-keynes/scripts/annual/annual_report_flow.gd:139 -> MISS  (UI open failure is logged as a warning, not an error)
+
+== Flags on lines each PR added, at the commit Qodo reviewed (matched = within 3 lines of a fail-loudly finding)
+PR 36 (5a74765d9..c109cc0e5): 0 flags on added lines, 0 matched; 1 fail-loudly findings at this commit
+PR 38 (5a74765d9..6cba72779): 0 flags on added lines, 0 matched; 1 fail-loudly findings at this commit
+PR 52 (7a95db925..8b126ea8b): 55 flags on added lines, 1 matched; 1 fail-loudly findings at this commit
+    Project/project-keynes/scripts/game/save_preview_codec.gd:12
+    Project/project-keynes/scripts/game/save_preview_codec.gd:26  <- Qodo fail-loudly finding
+    Project/project-keynes/scripts/game/save_preview_codec.gd:36
+    Project/project-keynes/scripts/game/save_preview_codec.gd:38
+    Project/project-keynes/scripts/game/save_preview_codec.gd:41
+    Project/project-keynes/scripts/game/save_preview_codec.gd:44
+    Project/project-keynes/scripts/game/start_location_candidates.gd:19
+    Project/project-keynes/scripts/game/start_location_candidates.gd:21
+    Project/project-keynes/scripts/game/start_location_candidates.gd:23
+    Project/project-keynes/scripts/rendering/visual_tile_horizon_baker.gd:357
+    Project/project-keynes/scripts/rendering/visual_tile_horizon_baker.gd:364
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:80
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:83
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:88
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:96
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:116
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:151
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:226
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:264
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:266
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:268
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:286
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:321
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:328
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:330
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:395
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:424
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:435
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:437
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:439
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:445
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:447
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:459
+    Project/project-keynes/scripts/ui/cell_board_view_model.gd:461
+    Project/project-keynes/scripts/ui/components/cell_board.gd:176
+    Project/project-keynes/scripts/ui/components/cell_board.gd:181
+    Project/project-keynes/scripts/ui/components/cell_board.gd:331
+    Project/project-keynes/scripts/ui/components/cell_board.gd:339
+    Project/project-keynes/scripts/ui/components/cell_hover_card.gd:322
+    Project/project-keynes/scripts/ui/components/cell_hover_card.gd:324
+    Project/project-keynes/scripts/ui/components/cell_hover_card.gd:327
+    Project/project-keynes/scripts/ui/icon_catalog.gd:1201
+    Project/project-keynes/scripts/ui/paper_building_icon.gd:13
+    Project/project-keynes/scripts/ui/paper_building_icon.gd:22
+    Project/project-keynes/scripts/ui/paper_building_icon.gd:25
+    Project/project-keynes/scripts/ui/paper_building_icon.gd:28
+    Project/project-keynes/scripts/weather/feedback.gd:204
+    Project/project-keynes/scripts/weather/feedback.gd:214
+    Project/project-keynes/scripts/weather/field_solver_physics.gd:109
+    Project/project-keynes/scripts/weather/field_solver_physics.gd:112
+    Project/project-keynes/scripts/weather/native_bridge.gd:191
+    Project/project-keynes/tests/ui/cell_board_test.gd:20
+    Project/project-keynes/tests/ui/cell_board_test.gd:25
+    Project/project-keynes/tests/ui/cell_board_test.gd:414
+    Project/project-keynes/tests/ui/cell_board_test.gd:421
+PR 59 (5b69be27c..809a4f314): 7 flags on added lines, 1 matched; 1 fail-loudly findings at this commit
+    Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd:23  <- Qodo fail-loudly finding
+    Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd:38
+    Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd:87
+    Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd:104
+    Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd:134
+    Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd:161
+    Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd:168
+PR 73 (9ddb12734..9fad268f5): 9 flags on added lines, 0 matched; 1 fail-loudly findings at this commit
+    Project/project-keynes/scripts/game/world_runtime_map_updates.gd:55
+    Project/project-keynes/scripts/game/world_runtime_map_updates.gd:97
+    Project/project-keynes/scripts/game/world_runtime_map_updates.gd:99
+    Project/project-keynes/tests/game/player_scene_display_checks.gd:135
+    Project/project-keynes/tests/game/player_scene_display_checks.gd:137
+    Project/project-keynes/tests/game/player_scene_display_checks.gd:139
+    Project/project-keynes/tests/game/player_scene_handoff_probe.gd:369
+    Project/project-keynes/tests/runtime/simulation_presentation_coalescing_test.gd:148
+    Project/project-keynes/tests/runtime/simulation_presentation_coalescing_test.gd:150
+PR 74 (d2e0e7d93..41d3b5156): 19 flags on added lines, 3 matched; 1 fail-loudly findings at this commit
+    Project/project-keynes/scripts/game/runtime_publication_reader.gd:13
+    Project/project-keynes/scripts/game/runtime_publication_reader.gd:17
+    Project/project-keynes/scripts/game/world_runtime_host.gd:628
+    Project/project-keynes/scripts/geography/vision_solver.gd:314  <- Qodo fail-loudly finding
+    Project/project-keynes/scripts/geography/vision_solver.gd:317  <- Qodo fail-loudly finding
+    Project/project-keynes/scripts/geography/vision_solver.gd:319  <- Qodo fail-loudly finding
+    Project/project-keynes/scripts/geography/vision_solver.gd:330
+    Project/project-keynes/scripts/geography/vision_solver.gd:332
+    Project/project-keynes/scripts/rendering/cell_situation_layer.gd:331
+    Project/project-keynes/scripts/rendering/cell_situation_layer.gd:337
+    Project/project-keynes/scripts/rendering/map_camera.gd:590
+    Project/project-keynes/scripts/rendering/map_camera.gd:607
+    Project/project-keynes/scripts/rendering/map_camera.gd:614
+    Project/project-keynes/scripts/rendering/military_map_layers.gd:452
+    Project/project-keynes/scripts/ui/cell_hover_view_model.gd:298
+    Project/project-keynes/scripts/ui/cell_inspector/object_dossiers.gd:735
+    Project/project-keynes/scripts/ui/cell_inspector_view_model.gd:466
+    Project/project-keynes/scripts/ui/cell_inspector_view_model.gd:488
+    Project/project-keynes/scripts/ui/game_ui/selected_cell.gd:90
+PR 88 (c81ebf871..99f5d9b48): 4 flags on added lines, 1 matched; 1 fail-loudly findings at this commit
+    Project/project-keynes/scripts/game/map_runtime_bridge.gd:162
+    Project/project-keynes/scripts/simulation/climate/mapgen_native_daily_runtime.gd:69  <- Qodo fail-loudly finding
+    Project/project-keynes/tests/game/player_map_publication_test.gd:46
+    Project/project-keynes/tests/game/player_map_publication_test.gd:65

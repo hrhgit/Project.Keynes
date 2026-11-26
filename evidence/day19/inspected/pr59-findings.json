@@ -1,0 +1,343 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/59",
+ "git_provider": null,
+ "finding_count": 6,
+ "review_session": {
+  "run_id": 2127673,
+  "status": "skipped",
+  "commit_sha": "673453fcb82f43b733f41066b48794f730cf09ac",
+  "started_at": "2026-11-24T06:48:10.459222Z",
+  "git_provider": "github",
+  "review_complete": false
+ },
+ "findings": [
+  {
+   "action_level": "action_required",
+   "id": "162dd0f5-eb86-46f3-85c7-47e7cafd0a55",
+   "description": "`open_game` returns `null` without calling `push_error` when `host.session_config()` is empty, while `record_coast` silently returns `false` for invalid shader tier, visual quality, quads or meshes, water layer, day, or zoom. These setup failures reach `_run` as either a bare exit code 1 or the generic “four complete coast passes” error, leaving operators unable to identify the cause from the log or capture folder—particularly on a phone without a console.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Setup failure quits without any message",
+   "git_sha": "809a4f3145b98fa769fd5edab82284aa49d55f3a",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd[23-24]",
+      "citation": "\tif host.session_config().is_empty():\n\t\treturn null"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/diagnostics/coast_pan.gd[54-57]",
+      "citation": "\tvar game := await DrawCapture.open_game(get_tree(), config)\n\tif game == null:\n\t\tget_tree().quit(1)\n\t\treturn"
+     },
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd[82-105]",
+      "citation": "\tif renderer._mobile_quality_tier_define != \"MOBILE_QUALITY_LOW\" or game.visual_quality != 0 \\\n\t\t\tor water == null or land == null or water.mesh == null or land.mesh == null \\\n\t\t\tor water.get_viewport() != window or land.get_viewport() != window:\n\t\treturn false\n\tvar layer := water.visibility_layer\n\tif layer == 0:\n\t\treturn false\n\tvar hex_size: float = renderer.hex_size\n\tcamera.restore_view_state(camera.position, 1.75)\n\tvar view: Rect2 = camera.current_world_view_rect()\n\t# Freeze the route selected in the November 2026 device run, before its first measured step.\n\tvar left := Vector2(1059.36376953125, 924.0)\n\tvar right := left + Vector2(320, 0)\n\tvar fractions: Array[Vector2] = []\n\tfor t: float in [0.0, 0.25, 0.5, 0.75, 1.0]:\n\t\tvar center := left.lerp(right, t)\n\t\tvar share := _coast_fraction(map, Rect2(center - view.size / 2.0, view.size), hex_size)\n\t\tif minf(share.x, share.y) < 0.15:\n\t\t\tpush_error(\"The fixed coast route no longer shows both explored land and water.\")\n\t\t\treturn false\n\t\tfractions.append(share)\n\tvar base_day := game._world_clock.day_index()\n\tif base_day != 3 or not is_equal_approx(camera.zoom.x, 1.75):\n\t\treturn false"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd[19-24]",
+      "citation": "\t# Freeze the calendar before PlayerGame starts generation. The explored\n\t# fixture can still admit its two explicit days through the runtime host.\n\tgame._world_clock.pause(true)\n\tvar host := game._runtime_host\n\tif host.session_config().is_empty():\n\t\treturn null"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/diagnostics/coast_pan.gd[92-93]",
+      "citation": "\tif _failures == 0:\n\t\t_check(await DrawCapture.record_coast(game, map, folder), \"four complete coast passes\")"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/coast_pan/README.md[7-12]",
+      "citation": "使用项目对应的 Godot、已经导入的游戏和为当前提交构建的 DOTS 扩展。使用 Mobile 渲染器和横屏，测试期间让游戏保持可见。桌面从仓库根运行（Windows PowerShell 中先设置 `$env:PK_MOBILE_SHADER_TIER=\"MOBILE_QUALITY_LOW\"`）。\n\n```sh\nPK_MOBILE_SHADER_TIER=MOBILE_QUALITY_LOW godot --path Project/project-keynes \\\n  --windowed --resolution 1600x960 --rendering-method mobile -- --coast-pan\n```"
+     }
+    ],
+    "explanation": "The empty-session-config check in `open_game` returns null without a message, and its caller in `coast_pan.gd` quits with status 1 when the game is null. In `record_coast`, the listed precondition checks return false silently; only the coverage check at line 100 has its own message, so the other failures reach the caller’s generic check failure. The README instructs desktop users to set the shader-tier environment variable, making an omitted `PK_MOBILE_SHADER_TIER` an expected path into a silent return."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd",
+    "start_line": 23,
+    "end_line": 24,
+    "side": "right",
+    "code_snippet": "+\tif host.session_config().is_empty():\n+\t\treturn null"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "b9a4a698-443f-43c9-9226-dc630868bee3",
+   "description": "`load_capture` in `report.py` special-cases the outcome string `29 checks, 2 failures` and then overwrites the platform, model, build, screen size and Godot version of the four captured arms with values from `iphone-16e.json`, so a run that failed its own checks is reported as a valid iPhone result. The same change lowers the VSync expectation from disabled to enabled in `coast_pan.gd`, so the failing assertion is changed to match the observed result instead of the cause being explained. Any later reader of the reference will trust the metadata that was injected rather than measured, and the exception is only protected by a hash match on four files.",
+   "attribution_status": "implemented",
+   "category": "Testability",
+   "title": "Failed benchmark run accepted as a valid baseline",
+   "git_sha": "809a4f3145b98fa769fd5edab82284aa49d55f3a",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/coast_pan/report.py[30-38]",
+      "citation": "    if outcome == \"29 checks, 2 failures\":\n        # Historical run checked VSync against two desktop expectations. Only those exact\n        # four original files may be replayed with the separately verified phone metadata.\n        reference = json.loads((HERE / \"iphone-16e.json\").read_text())\n        require([hashlib.sha256(data).hexdigest() for data in raw] == reference[\"arm_sha256\"],\n                \"this failed run is not the archived iPhone capture\")\n        for r in records:\n            r.update(protocol=PROTOCOL, platform=\"iOS\", model=\"iPhone 16e\", build=\"release\",\n                     screen_px=[2532, 1170], godot=reference[\"godot\"])"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/diagnostics/coast_pan.gd[88-89]",
+      "citation": "\t_check(Engine.max_fps == 0 and DisplayServer.window_get_vsync_mode() == DisplayServer.VSYNC_ENABLED,\n\t\t\"uncapped engine with display synchronization\")"
+     },
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948320?state=active",
+      "id": 4948320,
+      "platform_entity_id": "4948320",
+      "citation": "Keynes: fix the root cause instead of relaxing the check",
+      "platform_entity_type": "rule"
+     }
+    ],
+    "explanation": "The PR-introduced `load_capture` branch accepts a failed run (`29 checks, 2 failures`) and rewrites its metadata, while the VSync check in `coast_pan.gd` was changed to require `VSYNC_ENABLED` to match the phone rather than keeping the original comparison."
+   },
+   "location": {
+    "file_path": "tools/perf/coast_pan/report.py",
+    "start_line": 30,
+    "end_line": 34,
+    "side": "right",
+    "code_snippet": "+    if outcome == \"29 checks, 2 failures\":\n+        # Historical run checked VSync against two desktop expectations. Only those exact\n+        # four original files may be replayed with the separately verified phone metadata.\n+        reference = json.loads((HERE / \"iphone-16e.json\").read_text())\n+        require([hashlib.sha256(data).hexdigest() for data in raw] == reference[\"arm_sha256\"],"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "907d309b-c638-4321-b6e4-e9bbc933d2d8",
+   "description": "The exploration setup in `_prepare_explored_map` advances background days by polling `host._runtime_commit_day` with `process_frame` and then asserts on it, without `wait_for_runtime_day` and without the host's `_service_runtime_liveness` receive step. Completion is therefore defined by the observed committed field rather than by the production result-receive path, which can make the assertions depend on frame timing.",
+   "attribution_status": "implemented",
+   "category": "Testability",
+   "title": "Test waits without the day-receive step",
+   "git_sha": "809a4f3145b98fa769fd5edab82284aa49d55f3a",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/diagnostics/coast_pan.gd[135-139]",
+      "citation": "\t\twhile host._runtime_commit_day < day and not host.is_runtime_fault_paused():\n\t\t\tawait get_tree().process_frame\n\t\t_check(host._runtime_commit_day == day, \"executor publishes day %d\" % day)\n\t\tif host._runtime_commit_day != day:\n\t\t\treturn"
+     },
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948326?state=active",
+      "id": 4948326,
+      "platform_entity_id": "4948326",
+      "citation": "Keynes: background-day tests wait for the committed day and receive results",
+      "platform_entity_type": "rule"
+     }
+    ],
+    "explanation": "The new loop waits on the private committed-day field and a fault flag, then asserts equality, skipping the required wait helper and the production receive step."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/diagnostics/coast_pan.gd",
+    "start_line": 135,
+    "end_line": 139,
+    "side": "right",
+    "code_snippet": "+\t\twhile host._runtime_commit_day < day and not host.is_runtime_fault_paused():\n+\t\t\tawait get_tree().process_frame\n+\t\t_check(host._runtime_commit_day == day, \"executor publishes day %d\" % day)\n+\t\tif host._runtime_commit_day != day:\n+\t\t\treturn"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "07256e5c-935f-4501-9dd6-0e84c5fa8e5a",
+   "description": "`matched_timings()` collects surface IDs from every present request in the trace, then accepts display swaps containing any of those IDs without pairing a swap to its corresponding request. When a traced surface appears in another swap during the measured window, the count check can reject a valid trace or accept 110 swaps that do not represent the measured frames.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Screen timing can include unrelated swaps",
+   "git_sha": "809a4f3145b98fa769fd5edab82284aa49d55f3a",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/coast_pan/apple_trace.py[42-51]",
+      "citation": "        requests = [(int(r[0].text), int(r[1].text), int(r[2].text))\n                    for r in rows(trace, \"ca-client-present-request\", folder)\n                    if target(r[6]) and r[1].text and r[2].text]\n        surfaces = {s for _, _, s in requests}\n        swaps = sorted({int(r[0].text) for r in rows(trace, \"display-surface-swap\", folder)\n                        if r[2].text == \"Built-In Display\" and any(\n                            len(r) > i and r[i].text and int(r[i].text) in surfaces for i in (3, 12, 13))})\n        assignments = {int(r[1].text): int(r[4].text)\n                       for r in rows(trace, \"metal-command-buffer-frame-assignment\", folder)\n                       if target(r[14]) and r[1].text and r[4].text}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/coast_pan/apple_trace.py[58-69]",
+      "citation": "    result = {}\n    for record, group in zip(records[2:], (\"full\", \"without_water\"), strict=True):\n        start = (record[\"start_unix_s\"] - zero)*1e9 + sum(record[\"raw_frame_interval_ms\"][:130])*1e6\n        stop = (record[\"end_unix_s\"] - zero)*1e9\n        ids = [assignments.get(b) for t, b, _ in requests if start <= t < stop]\n        displayed = [t for t in swaps if start <= t < stop]\n        if len(ids) != 110 or len(set(ids)) != 110 or not all(f in activity for f in ids):\n            raise ValueError(f\"{group}: incomplete GPU coverage for steps 130–239\")\n        if len(displayed) != 110:\n            raise ValueError(f\"{group}: {len(displayed)} display swaps; cannot reproduce the 109-interval baseline\")\n        result[group] = {\"gpu_work_ms\": [active_ms(activity[f]) for f in ids],\n                         \"display_intervals_ms\": [(b-a)/1e6 for a, b in pairwise(displayed)]}"
+     }
+    ],
+    "explanation": "Requests retain timestamps, command-buffer keys, and surface IDs, whereas the swap filter uses the union of surface IDs from all requests and discards swap identity. The later validation establishes only that 110 timestamps were selected, not that they correspond to the 110 measured requests."
+   },
+   "location": {
+    "file_path": "tools/perf/coast_pan/apple_trace.py",
+    "start_line": 45,
+    "end_line": 48,
+    "side": "right",
+    "code_snippet": "+        surfaces = {s for _, _, s in requests}\n+        swaps = sorted({int(r[0].text) for r in rows(trace, \"display-surface-swap\", folder)\n+                        if r[2].text == \"Built-In Display\" and any(\n+                            len(r) > i and r[i].text and int(r[i].text) in surfaces for i in (3, 12, 13))})"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "6ac17b80-00de-4998-a3b6-36f2797106cc",
+   "description": "`compare()` checks only `protocol` and `conditions`, although `main()` places the captured Godot version and device model outside `conditions`. A run from another engine version, or another phone given the same `--device` label, can therefore receive `comparable: true` and direct timing deltas against the iPhone reference.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Different game builds appear comparable",
+   "git_sha": "809a4f3145b98fa769fd5edab82284aa49d55f3a",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/diagnostics/coast_pan_capture.gd[144-155]",
+      "citation": "\t\tvar report := {\n\t\t\t\"ok\": valid and screenshot_ok and image.get_width() > 0 and image.get_height() > 0 and draws.min() > 0,\n\t\t\t\"protocol\": \"coast-pan-v1\", \"platform\": OS.get_name(), \"model\": OS.get_model_name(),\n\t\t\t\"build\": \"debug\" if OS.is_debug_build() else \"release\",\n\t\t\t\"screen_px\": [window.size.x, window.size.y], \"godot\": Engine.get_version_info().string,\n\t\t\t\"scene\": \"explored-coast\", \"arm\": arm, \"day\": base_day, \"omitted_layer\": \"water\" if omit else \"\",\n\t\t\t\"scale_percent\": 100, \"process_id\": OS.get_process_id(), \"start_unix_s\": start, \"end_unix_s\": end,\n\t\t\t\"frame_interval_ms\": _summary(intervals), \"raw_frame_interval_ms\": intervals,\n\t\t\t\"draw_calls\": _summary(draws), \"camera_zoom\": base_zoom, \"camera_centers\": points,\n\t\t\t\"explored_land_water_fractions\": coverage, \"window_px\": [image.get_width(), image.get_height()],\n\t\t\t\"driver\": RenderingServer.get_current_rendering_driver_name(),\n\t\t\t\"adapter\": RenderingServer.get_video_adapter_name(),"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/coast_pan/report.py[65-80]",
+      "citation": "def compare(current, previous):\n    require(previous[\"protocol\"] == current[\"protocol\"], \"different scenario version\")\n    keys = set(current[\"conditions\"]) | set(previous[\"conditions\"])\n    different = [k for k in sorted(keys) if current[\"conditions\"].get(k) != previous[\"conditions\"].get(k)]\n    if different:\n        return {\"comparable\": False, \"different_conditions\": different, \"reference\": previous[\"measurements\"]}\n    changes = {}\n    for group, metrics in current[\"measurements\"].items():\n        for name, new in metrics.items():\n            old = previous[\"measurements\"][group].get(name)\n            if old and old[\"samples\"] == new[\"samples\"]:\n                changes[f\"{group}/{name}\"] = {\n                    \"baseline_ms\": old[\"p95_ms\"], \"current_ms\": new[\"p95_ms\"],\n                    \"delta_p95_ms\": round(new[\"p95_ms\"] - old[\"p95_ms\"], 6),\n                    \"delta_above_25_ms\": new[\"above_25_ms\"] - old[\"above_25_ms\"]}\n    return {\"comparable\": True, \"changes\": changes}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/coast_pan/report.py[91-94]",
+      "citation": "    records, conditions = load_capture(args.folder)\n    model = conditions.pop(\"model\")\n    conditions[\"device\"] = args.device\n    result = {\"protocol\": PROTOCOL, \"conditions\": conditions, \"model\": model, \"godot\": records[0][\"godot\"], \"measurements\": {}}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/coast_pan/iphone-16e.json[3-6]",
+      "citation": "  \"source_commit\": \"0fae578384cd1805945d10259f3f7bcf24e1409e\",\n  \"date\": \"2026-11-23\",\n  \"godot\": \"4.6.3\",\n  \"conditions\": {"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/coast_pan/iphone-16e.json[82-82]",
+      "citation": "  \"model\": \"iPhone 16e\","
+     }
+    ],
+    "explanation": "The capture records both values, and the reference stores both, but neither enters the dictionary that `compare()` examines."
+   },
+   "location": {
+    "file_path": "tools/perf/coast_pan/report.py",
+    "start_line": 65,
+    "end_line": 68,
+    "side": "right",
+    "code_snippet": "+def compare(current, previous):\n+    require(previous[\"protocol\"] == current[\"protocol\"], \"different scenario version\")\n+    keys = set(current[\"conditions\"]) | set(previous[\"conditions\"])\n+    different = [k for k in sorted(keys) if current[\"conditions\"].get(k) != previous[\"conditions\"].get(k)]"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "cd5b9c8d-b2d7-431c-9d9c-aa2e97255038",
+   "description": "`GameSettings._ready()` skips `load_settings()` for a coast-pan run, leaving defaults in memory, while a later persisting `update()` saves that entire dictionary. If a tester changes a setting through the game UI or a game command during the desktop run, the next normal launch reads defaults in place of previously saved preferences.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Benchmark runs can overwrite saved settings",
+   "git_sha": "809a4f3145b98fa769fd5edab82284aa49d55f3a",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/game_settings_service.gd[58-65]",
+      "citation": "\tif coast_pan_requested():\n\t\t# Start windowed before the OS begins an asynchronous fullscreen transition.\n\t\t_settings.window_mode = \"windowed\"\n\t\t_settings.resolution_width = 1600\n\t\t_settings.resolution_height = 960\n\telse:\n\t\tload_settings()\n\tapply()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/game_settings_service.gd[82-98]",
+      "citation": "\tif values_to_apply.has(\"render_quality\") and not values_to_apply.has(\"graphics_custom\"):\n\t\t_settings.graphics_custom = false\n\tfor key in DEFAULTS:\n\t\tif values_to_apply.has(key):\n\t\t\t_settings[key] = values_to_apply[key]\n\t_validate()\n\tapply()\n\tif persist:\n\t\tvar saved := save_settings()\n\t\tif not bool(saved.get(\"ok\", false)):\n\t\t\treturn saved\n\tsettings_changed.emit(values())\n\tif values_to_apply.has(\"event_pause_mask\"):\n\t\tevent_pause_changed.emit(int(_settings.event_pause_mask))\n\tif values_to_apply.has(\"ai_narrative_enabled\"):\n\t\tai_narrative_changed.emit(bool(_settings.ai_narrative_enabled))\n\treturn {\"ok\": true, \"code\": \"ok\", \"message\": \"\"}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/game_settings_service.gd[113-125]",
+      "citation": "\n\nfunc load_settings() -> Dictionary:\n\tvar cfg := ConfigFile.new()\n\tvar error := cfg.load(SETTINGS_PATH)\n\tif error != OK and error != ERR_FILE_NOT_FOUND:\n\t\treturn {\"ok\": false, \"code\": \"settings_read_failed\", \"message\": \"无法读取设置文件。\"}\n\tif error == OK:\n\t\tfor key in DEFAULTS:\n\t\t\t_settings[key] = cfg.get_value(\"settings\", key) if cfg.has_section_key(\"settings\", key) \\\n\t\t\t\telse DEFAULTS[key]\n\t_validate()\n\treturn {\"ok\": true, \"code\": \"ok\", \"message\": \"\"}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/components/pause_menu.gd[265-273]",
+      "citation": "\t\t\t\"ai_image_enabled\": image_enabled.button_pressed,\n\t\t\t\"ai_image_base_url\": img_url.text.strip_edges(),\n\t\t\t\"ai_image_model\": img_model.text.strip_edges(),\n\t\t}\n\t\tvar settings_result: Dictionary = {\"ok\": true}\n\t\tif settings_service != null and settings_service.has_method(\"update\"):\n\t\t\tsettings_result = settings_service.update(payload, true)\n\t\tvar keys_result: Dictionary = NarrativeAiClientScript.save_api_keys(\n\t\t\tllm_key.text.strip_edges(), img_key.text.strip_edges())"
+     }
+    ],
+    "explanation": "The new branch skips loading the file; `update()` persists by default and `save_settings()` writes every in-memory setting. Existing UI callers can invoke those persisting updates."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/game_settings_service.gd",
+    "start_line": 58,
+    "end_line": 65,
+    "side": "right",
+    "code_snippet": "+\tif coast_pan_requested():\n+\t\t# Start windowed before the OS begins an asynchronous fullscreen transition.\n+\t\t_settings.window_mode = \"windowed\"\n+\t\t_settings.resolution_width = 1600\n+\t\t_settings.resolution_height = 960\n+\telse:\n+\t\tload_settings()\n \tapply()"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2127673,
+   "commit_sha": "673453fcb82f43b733f41066b48794f730cf09ac",
+   "started_at": "2026-11-24T06:48:10.459222Z",
+   "status": "skipped",
+   "review_effort": null,
+   "review_complete": false
+  },
+  {
+   "run_id": 2127671,
+   "commit_sha": "673453fcb82f43b733f41066b48794f730cf09ac",
+   "started_at": "2026-11-24T06:47:56.525099Z",
+   "status": "skipped",
+   "review_effort": null,
+   "review_complete": false
+  },
+  {
+   "run_id": 2127634,
+   "commit_sha": "0382160898c0a44e977b6590270044511f30fa52",
+   "started_at": "2026-11-24T06:43:05.754455Z",
+   "status": "skipped",
+   "review_effort": null,
+   "review_complete": false
+  },
+  {
+   "run_id": 2127620,
+   "commit_sha": "673453fcb82f43b733f41066b48794f730cf09ac",
+   "started_at": "2026-11-24T06:41:51.026980Z",
+   "status": "superseded",
+   "review_effort": null,
+   "review_complete": null
+  },
+  {
+   "run_id": 2127546,
+   "commit_sha": "0382160898c0a44e977b6590270044511f30fa52",
+   "started_at": "2026-11-24T06:36:16.626777Z",
+   "status": "skipped",
+   "review_effort": null,
+   "review_complete": false
+  },
+  {
+   "run_id": 2126843,
+   "commit_sha": "6e6cd36fcb5694ee30ec8f3ff7fe4580677066ec",
+   "started_at": "2026-11-24T04:59:08.552968Z",
+   "status": "skipped",
+   "review_effort": null,
+   "review_complete": false
+  },
+  {
+   "run_id": 2124680,
+   "commit_sha": "8f2fe502efe9b1b3075133ac62c378bdc680b10b",
+   "started_at": "2026-11-24T00:20:53.699504Z",
+   "status": "completed",
+   "review_effort": "standard",
+   "review_complete": true
+  },
+  {
+   "run_id": 2124034,
+   "commit_sha": "809a4f3145b98fa769fd5edab82284aa49d55f3a",
+   "started_at": "2026-11-23T23:20:45.828458Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  }
+ ]
+}

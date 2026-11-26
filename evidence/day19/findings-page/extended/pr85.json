@@ -1,0 +1,313 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/85",
+ "git_provider": null,
+ "finding_count": 6,
+ "review_session": {
+  "run_id": 2153392,
+  "status": "completed",
+  "commit_sha": "1b8b122418c17a10d3a182704ac314e9c6b3aa21",
+  "started_at": "2026-11-25T11:07:22.288143Z",
+  "git_provider": "github",
+  "review_complete": false
+ },
+ "findings": [
+  {
+   "action_level": "remediation_recommended",
+   "id": "2c087197-683a-4eb5-abfa-6c3a26c4060e",
+   "description": "`CommittedDayRecorder.on_day_records` sets `t_sus_ms` with `row.get(\"t_sus_ms\", 0.0)`, so any row whose sample lacks the field, including every batch that is not the final one, is exported as `0`. The benchmark treats this column as a required measurement, so a zero that means 'not measured' is indistinguishable from a real zero reading.",
+   "attribution_status": "implemented",
+   "category": "Reliability",
+   "title": "Unmeasured t_sus_ms is written as a fake zero",
+   "git_sha": "b1b52c4893685fda52d80d1eb3272e4fcb9ad4bb",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/headless_perf_record.gd[90-91]",
+      "citation": "\t\t\t# Whole-graph execution does not run SUS on the foreground.\n\t\t\trow[\"t_sus_ms\"] = row.get(\"t_sus_ms\", 0.0)"
+     },
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     }
+    ],
+    "explanation": "The default `0.0` is used for a required numeric column that the PR itself says is unavailable per day, so the default hides missing data rather than reporting it as blank."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+    "start_line": 90,
+    "end_line": 91,
+    "side": "right",
+    "code_snippet": "+\t\t\t# Whole-graph execution does not run SUS on the foreground.\n+\t\t\trow[\"t_sus_ms\"] = row.get(\"t_sus_ms\", 0.0)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "5844bc28-5c68-454e-9c2a-a8672b2d5740",
+   "description": "`auth_measure_start_us`/`auth_measure_end_us` now come from the worker's `produced_at_us` stamps for the warmup-boundary day and the last measured day. The old code used main-thread `Time.get_ticks_usec()` at the moment each commit was observed. `perf_change_check.py` runs each commit's own copy of this script and keys archived records only by `METHOD_VERSION = 2`, which has not changed. So any `compare` with a base before this PR and a head after it reports a change in the headline metrics `auth.authoritative_days_per_second` and `harness.adjusted_days_per_second` that comes only from the new measurement method.",
+   "attribution_status": "implemented",
+   "category": "Observability",
+   "title": "Headline throughput changes meaning across this commit",
+   "git_sha": "b1b52c4893685fda52d80d1eb3272e4fcb9ad4bb",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/headless_perf_record.gd[59-96]",
+      "citation": "\tfunc on_day_records(records: Array) -> void:\n\t\tvar sample := _batch_sample\n\t\t_batch_sample = {}\n\t\tfor index in records.size():\n\t\t\tvar record: Dictionary = records[index]\n\t\t\tvar day := int(record[\"day\"])\n\t\t\tif day > _last_day or not is_recording():\n\t\t\t\tbreak\n\t\t\tif day <= _last_published_day:\n\t\t\t\tcontinue\n\t\t\t_last_published_day = day\n\t\t\tif day > 0:\n\t\t\t\tobserved_days += 1\n\t\t\tif day == _first_day - 1:\n\t\t\t\twarmup_finished_us = int(record[\"produced_at_us\"])\n\t\t\tif day < _first_day:\n\t\t\t\tcontinue\n\n\t\t\tvar generation := int(record[\"generation\"])\n\t\t\tvar row: Dictionary = {}\n\t\t\t# One batch has one foreground timing sample. Native metrics are\n\t\t\t# available only when the snapshot belongs to the same commit.\n\t\t\tif index == records.size() - 1 and int(sample.get(\"tick_idx\", -1)) == day:\n\t\t\t\tvar graph: Dictionary = sample.get(\"runtime_graph\", {})\n\t\t\t\tif int(graph.get(\"simulation_committed_day\", -1)) != day \\\n\t\t\t\t\t\tor int(graph.get(\"simulation_generation\", -1)) != generation:\n\t\t\t\t\tsample = sample.duplicate()\n\t\t\t\t\tsample.erase(\"runtime_graph\")\n\t\t\t\trow = _build_row(sample, null)\n\t\t\trow[\"tick_idx\"] = day\n\t\t\trow[\"speed_multiplier\"] = _speed\n\t\t\t# Whole-graph execution does not run SUS on the foreground.\n\t\t\trow[\"t_sus_ms\"] = row.get(\"t_sus_ms\", 0.0)\n\t\t\trow[\"runtime_graph_simulation_committed_day\"] = day\n\t\t\trow[\"runtime_graph_simulation_generation\"] = generation\n\t\t\t_append_row(row)\n\t\t\tlast_measured_us = int(record[\"produced_at_us\"])\n\t\t\tlast_measurement_received_us = Time.get_ticks_usec()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/headless_perf_record.gd[600-626]",
+      "citation": "\tvar lower_bound_run_ms := maxf(0.0, run_ms - writeback_window_ms)\n\tvar expected_rows := days\n\tvar effective_days := float(authoritative_measured)\n\tvar auth_measure_start_us := recorder.warmup_finished_us\n\tvar auth_measure_end_us := recorder.last_measured_us\n\tif warmup_days == 0 and auth_measure_start_us == 0:\n\t\t# Day zero may already be installed at setup. Use the local clock for\n\t\t# both ends of this interval when there is no bootstrap timestamp.\n\t\tauth_measure_start_us = run_started\n\t\tauth_measure_end_us = recorder.last_measurement_received_us\n\tvar auth_elapsed_ms := 0.0\n\tif auth_measure_end_us > auth_measure_start_us and auth_measure_start_us > 0:\n\t\tauth_elapsed_ms = float(auth_measure_end_us - auth_measure_start_us) / 1000.0\n\tvar authoritative_committed_days := authoritative_measured\n\tvar authoritative_days_per_second := _days_per_second(\n\t\tfloat(authoritative_committed_days), auth_elapsed_ms)\n\tvar raw_days_per_second := _days_per_second(effective_days, run_ms)\n\tvar adjusted_days_per_second := authoritative_days_per_second\n\tvar lower_bound_days_per_second := _days_per_second(effective_days, lower_bound_run_ms)\n\tvar main_wait_on_sim_us := int(runtime_report_end.get(\"main_wait_on_sim_us\", 0))\n\t# Checkpoint (assert when measuring): authoritative throughput >= 50 days/s.\n\t# M7 PERFORMANCE reads authoritative_days_per_second from the session JSON.\n\tvar throughput_checkpoint_ok := authoritative_measured >= days \\\n\t\tand authoritative_days_per_second >= AUTHORITATIVE_THROUGHPUT_CHECKPOINT_DAYS_PER_SEC\n\tprint(\"[headless-perf/auth] warmup_days=%d pipeline_depth=%d measured_days=%d committed_days=%d observed=%d commit_us=%d..%d authoritative_days_per_second=%.6f main_wait_on_sim_us=%d checkpoint_ok=%s\" % [\n\t\twarmup_days, pipeline_depth, authoritative_measured, authoritative_committed_days,\n\t\trecorder.observed_days,"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[45-58]",
+      "citation": "METHOD_VERSION = 2\nDEFAULT_SCENARIO = {\"days\": 50, \"speed\": 50, \"seed\": 20260718, \"width\": 60, \"height\": 40,\n                    \"foreign_count\": 3}\nTIERS = (\"quick\", \"full\")\nNOISE = 0.15\nDEFAULT_ROUNDS = 3\nGOLDEN_RUNS = 2\nEXIT_PASS, EXIT_FAIL, EXIT_HUMAN, EXIT_DEFERRED, EXIT_USAGE = 0, 1, 2, 75, 64\nHEADLINE = {\n    \"result.run_ms\": \"lower\",\n    \"auth.authoritative_days_per_second\": \"higher\",\n    \"harness.adjusted_days_per_second\": \"higher\",\n    \"result.generation_ms\": \"lower\",\n    \"rusage.maxrss_mb\": \"lower\","
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[750-760]",
+      "citation": "    if tier == \"full\":\n        env[\"PK_RUNTIME_WATERFALL_CSV\"] = str(out / \"waterfall.csv\")\n    log = out / \"godot.log\"\n    started = time.monotonic()\n    with log.open(\"w\") as handle:\n        process = subprocess.Popen(command, cwd=worktree, env=env, stdout=handle,\n                                   stderr=subprocess.STDOUT)\n        _, status, usage = os.wait4(process.pid, 0)\n    wall = time.monotonic() - started\n    exit_code = os.waitstatus_to_exitcode(status)\n    lines = log.read_text(errors=\"replace\").splitlines()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[836-838]",
+      "citation": "def identity_for(commit: str, scenario: dict, machine: dict, toolchain: dict) -> dict:\n    return {\"commit\": commit, \"scenario\": scenario, \"method_version\": METHOD_VERSION,\n            **machine, **toolchain}"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_commands.cpp[780-790]",
+      "citation": "    auto published = std::make_shared<RuntimeCommit>();\n    RuntimeCommitHeader &header = published->header;\n    const uint64_t produced_at_us = now_us();\n    header.generation = generation;\n    header.from_day = from_day;\n    header.committed_day = day;\n    header.produced_at_us = produced_at_us;\n    header.dirty_families = day_commit.dirty_families;\n    header.state_hash = next_hash;\n    header.command_receipt_count = static_cast<uint32_t>(\n        std::min<size_t>(day_receipts.size(), std::numeric_limits<uint32_t>::max()));"
+     }
+    ],
+    "explanation": "The new code takes both ends of the interval from worker commit timestamps (recorder.warmup_finished_us / last_measured_us, set from record[\"produced_at_us\"]). That leaves out the main-thread consumption latency that the old observation timestamps included. The perf tool runs PERF_SCRIPT from each commit's worktree, treats these two values as HEADLINE metrics, and puts only the fixed METHOD_VERSION in the archive identity. Base and head records from either side of this PR therefore measure different intervals under the same method identity."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+    "start_line": 603,
+    "end_line": 609,
+    "side": "right",
+    "code_snippet": "+\tvar auth_measure_start_us := recorder.warmup_finished_us\n+\tvar auth_measure_end_us := recorder.last_measured_us\n+\tif warmup_days == 0 and auth_measure_start_us == 0:\n+\t\t# Day zero may already be installed at setup. Use the local clock for\n+\t\t# both ends of this interval when there is no bootstrap timestamp.\n+\t\tauth_measure_start_us = run_started\n+\t\tauth_measure_end_us = recorder.last_measurement_received_us"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "7565906f-e188-4eb7-ac0a-a6a1cb8f3073",
+   "description": "The PR body says the `measure HEAD --tier quick --budget 0` run is pending, and the only quick-run row counts reported (50, 50, 50 across three rounds) come from the working tree rather than the committed fix. The requirement that all rounds on the committed fix export 50 rows is therefore not yet shown.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Committed-fix quick measurement is still pending",
+   "git_sha": "b1b52c4893685fda52d80d1eb3272e4fcb9ad4bb",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/headless_perf_record.gd[574-578]",
+      "citation": "\t\t\t])\n\t\t\tbreak\n\n\tvar authoritative_measured := recorder.row_count()\n\tvar output_path := recorder.stop_and_export()"
+     },
+     {
+      "source_type": "ticket",
+      "source": "https://github.com/hrhgit/Project.Keynes/issues/82",
+      "citation": "Complete the quick performance measurement with full row counts"
+     }
+    ],
+    "explanation": "The exporter path that produces the row counts for the quick tier is the changed `stop_and_export` and `_check_csv` flow, and the PR reports counts only for the working tree, with `measure HEAD` listed as pending."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+    "start_line": 574,
+    "end_line": 578,
+    "side": "right",
+    "code_snippet": " \t\t\t])\n \t\t\tbreak\n \n-\t\t# Count real committed days. The elapsed window below uses main-thread\n-\t\t# observations consistently, so it includes the harness frame waits.\n-\t\tvar day_report := _runtime_report_snapshot(generator)\n-\t\t# ACTIVE reports use the explicit simulation_* namespace.  Keep the\n-\t\t# unprefixed fallback for older extensions, but do not silently turn a\n-\t\t# valid worker commit into \"no observed days\".\n-\t\tvar committed_day := int(day_report.get(\"simulation_committed_day\",\n-\t\t\tday_report.get(\"committed_day\", -1)))\n-\t\tif committed_day > last_authoritative_committed_day:\n-\t\t\t# The native report timestamp uses the worker's std::chrono clock,\n-\t\t\t# while Time.get_ticks_usec() uses Godot's process-relative clock.  They\n-\t\t\t# have different zero points, so only use a local observation timestamp\n-\t\t\t# for this elapsed-time calculation.\n-\t\t\tvar observed_commit_us := Time.get_ticks_usec()\n-\t\t\t# Under a pipeline one observation can cover several commits; warmup\n-\t\t\t# counts committed days so the measured window starts at warmup_days.\n-\t\t\tvar warmed_before := authoritative_observed\n-\t\t\tauthoritative_observed += 1 if pipeline_depth == 0 \\\n-\t\t\t\telse committed_day - maxi(last_authoritative_committed_day, 0)\n-\t\t\tlast_authoritative_committed_day = committed_day\n-\t\t\tif warmed_before < warmup_days:\n-\t\t\t\trecorder.configure_authoritative_sampling(committed_day)\n-\t\t\t\tif authoritative_observed >= warmup_days:\n-\t\t\t\t\t# Clear warmup rows; the next commit starts the measured window.\n-\t\t\t\t\trecorder.start(detail_mode, 1)\n-\t\t\t\t\tauth_measure_start_us = observed_commit_us\n-\t\t\t\t\tauth_measure_start_day = committed_day\n-\t\t\t\tcontinue\n-\t\t\tauthoritative_measured += 1\n-\t\t\tif auth_measure_start_us == 0:\n-\t\t\t\tauth_measure_start_us = observed_commit_us\n-\t\t\t\tauth_measure_start_day = committed_day - 1\n-\t\t\tauth_measure_end_us = observed_commit_us\n-\t\t\tauth_measure_end_day = committed_day\n-\t\t\t# Commit consumption can precede its recorder callback by one frame.\n-\t\t\thost._consume_runtime_commit_if_ready()\n-\t\t\tif pipeline_depth == 0 and authoritative_measured >= days:\n-\t\t\t\tbreak\n-\t\t# Under a pipeline the recorder samples at finish_daily_tick and this loop\n-\t\t# after the poll, so each can group several commits differently. The\n-\t\t# recorder rows are the measured samples.\n-\t\tif pipeline_depth > 0 and authoritative_observed > warmup_days \\\n-\t\t\t\tand int(recorder.call(\"row_count\")) >= days:\n-\t\t\tbreak\n-\n-\t# Only publish a late callback if a requested sample is still missing.\n-\t# A pipeline may commit another day during this frame; publishing after the\n-\t# requested row count was reached used to append a spurious 51st sample.\n-\tif host._native_environment_active and int(recorder.call(\"row_count\")) < days:\n-\t\tawait process_frame\n-\t\thost._consume_runtime_commit_if_ready()\n-\t\tif host.has_method(\"_publish_fast_tick_perf_sample\"):\n-\t\t\thost._publish_fast_tick_perf_sample(0.0, 0.0, 0.0, 0.0, false)\n-\n-\tvar recorded_rows := int(recorder.call(\"row_count\"))\n-\tvar measured_samples := recorded_rows if pipeline_depth > 0 else authoritative_measured\n-\tvar output_path := String(recorder.call(\"stop_and_export\"))\n+\tvar authoritative_measured := recorder.row_count()\n+\tvar output_path := recorder.stop_and_export()"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "b8c95e1b-3a2a-4851-ab5a-99636ebdbf8e",
+   "description": "`CommittedDayRecorder.on_day_records` writes the foreground timing sample and `runtime_graph_*` worker metrics only on a batch’s final row when the snapshot’s committed day and generation match, leaving other rows’ metric cells blank. When publication groups days differently between runs, `csv_metrics` skips those blanks and computes mean, p95, and max over different subsets of days, making base-versus-head summaries reflect batching as well as performance.",
+   "attribution_status": "implemented",
+   "category": "Observability",
+   "title": "Per-day CSV timing columns cover only some days",
+   "git_sha": "b1b52c4893685fda52d80d1eb3272e4fcb9ad4bb",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/headless_perf_record.gd[77-94]",
+      "citation": "\t\t\tvar generation := int(record[\"generation\"])\n\t\t\tvar row: Dictionary = {}\n\t\t\t# One batch has one foreground timing sample. Native metrics are\n\t\t\t# available only when the snapshot belongs to the same commit.\n\t\t\tif index == records.size() - 1 and int(sample.get(\"tick_idx\", -1)) == day:\n\t\t\t\tvar graph: Dictionary = sample.get(\"runtime_graph\", {})\n\t\t\t\tif int(graph.get(\"simulation_committed_day\", -1)) != day \\\n\t\t\t\t\t\tor int(graph.get(\"simulation_generation\", -1)) != generation:\n\t\t\t\t\tsample = sample.duplicate()\n\t\t\t\t\tsample.erase(\"runtime_graph\")\n\t\t\t\trow = _build_row(sample, null)\n\t\t\trow[\"tick_idx\"] = day\n\t\t\trow[\"speed_multiplier\"] = _speed\n\t\t\t# Whole-graph execution does not run SUS on the foreground.\n\t\t\trow[\"t_sus_ms\"] = row.get(\"t_sus_ms\", 0.0)\n\t\t\trow[\"runtime_graph_simulation_committed_day\"] = day\n\t\t\trow[\"runtime_graph_simulation_generation\"] = generation\n\t\t\t_append_row(row)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[177-212]",
+      "citation": "    ordered = sorted(values)\n    index = min(len(ordered) - 1, max(0, round(fraction * (len(ordered) - 1))))\n    return ordered[index]\n\n\ndef csv_metrics(rows: list[dict[str, str]]) -> dict[str, float]:\n    \"\"\"Summarize numeric perf_record samples. The run validator checks required cells.\"\"\"\n    if not rows:\n        return {}\n    out = {}\n    for column in rows[0]:\n        samples = []\n        populated = 0\n        for day, row in enumerate(rows):\n            cell = row.get(column)\n            if cell == \"\":\n                continue\n            populated += 1\n            value = to_number(cell)\n            if value is not None:\n                samples.append((day, value))\n        if not samples:\n            # Text labels and optional columns with no samples are part of the recorder's schema.\n            continue\n        if len(samples) != populated:\n            raise ValueError(f\"column {column} has {len(samples)}/{populated} numeric populated values\")\n        name = f\"csv.{column}\"\n        if metric_kind(name + \".per_day\") == \"counter\":\n            # A sparse counter needs two readings. Keep the existing one-day summary.\n            if len(samples) > 1 or len(rows) == 1:\n                first_day, first_value = samples[0]\n                last_day, last_value = samples[-1]\n                out[f\"{name}.per_day\"] = (last_value - first_value) / max(last_day - first_day, 1)\n            continue\n        values = [value for _, value in samples]\n        out[f\"{name}.mean\"] = statistics.fmean(values)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[118-127]",
+      "citation": "\t\thost._consume_modifier_worker_snapshot_if_authoritative()\n\tvar from_day := int(host._runtime_last_commit.batch_from_day)\n\tvar days: Array = commit.get(\"days\", [])\n\tif whole_graph:\n\t\tvar finish_usec := Time.get_ticks_usec()\n\t\thost.finish_daily_tick(0.0)\n\t\tif dcp:\n\t\t\thost._dcp_finish_ms = float(Time.get_ticks_usec() - finish_usec) / 1000.0\n\tif not days.is_empty():\n\t\thost.simulation_day_records.emit(days)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[113-127]",
+      "citation": "\tvar vision: Dictionary = host.apply_runtime_vision_display()\n\tif not bool(vision.get(\"ok\", false)):\n\t\tpush_warning(\"Vision display snapshot: \" + String(vision.get(\"reason\", \"\")))\n\tif whole_graph:\n\t\thost._consume_country_worker_read_view_if_authoritative()\n\t\thost._consume_modifier_worker_snapshot_if_authoritative()\n\tvar from_day := int(host._runtime_last_commit.batch_from_day)\n\tvar days: Array = commit.get(\"days\", [])\n\tif whole_graph:\n\t\tvar finish_usec := Time.get_ticks_usec()\n\t\thost.finish_daily_tick(0.0)\n\t\tif dcp:\n\t\t\thost._dcp_finish_ms = float(Time.get_ticks_usec() - finish_usec) / 1000.0\n\tif not days.is_empty():\n\t\thost.simulation_day_records.emit(days)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/perf_change_check.py[182-216]",
+      "citation": "def csv_metrics(rows: list[dict[str, str]]) -> dict[str, float]:\n    \"\"\"Summarize numeric perf_record samples. The run validator checks required cells.\"\"\"\n    if not rows:\n        return {}\n    out = {}\n    for column in rows[0]:\n        samples = []\n        populated = 0\n        for day, row in enumerate(rows):\n            cell = row.get(column)\n            if cell == \"\":\n                continue\n            populated += 1\n            value = to_number(cell)\n            if value is not None:\n                samples.append((day, value))\n        if not samples:\n            # Text labels and optional columns with no samples are part of the recorder's schema.\n            continue\n        if len(samples) != populated:\n            raise ValueError(f\"column {column} has {len(samples)}/{populated} numeric populated values\")\n        name = f\"csv.{column}\"\n        if metric_kind(name + \".per_day\") == \"counter\":\n            # A sparse counter needs two readings. Keep the existing one-day summary.\n            if len(samples) > 1 or len(rows) == 1:\n                first_day, first_value = samples[0]\n                last_day, last_value = samples[-1]\n                out[f\"{name}.per_day\"] = (last_value - first_value) / max(last_day - first_day, 1)\n            continue\n        values = [value for _, value in samples]\n        out[f\"{name}.mean\"] = statistics.fmean(values)\n        if column.endswith((\"_ms\", \"_us\")):\n            out[f\"{name}.p95\"] = percentile(values, 0.95)\n            out[f\"{name}.max\"] = max(values)\n    return out"
+     }
+    ],
+    "explanation": "The recorder calls `_build_row` with the sample only when `index == records.size() - 1` and the snapshot matches `tick_idx`; other records retain empty metric cells. The adapter can publish multiple day records in one batch, and `csv_metrics` skips blank CSV cells when calculating numeric summaries, so batch grouping determines which rows contribute."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+    "start_line": 81,
+    "end_line": 87,
+    "side": "right",
+    "code_snippet": "+\t\t\tif index == records.size() - 1 and int(sample.get(\"tick_idx\", -1)) == day:\n+\t\t\t\tvar graph: Dictionary = sample.get(\"runtime_graph\", {})\n+\t\t\t\tif int(graph.get(\"simulation_committed_day\", -1)) != day \\\n+\t\t\t\t\t\tor int(graph.get(\"simulation_generation\", -1)) != generation:\n+\t\t\t\t\tsample = sample.duplicate()\n+\t\t\t\t\tsample.erase(\"runtime_graph\")\n+\t\t\t\trow = _build_row(sample, null)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "f64afb3e-7eb1-418a-ae38-66432a09b3cc",
+   "description": "The added tests exercise `CommittedDayRecorder`, a class introduced by this PR, so they never run the old `on_fast_tick` capture path that produced the missing row. The old-behavior reproduction is cited only from a local `/private/tmp` log that reviewers cannot access, so the PR does not contain a regression check that fails on the old behaviour.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Regression tests cannot fail on the old recorder",
+   "git_sha": "b1b52c4893685fda52d80d1eb3272e4fcb9ad4bb",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/perf_recorder_test.gd[294-296]",
+      "citation": "func _test_committed_day_export() -> void:\n\tvar rec := HeadlessPerf.CommittedDayRecorder.new(6, 8, 50.0)\n\tvar mock := _MockMain.new()"
+     },
+     {
+      "source_type": "ticket",
+      "source": "https://github.com/hrhgit/Project.Keynes/issues/82",
+      "citation": "Cover the missing-row behavior with a regression check or explanation"
+     }
+    ],
+    "explanation": "`_test_committed_day_export` constructs `HeadlessPerf.CommittedDayRecorder` directly, so it validates only the new batch-based path; the reproduction that shows days 6-8 yielding only 7 and 8 under the old code lives in a private log outside the repository."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/game/perf_recorder_test.gd",
+    "start_line": 294,
+    "end_line": 296,
+    "side": "right",
+    "code_snippet": "+func _test_committed_day_export() -> void:\n+\tvar rec := HeadlessPerf.CommittedDayRecorder.new(6, 8, 50.0)\n+\tvar mock := _MockMain.new()"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "informational",
+   "id": "3d7175b3-b921-4aef-867c-7fb5bcf798b5",
+   "description": "`_run` calculates `authoritative_days_per_second` from `run_started` to `last_measurement_received_us` when `warmup_days == 0`, but uses worker `produced_at_us` stamps when warmup is positive. The zero-warmup interval therefore includes calendar setup and main-thread writeback and publication latency, and can fall below the 50 days/s checkpoint even when native commit production meets it.",
+   "attribution_status": "implemented",
+   "category": "Correctness",
+   "title": "Zero-warmup throughput counts startup time",
+   "git_sha": "b1b52c4893685fda52d80d1eb3272e4fcb9ad4bb",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/headless_perf_record.gd[393-402]",
+      "citation": "\tvar runtime_report_start := _runtime_report_snapshot(generator)\n\t# Startup installs day zero without queuing a day record.\n\tvar published_day := int(runtime_report_start.get(\"simulation_committed_day\",\n\t\truntime_report_start.get(\"committed_day\", -1)))\n\tvar climate_diag_start: Dictionary = host.climate_authority_diagnostics() \\\n\t\tif host.has_method(\"climate_authority_diagnostics\") else {}\n\tvar run_started := Time.get_ticks_usec()\n\t# The executor starts paused. Open the calendar after attaching the recorder.\n\tgenerator.get_data_core_world_ext().set_runtime_clock(false, speed)\n\tvar barrier_pulses := 0"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/headless_perf_record.gd[600-615]",
+      "citation": "\tvar lower_bound_run_ms := maxf(0.0, run_ms - writeback_window_ms)\n\tvar expected_rows := days\n\tvar effective_days := float(authoritative_measured)\n\tvar auth_measure_start_us := recorder.warmup_finished_us\n\tvar auth_measure_end_us := recorder.last_measured_us\n\tif warmup_days == 0 and auth_measure_start_us == 0:\n\t\t# Day zero may already be installed at setup. Use the local clock for\n\t\t# both ends of this interval when there is no bootstrap timestamp.\n\t\tauth_measure_start_us = run_started\n\t\tauth_measure_end_us = recorder.last_measurement_received_us\n\tvar auth_elapsed_ms := 0.0\n\tif auth_measure_end_us > auth_measure_start_us and auth_measure_start_us > 0:\n\t\tauth_elapsed_ms = float(auth_measure_end_us - auth_measure_start_us) / 1000.0\n\tvar authoritative_committed_days := authoritative_measured\n\tvar authoritative_days_per_second := _days_per_second(\n\t\tfloat(authoritative_committed_days), auth_elapsed_ms)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/headless_perf_record.gd[603-615]",
+      "citation": "\tvar auth_measure_start_us := recorder.warmup_finished_us\n\tvar auth_measure_end_us := recorder.last_measured_us\n\tif warmup_days == 0 and auth_measure_start_us == 0:\n\t\t# Day zero may already be installed at setup. Use the local clock for\n\t\t# both ends of this interval when there is no bootstrap timestamp.\n\t\tauth_measure_start_us = run_started\n\t\tauth_measure_end_us = recorder.last_measurement_received_us\n\tvar auth_elapsed_ms := 0.0\n\tif auth_measure_end_us > auth_measure_start_us and auth_measure_start_us > 0:\n\t\tauth_elapsed_ms = float(auth_measure_end_us - auth_measure_start_us) / 1000.0\n\tvar authoritative_committed_days := authoritative_measured\n\tvar authoritative_days_per_second := _days_per_second(\n\t\tfloat(authoritative_committed_days), auth_elapsed_ms)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/headless_perf_record.gd[90-96]",
+      "citation": "\t\t\t# Whole-graph execution does not run SUS on the foreground.\n\t\t\trow[\"t_sus_ms\"] = row.get(\"t_sus_ms\", 0.0)\n\t\t\trow[\"runtime_graph_simulation_committed_day\"] = day\n\t\t\trow[\"runtime_graph_simulation_generation\"] = generation\n\t\t\t_append_row(row)\n\t\t\tlast_measured_us = int(record[\"produced_at_us\"])\n\t\t\tlast_measurement_received_us = Time.get_ticks_usec()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[100-127]",
+      "citation": "\tvar ext = host._generator.get_data_core_world_ext()\n\tvar resource_usec := Time.get_ticks_usec()\n\tvar writeback := EconomyDisplay.apply_published_resources(ext)\n\tif bool(writeback.get(\"applied\", false)):\n\t\thost._sched_proc_resource_ms += host._sched_elapsed_ms(resource_usec)\n\t\tif dcp:\n\t\t\thost._dcp_resource_ms = float(Time.get_ticks_usec() - resource_usec) / 1000.0\n\telif received_new_commit and not bool(writeback.get(\"ok\", false)):\n\t\tpush_warning(\"Resource display patch: \" + String(writeback.get(\"code\", \"\")))\n\tif received_new_commit and bool(commit.get(\"species_writeback\", false)):\n\t\tvar species := BioOccupancyDailySystem.apply_published_occupancy(ext)\n\t\tif not bool(species.get(\"ok\", false)):\n\t\t\tpush_warning(\"Species display snapshot: \" + String(species.get(\"reason\", \"\")))\n\tvar vision: Dictionary = host.apply_runtime_vision_display()\n\tif not bool(vision.get(\"ok\", false)):\n\t\tpush_warning(\"Vision display snapshot: \" + String(vision.get(\"reason\", \"\")))\n\tif whole_graph:\n\t\thost._consume_country_worker_read_view_if_authoritative()\n\t\thost._consume_modifier_worker_snapshot_if_authoritative()\n\tvar from_day := int(host._runtime_last_commit.batch_from_day)\n\tvar days: Array = commit.get(\"days\", [])\n\tif whole_graph:\n\t\tvar finish_usec := Time.get_ticks_usec()\n\t\thost.finish_daily_tick(0.0)\n\t\tif dcp:\n\t\t\thost._dcp_finish_ms = float(Time.get_ticks_usec() - finish_usec) / 1000.0\n\tif not days.is_empty():\n\t\thost.simulation_day_records.emit(days)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_day_tail.cpp[67-75]",
+      "citation": "godot::Dictionary pack_record(const RuntimeDayRecord &record) {\n    godot::Dictionary daily;\n    daily[\"day\"] = record.header.committed_day;\n    daily[\"generation\"] = static_cast<int64_t>(record.header.generation);\n    daily[\"state_hash\"] = static_cast<int64_t>(record.header.state_hash);\n    daily[\"business_hash\"] = static_cast<int64_t>(record.business_hash);\n    daily[\"annual_reward_pending\"] = record.annual_reward_pending;\n    daily[\"produced_at_us\"] = static_cast<int64_t>(record.header.produced_at_us);\n    if (record.fiscal) {"
+     }
+    ],
+    "explanation": "`run_started` is captured at line 399, before `set_runtime_clock` opens the calendar at line 401. The zero-warmup branch ends at `last_measurement_received_us`, a main-thread `Time.get_ticks_usec()` value taken when the callback receives the last record after display work; positive-warmup runs instead use production timestamps carried by native day records."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/game/headless_perf_record.gd",
+    "start_line": 605,
+    "end_line": 609,
+    "side": "right",
+    "code_snippet": "+\tif warmup_days == 0 and auth_measure_start_us == 0:\n+\t\t# Day zero may already be installed at setup. Use the local clock for\n+\t\t# both ends of this interval when there is no bootstrap timestamp.\n+\t\tauth_measure_start_us = run_started\n+\t\tauth_measure_end_us = recorder.last_measurement_received_us"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2153392,
+   "commit_sha": "1b8b122418c17a10d3a182704ac314e9c6b3aa21",
+   "started_at": "2026-11-25T11:07:22.288143Z",
+   "status": "completed",
+   "review_effort": "skip",
+   "review_complete": false
+  },
+  {
+   "run_id": 2153312,
+   "commit_sha": "45d866b22b2319c98f9398a66eb480a66662d92b",
+   "started_at": "2026-11-25T11:03:43.042634Z",
+   "status": "completed",
+   "review_effort": "skip",
+   "review_complete": false
+  },
+  {
+   "run_id": 2153199,
+   "commit_sha": "45d866b22b2319c98f9398a66eb480a66662d92b",
+   "started_at": "2026-11-25T10:59:07.249348Z",
+   "status": "completed",
+   "review_effort": "skip",
+   "review_complete": false
+  },
+  {
+   "run_id": 2152440,
+   "commit_sha": "2ba1683769f983dfe7a6ad8314f227f5dd59d7a5",
+   "started_at": "2026-11-25T10:22:45.606225Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  },
+  {
+   "run_id": 2150657,
+   "commit_sha": "b1b52c4893685fda52d80d1eb3272e4fcb9ad4bb",
+   "started_at": "2026-11-25T08:49:47.412469Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  }
+ ]
+}

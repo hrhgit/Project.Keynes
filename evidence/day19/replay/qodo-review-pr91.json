@@ -1,0 +1,217 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/91",
+ "git_provider": null,
+ "finding_count": 4,
+ "review_session": {
+  "run_id": 2174350,
+  "status": "completed",
+  "commit_sha": "fe92d5b74622c22bb475e53c3e77daef554c7906",
+  "started_at": "2026-11-26T10:38:47.139844Z",
+  "git_provider": "github",
+  "review_complete": true
+ },
+ "findings": [
+  {
+   "action_level": "action_required",
+   "id": "1753dff8-cb5f-41b7-8f46-303025897eea",
+   "description": "`run_rendered_player_handoff.py` passes the held-day window to `compare_recordings()`, which requires two actual map draws for every window. With `--map-reads --overload`, days 41–55 are the interval when map updates are deliberately deferred, so the analyzer rejects that window before the held-copy check can report its result.",
+   "attribution_status": "pending",
+   "category": "Correctness",
+   "title": "Busy-window comparison cannot finish",
+   "git_sha": "fe92d5b74622c22bb475e53c3e77daef554c7906",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "skill",
+      "source": "project-keynes-perf-change-check",
+      "citation": "project-keynes-perf-change-check"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/run_rendered_player_handoff.py[124-145]",
+      "citation": "def compare_recordings(baseline, candidate, windows):\n    if baseline.config != candidate.config:\n        settings = baseline.config.keys() | candidate.config.keys()\n        changed = sorted(key for key in settings if baseline.config.get(key) != candidate.config.get(key))\n        raise ValueError(f\"actual player settings differ: {', '.join(changed)}\")\n    common_days = sorted({frame[\"committed\"] for frame in baseline.frames}\n                         & {frame[\"committed\"] for frame in candidate.frames})\n    fps_mode = baseline.config.get(\"fps_mode\")\n    results = []\n    for low, high in windows:\n        days = [day for day in common_days if low <= day <= high]\n        if len(days) < 2:\n            raise ValueError(f\"no shared frame boundaries in days {low} through {high}\")\n        comparison = {\n            \"requested_days\": [low, high],\n            \"baseline\": summarize(baseline.frames, baseline.daily, days[0], days[-1], require_rendered=True),\n            \"candidate\": summarize(candidate.frames, candidate.daily, days[0], days[-1], require_rendered=True),\n        }\n        if fps_mode:\n            running_cap = 60 if fps_mode == \"adaptive\" else FRAME_LIMITS[fps_mode]\n            for side in (\"baseline\", \"candidate\"):\n                if comparison[side].get(\"effective_max_fps\") != [running_cap]:"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/run_rendered_player_handoff.py[219-222]",
+      "citation": "            if (args.overload or args.map_reads) and speed != 50:\n                continue\n            if args.map_reads:\n                windows = ((25, 75), (41, 55)) if args.overload else ((25, 75),)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "tools/perf/analyze_player_handoff.py[90-105]",
+      "citation": "    if not recorded or any(copy[\"ns\"] < 0 or copy[\"bytes\"] <= 0 for copy in recorded):\n        raise ValueError(\"map copy timing requires an instrumented baseline and candidate\")\n    draws = [usec for row in sample for usec in row[\"map_draw_times\"]]\n    lags = sorted(lag for row in sample for lag in row[\"map_draw_lag_days\"])\n    if len(draws) != len(lags) or len(draws) < 2:\n        raise ValueError(\"need two actual map draws with the corresponding published-day lag\")\n    feedback = [click[\"usec\"] for row in sample for click in row[\"panel_feedback\"]]\n    return {\n        \"map_reads\": len(copies),\n        \"map_copied_bytes\": sum(copy[\"bytes\"] for copy in copies),\n        \"map_copy_total_ms\": sum(copy[\"ns\"] for copy in copies) / 1_000_000,\n        \"map_copy\": timing_stats([copy[\"ns\"] / 1000 for copy in copies]),\n        \"panel_feedback\": timing_stats(feedback),\n        \"map_draw\": timing_stats([after - before for before, after in pairwise(draws)]),\n        \"map_draw_lag\": {\"samples\": len(lags), \"median\": median(lags),\n                         \"p95\": lags[math.ceil(0.95 * len(lags)) - 1],"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/game/player_scene_handoff_probe.gd[325-334]",
+      "citation": "func _apply_overload(consumed: int) -> void:\n\t_overload_us = 0\n\tif _overload and consumed >= OVERLOAD_FIRST_DAY and consumed < OVERLOAD_END_DAY and Engine.max_fps > 0:\n\t\t# Occupy one full frame budget before the next gameplay _process callbacks.\n\t\tvar started := Time.get_ticks_usec()\n\t\tvar until := started + roundi(1_000_000.0 / Engine.max_fps)\n\t\twhile Time.get_ticks_usec() < until:\n\t\t\tpass\n\t\t_overload_us = Time.get_ticks_usec() - started\n… (1 more lines)"
+     }
+    ],
+    "explanation": "The performance-check skill requires window-dependent claims to be measured in a real window rather than inferred from headless results. The new runner adds days 41–55 as a comparison window, while its comparison always requests rendered summaries; the analyzer rejects summaries without two map draws. The probe overloads days 40–54, and the map viewport increments its draw count only after a map draw."
+   },
+   "location": {
+    "file_path": "tools/perf/run_rendered_player_handoff.py",
+    "start_line": 221,
+    "end_line": 222,
+    "side": "right",
+    "code_snippet": "+            if args.map_reads:\n+                windows = ((25, 75), (41, 55)) if args.overload else ((25, 75),)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "c9e920ed-46df-4bdc-8f55-ad87d406732d",
+   "description": "`finish_runtime_display_frame()` returns publication ID 0 unless vision succeeds and the commit has a `day_tail` whose day matches `_climate_writeback_applied_day`, and `queue()` replaces even an earlier pinned publication with that 0. This occurs when graph authority is ready but climate authority is not yet granted or is deliberately retained on the main thread, as well as when vision fails; deferred map reads then reject the ID, leaving the map stale until another commit arrives, potentially indefinitely in a paused world, while daily results can still be delivered.",
+   "attribution_status": "pending",
+   "category": "Correctness",
+   "title": "Map stays on an old day when a pin is skipped",
+   "git_sha": "fe92d5b74622c22bb475e53c3e77daef554c7906",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_simulation_host.cpp[1400-1424]",
+      "citation": "int64_t DCWorldExt::finish_runtime_display_frame(bool keep_for_map) {\n    int64_t publication_id = 0;\n    // Pin the accepted day after the shared display fields have been installed.\n    // A same-day receipt after a restart must not replace a pending map frame.\n    if (keep_for_map && _runtime_display_commit.day_tail &&\n        _runtime_display_commit.header.committed_day == _climate_writeback_applied_day) {\n        _runtime_map_display_commit = std::move(_runtime_display_commit);\n        publication_id = ++_runtime_map_display_id;\n    }\n    _runtime_display_commit = {};\n    return publication_id;\n}\n\nDictionary DCWorldExt::read_runtime_map_lut_frame(Object *map, int64_t publication_id,\n        int64_t day, int64_t generation, int cell_count, bool measure_copy) const {\n    const auto fail = [](const char *reason) {\n        Dictionary failure;\n        failure[\"reason\"] = reason;\n        return failure;\n    };\n    const auto &commit = _runtime_map_display_commit;\n    if (publication_id <= 0) return fail(\"map_lut_display_not_installed\");\n    if (!commit.day_tail) return fail(\"map_lut_publication_unavailable\");\n    if (!map || map != _map_data) return fail(\"map_lut_map_mismatch\");\n    if (publication_id != _runtime_map_display_id) return fail(\"map_lut_publication_mismatch\");"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[64-71]",
+      "citation": "\tif received_new_commit and bool(report.get(\"climate_worker_authoritative\", false)):\n\t\t# A worker can commit between the status read and the commit poll.\n\t\t# Apply the weather for the polled day before exposing that day to scripts.\n\t\tif int(report.get(\"simulation_committed_day\", -1)) != commit_day:\n\t\t\treport = report.duplicate(false)\n\t\t\treport[\"simulation_committed_day\"] = commit_day\n\t\t_apply_climate_writeback_if_authoritative(host, report, commit)\n\tvar whole_graph = bool(report.get(\"authority_ready\", false))"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[122-150]",
+      "citation": "\t\tvar finish_usec := Time.get_ticks_usec()\n\t\thost.finish_daily_tick(0.0)\n\t\tif dcp:\n\t\t\thost._dcp_finish_ms = float(Time.get_ticks_usec() - finish_usec) / 1000.0\n\tif not days.is_empty():\n\t\thost.simulation_day_records.emit(days)\n\tif host._world_clock != null:\n\t\thost._world_clock.publish_runtime_date(host._runtime_commit_day)\n\tif commit.has(\"construction_receipts\"):\n\t\thost._generator.get_economy_facade().emit_construction_command_receipts(\n\t\t\tcommit[\"construction_receipts\"])\n\tif commit.has(\"colonization_receipts\"):\n\t\thost._generator.get_economy_facade().emit_family_colonization_receipts(\n\t\t\tcommit[\"colonization_receipts\"])\n\thost._publish_player_confirmation(host._runtime_control_state())\n\thost._gm_adapter.consume_territory_receipts(host)\n\tvar ideology = host._generator.get_ideology_facade()\n\tif ideology != null:\n\t\tideology.drain_receipts()\n\thost.simulation_committed.emit(from_day, host._runtime_commit_day, host._runtime_commit_generation)\n\tif whole_graph:\n\t\tcommit[\"map_lut_publication_id\"] = ext.finish_runtime_display_frame(bool(vision.get(\"ok\", false)))\n\telse:\n\t\text.finish_runtime_display_frame()\n\t\t# This path publishes the installed map directly, without a queued worker texture.\n\t\thost.map_texture_published.emit(commit_day)\n\thost._presentation.queue_worker_commit(from_day,\n\t\t\thost._runtime_commit_day, host._runtime_commit_generation, commit if whole_graph else {})\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_map_updates.gd[28-43]",
+      "citation": "\tif commit.is_empty():\n\t\treturn false\n\tif has_pending():\n\t\t_add_cells(_held_dirty, _latest.get(DIRTY, PackedInt32Array()))\n\t\t_add_cells(_held_classes, _latest[CLASSES])\n\t_full_update = _full_update or not commit.has(DIRTY)\n\tvar dirty: PackedInt32Array = commit.get(DIRTY, PackedInt32Array())\n\t_latest = {DIRTY: dirty, CLASSES: commit.get(CLASSES, dirty)}\n\tif commit.has(CELLS):\n\t\t_latest[CELLS] = commit[CELLS]\n\telif commit.has(\"map_lut_publication_id\"):\n\t\t_latest[\"map_lut_publication_id\"] = commit.map_lut_publication_id\n\t\t_latest[\"map_lut_day\"] = commit.committed_day\n\t\t_latest[\"map_lut_generation\"] = commit.generation\n\treturn true\n… (1 more lines)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_worker.cpp[936-957]",
+      "citation": "                        return ready;\n                    });\n                    _worker_timing.finish_main_wait();\n                    _worker_timing.set(RuntimeWorkerTiming::OVERHEAD);\n                    log_slow_peer(day);\n                    break;\n                    } // missing != 0\n                }\n                if (day_commit.completed_stage_count == day_plan.stage_count &&\n                    day_plan.stage_count == RUNTIME_DOMAIN_STAGE_COUNT &&\n                    day_commit.completed_domain_mask == RUNTIME_ALL_DOMAIN_MASK &&\n                    implemented_domain_mask() == RUNTIME_ALL_DOMAIN_MASK) {\n                    _graph_coverage_complete.store(true, std::memory_order_release);\n                    _authority_control.mark_graph_ready();\n                }\n                // Per-domain grant. A domain is promoted once this day's commit\n                // covers it, independently of whether the whole graph is\n                // complete. Granting only the requested subset keeps a domain\n                // the caller did not ask for on the main thread even when its\n                // handler happens to exist.\n                if (_mode.load(std::memory_order_acquire) ==\n                        RuntimeSimulationMode::ACTIVE) {"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_runtime_graph.cpp[680-698]",
+      "citation": "    out[\"authority_ready\"] = host.authority_ready;\n    out[\"simulation_thread_mode\"] = runtime_effective_mode_name(\n        host.mode, host.authority_ready, host.authoritative_domain_mask);\n    out[\"requested_simulation_thread_mode\"] =\n        host.mode == RuntimeSimulationMode::ACTIVE ? \"ACTIVE\" :\n        host.mode == RuntimeSimulationMode::SHADOW ? \"SHADOW\" : \"OFF\";\n    out[\"simulation_worker_ready\"] =\n        host.authority_ready || host.authoritative_domain_mask != 0u;\n    out[\"authoritative_domain_mask\"] =\n        static_cast<int64_t>(host.authoritative_domain_mask);\n    out[\"requested_authority_mask\"] = static_cast<int64_t>(host.requested_authority_mask);\n    out[\"whole_graph_requested\"] = host.mode == RuntimeSimulationMode::ACTIVE &&\n        host.requested_authority_mask == RUNTIME_ALL_DOMAIN_MASK &&\n        host.state != RuntimeWorkerState::STOPPED && host.state != RuntimeWorkerState::STOPPING &&\n        host.state != RuntimeWorkerState::FAULTED;\n    out[\"climate_worker_authoritative\"] =\n        (host.authoritative_domain_mask & runtime_domain_mask(RuntimeDomainId::CLIMATE)) != 0u;\n    out[\"country_worker_authoritative\"] =\n        (host.authoritative_domain_mask & runtime_domain_mask(RuntimeDomainId::COUNTRY)) != 0u;"
+     },
+     {
+      "source_type": "pr_knowledge",
+      "source": "74",
+      "citation": "PR #74 fixed a similar case where a failed map publication left a paused world unable to recover."
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_worker.cpp[943-963]",
+      "citation": "                }\n                if (day_commit.completed_stage_count == day_plan.stage_count &&\n                    day_plan.stage_count == RUNTIME_DOMAIN_STAGE_COUNT &&\n                    day_commit.completed_domain_mask == RUNTIME_ALL_DOMAIN_MASK &&\n                    implemented_domain_mask() == RUNTIME_ALL_DOMAIN_MASK) {\n                    _graph_coverage_complete.store(true, std::memory_order_release);\n                    _authority_control.mark_graph_ready();\n                }\n                // Per-domain grant. A domain is promoted once this day's commit\n                // covers it, independently of whether the whole graph is\n                // complete. Granting only the requested subset keeps a domain\n                // the caller did not ask for on the main thread even when its\n                // handler happens to exist.\n                if (_mode.load(std::memory_order_acquire) ==\n                        RuntimeSimulationMode::ACTIVE) {\n                    const uint32_t wanted =\n                        _requested_authority_mask.load(std::memory_order_acquire);\n                    if (wanted != 0u &&\n                        (day_commit.completed_domain_mask & wanted) == wanted) {\n                        publish_authority_grant(wanted);\n                    }"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_runtime_graph.cpp[681-697]",
+      "citation": "    out[\"simulation_thread_mode\"] = runtime_effective_mode_name(\n        host.mode, host.authority_ready, host.authoritative_domain_mask);\n    out[\"requested_simulation_thread_mode\"] =\n        host.mode == RuntimeSimulationMode::ACTIVE ? \"ACTIVE\" :\n        host.mode == RuntimeSimulationMode::SHADOW ? \"SHADOW\" : \"OFF\";\n    out[\"simulation_worker_ready\"] =\n        host.authority_ready || host.authoritative_domain_mask != 0u;\n    out[\"authoritative_domain_mask\"] =\n        static_cast<int64_t>(host.authoritative_domain_mask);\n    out[\"requested_authority_mask\"] = static_cast<int64_t>(host.requested_authority_mask);\n    out[\"whole_graph_requested\"] = host.mode == RuntimeSimulationMode::ACTIVE &&\n        host.requested_authority_mask == RUNTIME_ALL_DOMAIN_MASK &&\n        host.state != RuntimeWorkerState::STOPPED && host.state != RuntimeWorkerState::STOPPING &&\n        host.state != RuntimeWorkerState::FAULTED;\n    out[\"climate_worker_authoritative\"] =\n        (host.authoritative_domain_mask & runtime_domain_mask(RuntimeDomainId::CLIMATE)) != 0u;\n    out[\"country_worker_authoritative\"] ="
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[64-70]",
+      "citation": "\tif received_new_commit and bool(report.get(\"climate_worker_authoritative\", false)):\n\t\t# A worker can commit between the status read and the commit poll.\n\t\t# Apply the weather for the polled day before exposing that day to scripts.\n\t\tif int(report.get(\"simulation_committed_day\", -1)) != commit_day:\n\t\t\treport = report.duplicate(false)\n\t\t\treport[\"simulation_committed_day\"] = commit_day\n\t\t_apply_climate_writeback_if_authoritative(host, report, commit)"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[135-149]",
+      "citation": "\t\t\tcommit[\"colonization_receipts\"])\n\thost._publish_player_confirmation(host._runtime_control_state())\n\thost._gm_adapter.consume_territory_receipts(host)\n\tvar ideology = host._generator.get_ideology_facade()\n\tif ideology != null:\n\t\tideology.drain_receipts()\n\thost.simulation_committed.emit(from_day, host._runtime_commit_day, host._runtime_commit_generation)\n\tif whole_graph:\n\t\tcommit[\"map_lut_publication_id\"] = ext.finish_runtime_display_frame(bool(vision.get(\"ok\", false)))\n\telse:\n\t\text.finish_runtime_display_frame()\n\t\t# This path publishes the installed map directly, without a queued worker texture.\n\t\thost.map_texture_published.emit(commit_day)\n\thost._presentation.queue_worker_commit(from_day,\n\t\t\thost._runtime_commit_day, host._runtime_commit_generation, commit if whole_graph else {})"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_simulation_host.cpp[1400-1429]",
+      "citation": "int64_t DCWorldExt::finish_runtime_display_frame(bool keep_for_map) {\n    int64_t publication_id = 0;\n    // Pin the accepted day after the shared display fields have been installed.\n    // A same-day receipt after a restart must not replace a pending map frame.\n    if (keep_for_map && _runtime_display_commit.day_tail &&\n        _runtime_display_commit.header.committed_day == _climate_writeback_applied_day) {\n        _runtime_map_display_commit = std::move(_runtime_display_commit);\n        publication_id = ++_runtime_map_display_id;\n    }\n    _runtime_display_commit = {};\n    return publication_id;\n}\n\nDictionary DCWorldExt::read_runtime_map_lut_frame(Object *map, int64_t publication_id,\n        int64_t day, int64_t generation, int cell_count, bool measure_copy) const {\n    const auto fail = [](const char *reason) {\n        Dictionary failure;\n        failure[\"reason\"] = reason;\n        return failure;\n    };\n    const auto &commit = _runtime_map_display_commit;\n    if (publication_id <= 0) return fail(\"map_lut_display_not_installed\");\n    if (!commit.day_tail) return fail(\"map_lut_publication_unavailable\");\n    if (!map || map != _map_data) return fail(\"map_lut_map_mismatch\");\n    if (publication_id != _runtime_map_display_id) return fail(\"map_lut_publication_mismatch\");\n    if (day != commit.header.committed_day) return fail(\"map_lut_day_mismatch\");\n    if (generation <= 0 || static_cast<uint64_t>(generation) != commit.header.generation)\n        return fail(\"map_lut_generation_mismatch\");\n    if (_climate_writeback_applied_day >= 0 && _climate_writeback_applied_day != day)\n        return fail(\"map_lut_climate_day_mismatch\");"
+     }
+    ],
+    "explanation": "Graph readiness is marked independently of the climate authority grant, and the control report exposes separate `authority_ready` and `climate_worker_authoritative` values. The adapter skips climate writeback when climate authority is false but still takes the whole-graph path and calls `finish_runtime_display_frame(true)`; its pin condition then returns 0 when the climate writeback day does not match, and a failed vision snapshot also prevents the pin. `queue()` stores that 0 over the previous publication ID, and `read_runtime_map_lut_frame()` rejects IDs at or below 0 before texture publication."
+   },
+   "location": {
+    "file_path": "gdext/src/world_ext_simulation_host.cpp",
+    "start_line": 1404,
+    "end_line": 1408,
+    "side": "right",
+    "code_snippet": "+    if (keep_for_map && _runtime_display_commit.day_tail &&\n+        _runtime_display_commit.header.committed_day == _climate_writeback_applied_day) {\n+        _runtime_map_display_commit = std::move(_runtime_display_commit);\n+        publication_id = ++_runtime_map_display_id;\n+    }"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "8b8d3138-ab99-4690-9850-54ee06bce498",
+   "description": "In `_publish_worker_map`, a failed `read_runtime_map_lut_frame` returns false and calls `push_error` only when `needs_recovery` is false. Once one failure has set recovery, every later rejection (map mismatch, generation mismatch, column size, allocation) returns with no log, and the map stays stale.",
+   "attribution_status": "pending",
+   "category": "Observability",
+   "title": "Repeated map read failures are not logged",
+   "git_sha": "fe92d5b74622c22bb475e53c3e77daef554c7906",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_host.gd[821-835]",
+      "citation": "func _publish_worker_map(update: Dictionary, day: int, started_usec: int) -> bool:\n\tif _generator != null and update.has(\"map_lut_publication_id\"):\n\t\tvar frame: Dictionary = _generator._get_map_runtime_bridge().read_runtime_map_lut_frame(\n\t\t\t_current_map, int(update.map_lut_publication_id), day, int(update.map_lut_generation))\n\t\tif frame.has(\"reason\"):\n\t\t\tif not _presentation._map_updates.needs_recovery:\n\t\t\t\tpush_error(\"[worker-map] Day %d publication failed: %s\" % [day, frame.reason])\n\t\t\treturn false\n\t\tupdate[\"cell_lut_frame\"] = frame\n\t# Publish textures before the vision-dependent layers and weather read them.\n\tvar result := _generator.publish_worker_climate_visuals(false, update) \\\n\t\tif _generator != null else {\"reason\": \"missing_generator\"}\n\tif result.get(\"lut_encode_path\", \"none\") == \"none\":\n\t\tif not _presentation._map_updates.needs_recovery:\n\t\t\tpush_warning(\"[worker-map] Day %d publication failed: %s\" % [day, result.get(\"reason\", \"no_encode_path\")])"
+     },
+     {
+      "source_type": "pr_knowledge",
+      "source": "88",
+      "citation": "In PR #88, the deferred map read failures in this same area also lost their diagnostics."
+     }
+    ],
+    "explanation": "The new read-failure branch puts its only error report behind `not needs_recovery`, so repeated or changed failure reasons are hidden. This is the silent-fallback pattern that #90's review rules target and that #88's finding 665d91a0 flagged."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/world_runtime_host.gd",
+    "start_line": 825,
+    "end_line": 828,
+    "side": "right",
+    "code_snippet": "+\t\tif frame.has(\"reason\"):\n+\t\t\tif not _presentation._map_updates.needs_recovery:\n+\t\t\t\tpush_error(\"[worker-map] Day %d publication failed: %s\" % [day, frame.reason])\n+\t\t\treturn false"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "informational",
+   "id": "a2262924-1c12-4dbe-861b-d7076f9e7918",
+   "description": "The new feature-status entry gives headless copy counts, bytes and timings. Visible-window sample count is 0, so click feedback, draw interval, days/s and map lag in the player window are unmeasured. All raw evidence is under `/private/tmp/...`, which reviewers cannot open.",
+   "attribution_status": "pending",
+   "category": "Observability",
+   "title": "Window measurements are missing for #83",
+   "git_sha": "fe92d5b74622c22bb475e53c3e77daef554c7906",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "docs/architecture/feature-status.md[94-140]",
+      "citation": "改后用相同的正式场景复现。第 41–55 日仍逐帧领取 15 批，地图贴图停在第 40 日，\n两列的读取次数和复制字节都是零。恢复时最新已领取到第 56 日，一次读取 4,800 字节\n并应用第 56 日的贴图。旧版忙帧、改后正常帧和改后忙帧三次运行的第 1–75 日\n业务摘要、命令生效日及回执顺序完全相同。逐帧、逐日记录及对照汇总保存在\n`/private/tmp/keynes83-replay.4a3CtW/`，汇总为 `headless-comparison.json`。\n\n`player_map_publication_test.gd` 以每 100 ms 领取一次、5× 推进到正式玩家待答点。\n积压的第 2–20 日照常交付 19 天的记录，贴图列复制为零。后台已经获准推进到第 21 日，\n仍停在第 20 日等玩家选择。同局暂停并重启执行器后，只读取一次第 20 日，最终贴图字节\n与每日刷新的版本相同。用例还覆盖了错误发布身份、落后画面的选格视野和详情、\n积压期间保存、读档和换局清理。`cell_lut_incremental_test.gd` 在不同日分别改变\n两个地块，逐字节比较合并更新和每日更新。`simulation_presentation_coalescing_test.gd`\n验证视野变化的同帧优先规则，`independent_presentation_test.gd` 验证普通面板的独立刷新。\n\nmacOS arm64 调试版和发布版均在临时副本构建。普通和表外推进的逐日校验在改前、\n改后各跑三轮，均与改前首轮一致。`check_replay_matrix.py` 的四组存档续跑通过。\n地图贴图测试通过 72 项，游戏设置通过 34 项，天气表通过 111 项并跳过两项图形读回。\n架构检查和 98 项性能工具测试通过。已导入的副本通过 12 项运行回归及正式存档往返，\n包括读档后处理待答剧情和继续一个完整经济结算周期。单独的编辑器导入检查遇到\nGodot 的 ObjectDB 快照目录错误。运行回归详见原始记录目录下的 `regression-runtime.log`。\n\n在已导入的项目副本复现无窗口路径。改前在 `poll_runtime_commit()` 的两次数组分配与\n`memcpy` 外计时，将耗时以纳秒写入 `cell_lut_frame.copy_ns`。改前改后使用同一份探针。\n补丁样本是原始记录目录下的\n`baseline-copy-timing.patch`。每次运行使用独立的存档目录。\n\n```sh\nPK_SAVE_DIR=\"$saves\" godot --headless --path \"$project\" \\\n  --script res://tests/game/player_scene_handoff_probe.gd -- \\\n  --fps=60 --speed=50 --through=75 --answer-story --command-log \\\n  --overload --simulate-frames --frames=\"$trace\"\n```\n\n窗口对照由同一探针以 1600×960、高画质、开垂直同步和 60 帧档运行。两种负载各三组交替运行。\n统计两列读取次数、字节、分配与复制时长、派遣按钮点击到首个面板可见帧的时间、\n地图实际出图间隔、日提交速率和出图时落后天数。\n\n```sh\npython3 tools/perf/run_rendered_player_handoff.py \"$base_project\" \"$candidate_project\" \\\n  --output \"$normal_output\" --fps 60 --map-reads\npython3 tools/perf/run_rendered_player_handoff.py \"$base_project\" \"$candidate_project\" \\\n  --output \"$busy_output\" --fps 60 --map-reads --overload --expect-pacing\n```\n\nmacOS 的 `open` 对两组测量及 `independent_presentation_window_test.gd` 都返回\n`kLSNoExecutableErr`；直接启动报窗口服务连接错误，桌面工具拒绝访问 Godot。\n可见窗口的样本量为 0，点击反馈、实际出图间隔、日提交速率及屏幕地图落后天数均未测得。"
+     }
+    ],
+    "explanation": "Lines 138-140 state that the window runs failed and that 0 samples were collected. The PR claims no frame-time gain, so this is the known measurement gap and is recorded here once as low priority."
+   },
+   "location": {
+    "file_path": "docs/architecture/feature-status.md",
+    "start_line": 138,
+    "end_line": 140,
+    "side": "right",
+    "code_snippet": "+macOS 的 `open` 对两组测量及 `independent_presentation_window_test.gd` 都返回\n+`kLSNoExecutableErr`；直接启动报窗口服务连接错误，桌面工具拒绝访问 Godot。\n+可见窗口的样本量为 0，点击反馈、实际出图间隔、日提交速率及屏幕地图落后天数均未测得。"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2174350,
+   "commit_sha": "fe92d5b74622c22bb475e53c3e77daef554c7906",
+   "started_at": "2026-11-26T10:38:47.139844Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  }
+ ]
+}

@@ -1,0 +1,69 @@
+0|A failed ps lookup now fails the whole measurement|#86|Project.Keynes|Resolved|Medium|Reliability|Bug
+1|Failed ps lookup goes unlogged|#86|Project.Keynes|Dismissed|Medium|Reliability|Rule violation
+2|Failed map reads drop out with no error|#88|Project.Keynes|Resolved|High|Reliability|Rule violation
+3|Unmeasured t_sus_ms is written as a fake zero|#85|Project.Keynes|Resolved|Medium|Reliability|Rule violation
+4|Country panel can stop refreshing after a reload|#74|Project.Keynes|Resolved|Low|Reliability|Bug
+5|Failed map upload blocks cell panels while paused|#74|Project.Keynes|Resolved|Medium|Reliability|Bug
+6|Invalid frame reads as unexplored fog|#74|Project.Keynes|Resolved|High|Reliability|Rule violation
+7|Launcher exit status hides a failed game run|#73|Project.Keynes|Ignored|Low|Reliability|Bug
+8|A failed map update freezes the date display|#73|Project.Keynes|Resolved|Medium|Reliability|Bug
+9|Missing ecology data falls back silently|#73|Project.Keynes|Resolved|High|Reliability|Rule violation
+10|Overlapping fetches can strand a claimed ticket|#68|Project.Keynes|Resolved|Medium|Reliability|Bug
+11|An old PR check can reset issue work|#68|Project.Keynes|Resolved|High|Reliability|Bug
+12|Setup failure quits without any message|#59|Project.Keynes|Resolved|High|Reliability|Rule violation
+13|Failed scene loads leave the probe hanging|#58|Project.Keynes|Resolved|Medium|Reliability|Bug
+14|Native change lacks a finished review|#56|Project.Keynes|Ignored|Low|Reliability|Requirement Gap
+15|Fallback map generation skips the mineral quota|#52|Project.Keynes|Resolved|Medium|Reliability|Bug
+16|Save preview goes blank without any log|#52|Project.Keynes|Resolved|Medium|Reliability|Rule violation
+17|Updating older branches deletes the libraries before regression|#50|Project.Keynes|Resolved|Medium|Reliability|Bug
+18|A brief base read failure stalls updates|#47|Project.Keynes|Resolved|High|Reliability|Bug
+19|Missing season history goes unlogged|#38|Project.Keynes|Resolved|High|Reliability|Rule violation
+20|UI open failure is logged as a warning, not an error|#36|Project.Keynes|Resolved|High|Reliability|Rule violation
+21|Required default checks and macOS rebuild are unverified|#35|Project.Keynes|Dismissed|Medium|Reliability|Requirement Gap
+22|Accepted dismissals can vanish on stop|#21|Project.Keynes|Pending|Medium|Reliability|Bug
+23|Annual report failures strand the calendar|#21|Project.Keynes|Pending|High|Reliability|Bug
+24|Narrative saves from a newer format load as if they were the current one|#20|Project.Keynes|Pending|Low|Reliability|Bug
+25|Colonization panel can stay stuck on "settling" after a runtime stop|#20|Project.Keynes|Pending|Low|Reliability|Bug
+26|Empty story save loads as success|#20|Project.Keynes|Pending|Medium|Reliability|Rule violation
+27|Missing history silently uses the mirror|#20|Project.Keynes|Pending|Medium|Reliability|Rule violation
+28|Old builds lose queued AI requests|#20|Project.Keynes|Pending|High|Reliability|Rule violation
+29|Old saves with queued country commands fail to load|#19|Project.Keynes|Pending|Medium|Reliability|Bug
+30|Failed peers can stall days forever|#19|Project.Keynes|Pending|Medium|Reliability|Bug
+31|Old saves lose explored fog on load|#19|Project.Keynes|Pending|High|Reliability|Rule violation
+32|Issue PRs can be stranded after lookup|#17|Project.Keynes|Resolved|Medium|Reliability|Bug
+33|A ready PR can remain stuck in polling|#17|Project.Keynes|Resolved|Medium|Reliability|Bug
+34|The poller can fix a stopped issue PR|#17|Project.Keynes|Resolved|High|Reliability|Bug
+35|Web inline games can freeze on a retried day|#2|Project.Keynes|Resolved|High|Reliability|Bug
+36|Rejected commands can report a guessed effective date|#2|Project.Keynes|Resolved|Medium|Reliability|Rule violation
+37|Malformed AI setting reports success|#2|Project.Keynes|Resolved|High|Reliability|Rule violation
+38|Narrative save silently stores nothing|#2|Project.Keynes|Resolved|High|Reliability|Rule violation
+39|Story saves load without a version check|#2|Project.Keynes|Dismissed|High|Reliability|Rule violation
+40|A full command queue halts the simulation mid-choice|#2|Project.Keynes|Resolved|Medium|Reliability|Bug
+41|Failed season load keeps session running|#2|Project.Keynes|Dismissed|High|Reliability|Rule violation
+42|Unknown modifiers apply with default id|#2|Project.Keynes|Resolved|High|Reliability|Rule violation
+43|Failed narrative payments report success|#2|Project.Keynes|Resolved|High|Reliability|Rule violation
+44|Season history save has no version|#2|Project.Keynes|Dismissed|High|Reliability|Rule violation
+45|One regression test overwrites its own log|#2|Project.Keynes|Resolved|Medium|Reliability|Bug
+46|Old narrative saves reset probe cadence|#2|Project.Keynes|Dismissed|High|Reliability|Rule violation
+47|Owned-state saves lack a version bump|#2|Project.Keynes|Dismissed|High|Reliability|Rule violation
+48|Corrupt terrain save loads silently|#2|Project.Keynes|Resolved|High|Reliability|Rule violation
+49|Failed regime effects are never retried|#2|Project.Keynes|Resolved|Medium|Reliability|Bug
+50|Skipped null layer images can publish a stale table|#7|Project.Keynes|Resolved|Medium|Reliability|Rule violation
+51|Missing class_by_index payload is padded silently|#7|Project.Keynes|Resolved|Medium|Reliability|Rule violation
+52|Failures inherited from master block every update|#9|Project.Keynes|Resolved|Medium|Reliability|Bug
+53|Failed labels let merge attempts repeat|#8|Project.Keynes|Resolved|Medium|Reliability|Bug
+54|Queue failures leave pull requests stuck|#8|Project.Keynes|Resolved|High|Reliability|Bug
+55|PR labels stop updating on older GitHub CLI|#8|Project.Keynes|Resolved|Low|Reliability|Bug
+56|A re-run CI job never unblocks auto-merge|#8|Project.Keynes|Resolved|Medium|Reliability|Bug
+57|Simulation can freeze when a climate writeback applies nothing|#7|Project.Keynes|Resolved|Medium|Reliability|Bug
+58|Missing land cache shader falls back with no error log|#7|Project.Keynes|Resolved|Medium|Reliability|Rule violation
+59|Failed ideology catalog load silently falls back to a sync load|#7|Project.Keynes|Resolved|High|Reliability|Rule violation
+60|Submodule edits are absent from saved patches|#3|Project.Keynes|Resolved|Medium|Reliability|Bug
+61|Malformed disputes can discard agent edits|#3|Project.Keynes|Resolved|Medium|Reliability|Bug
+62|One failed background season round halts climate|#2|Project.Keynes|Resolved|Low|Reliability|Bug
+63|Corrupt save silently loses queued building changes|#2|Project.Keynes|Resolved|Medium|Reliability|Bug
+64|Tickets stay stuck in working if finishing fails|#1|Project.Keynes|Resolved|Medium|Reliability|Bug
+65|Failed rule syncs report success|#1|Project.Keynes|Resolved|Medium|Reliability|Bug
+66|Changed Python settings leave polling broken|#1|Project.Keynes|Resolved|Medium|Reliability|Bug
+67|Transient base failures stay permanent|#1|Project.Keynes|Resolved|Medium|Reliability|Bug
+68|Old imports can validate new source|#1|Project.Keynes|Resolved|Medium|Reliability|Bug

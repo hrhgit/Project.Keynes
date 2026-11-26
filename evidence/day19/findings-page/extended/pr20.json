@@ -1,0 +1,369 @@
+{
+ "pr_url": "https://github.com/hrhgit/Project.Keynes/pull/20",
+ "git_provider": null,
+ "finding_count": 9,
+ "review_session": {
+  "run_id": 2084561,
+  "status": "completed",
+  "commit_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+  "started_at": "2026-11-21T06:20:14.427897Z",
+  "git_provider": "github",
+  "review_complete": true
+ },
+ "findings": [
+  {
+   "action_level": "action_required",
+   "id": "9b88774c-1d82-48be-b8e0-054af0b4e226",
+   "description": "`request_ai()` now reserves a scheduled follow-up's original due day as its reply day, even when that day is less than 90 days away. If the asynchronous response arrives after that day is sealed, admission rejects it; the pending request is then removed at the due day even without a reply, so the follow-up cannot appear.",
+   "attribution_status": "pending",
+   "category": "Correctness",
+   "title": "AI follow-ups vanish at high speed",
+   "git_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "skill",
+      "source": "project-keynes-narrative-events",
+      "citation": "project-keynes-narrative-events"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_narrative_ai.cpp[39-59]",
+      "citation": "    if (!scheduled && !ai_allowed(input.day)) return false;\n    Dictionary request;\n    request[\"ai_request_seq\"] = _next_ai++;\n    request[\"day\"] = input.day;\n    request[\"effective_day\"] = scheduled ? item.due :\n        input.day + RuntimeNarrativeCatalog::AI_REPLY_DELAY_DAYS;\n    request[\"due_day\"] = item.due;\n    request[\"scheduled_followup\"] = scheduled;\n    request[\"cell_idx\"] = cell.cell;\n    request[\"chain_id\"] = text(item.chain);\n    request[\"ai_prompt_hint\"] = item.hint;\n    request[\"fact_hint\"] = fact;\n    request[\"state_id\"] = text(state);\n    request[\"state_hint\"] = state_hint;\n    request[\"cell_ctx\"] = context(input, cell);\n    Array recent;\n    for (size_t i = 0; i < std::min<size_t>(3, _chronicle.size()); ++i)\n        recent.push_back(_chronicle[i]);\n    request[\"recent_chronicle\"] = recent;\n    if (!scheduled) _last_ai = input.day;\n    _pending_ai.push_back({std::move(request), {}});"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_narrative_ai.cpp[206-220]",
+      "citation": "void RuntimeNarrative::apply_ai_replies(const NarrativeDay &input) {\n    for (auto it = _pending_ai.begin(); it != _pending_ai.end();) {\n        if (int64_t(it->request[\"effective_day\"]) != input.day) {\n            ++it;\n            continue;\n        }\n        apply_ai_reply(input, *it);\n        it = _pending_ai.erase(it);\n    }\n}\n\nvoid RuntimeNarrative::apply_ai_reply(const NarrativeDay &input, const PendingAi &entry) {\n    const auto &pending = entry.request;\n    const auto &result = entry.reply;\n    if (!bool(result.get(\"ok\", false)) || input.country.territory.empty()) return;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_narrative.cpp[293-303]",
+      "citation": "            bool found = false;\n            for (int64_t i = 0; i < view->ai_requests.size(); ++i) {\n                const Dictionary pending = view->ai_requests[i];\n                if (int64_t(pending[\"ai_request_seq\"]) != sequence) continue;\n                const int64_t deadline = pending[\"effective_day\"];\n                if (int64_t(args.get(\"effective_day\", -1)) != deadline || day != deadline)\n                    return narrative_response(false, \"ai_reply_day_mismatch\");\n                found = true;\n                break;\n            }\n            if (!found) return narrative_response(false, \"ai_request_unknown\");"
+     }
+    ],
+    "explanation": "The narrative skill calls for asynchronous AI generation and scheduled follow-up events. The new scheduling branch shortens the reply window to the remaining time before the original due day; the native consumer erases unanswered requests on that day, while admission requires the response to match the now-sealed day."
+   },
+   "location": {
+    "file_path": "gdext/src/runtime_narrative_ai.cpp",
+    "start_line": 43,
+    "end_line": 44,
+    "side": "right",
+    "code_snippet": "+    request[\"effective_day\"] = scheduled ? item.due :\n+        input.day + RuntimeNarrativeCatalog::AI_REPLY_DELAY_DAYS;"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "d98acfe0-2081-4c59-b5c6-cbc1f213bb02",
+   "description": "`capture()` writes multiple pending AI requests under a new `pending_ai_requests` key but leaves `version` at 1. A build that reads only the single `pending_ai_request` slot silently drops the extra requests when it loads such a save.",
+   "attribution_status": "pending",
+   "category": "Reliability",
+   "title": "Old builds lose queued AI requests",
+   "git_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948319?state=active",
+      "id": 4948319,
+      "platform_entity_id": "4948319",
+      "citation": "Keynes: new continuation state is versioned, validated and installed atomically",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_narrative_save.cpp[55-55]",
+      "citation": "    out[\"version\"] = 1;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_narrative_save.cpp[69-82]",
+      "citation": "    out[\"pending_ai_request\"] = Dictionary();\n    if (_pending_ai.size() == 1) {\n        out[\"pending_ai_request\"] = _pending_ai.front().request;\n        if (!_pending_ai.front().reply.is_empty()) out[\"pending_ai_reply\"] = _pending_ai.front().reply;\n    } else if (!_pending_ai.empty()) {\n        Array requests;\n        for (const auto &pending : _pending_ai) {\n            Dictionary row;\n            row[\"request\"] = pending.request;\n            row[\"reply\"] = pending.reply;\n            requests.push_back(row);\n        }\n        out[\"pending_ai_requests\"] = requests;\n    }"
+     }
+    ],
+    "explanation": "The checkpoint adds a continuation list (`pending_ai_requests`) that affects later days, and the `version` literal stays at 1. The new validator accepts the key, but readers of the old format never check for it, so they lose the extra requests without an error."
+   },
+   "location": {
+    "file_path": "gdext/src/runtime_narrative_save.cpp",
+    "start_line": 69,
+    "end_line": 72,
+    "side": "right",
+    "code_snippet": "+    out[\"pending_ai_request\"] = Dictionary();\n+    if (_pending_ai.size() == 1) {\n+        out[\"pending_ai_request\"] = _pending_ai.front().request;\n+        if (!_pending_ai.front().reply.is_empty()) out[\"pending_ai_reply\"] = _pending_ai.front().reply;"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "action_required",
+   "id": "fe1fb670-5d13-4cfd-8a1c-674d3be45739",
+   "description": "`poll_runtime_commit` now publishes boundary results that the changed GDScript consumes, but the checked-in Android, macOS and Web libraries were restored to their baseline versions. Running the game with those libraries leaves the new command-settlement and quote-ready paths without the native results they require; the runtime CI build only replaces the Linux library.",
+   "attribution_status": "pending",
+   "category": "Correctness",
+   "title": "Platform builds run outdated native logic",
+   "git_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/world_ext_simulation_host.cpp[1344-1349]",
+      "citation": "    if (take_days) {\n        bool quotes_ready;\n        const Array results = _runtime_host->take_boundary_command_results(quotes_ready);\n        if (!results.is_empty()) out[\"boundary_results\"] = results;\n        if (quotes_ready) out[\"colonization_quotes_ready\"] = true;\n    }"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/world_runtime_daily_adapter_part3.gd[58-62]",
+      "citation": "\tvar commit: Dictionary = host._generator.poll_runtime_commit(host._runtime_commit_generation, true)\n\tif commit.has(\"boundary_results\"):\n\t\thost.simulation_command_results.emit(commit[\"boundary_results\"])\n\tif bool(commit.get(\"colonization_quotes_ready\", false)):\n\t\thost.colonization_quotes_ready.emit()"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/addons/dots_ext/dots_ext.gdextension[15-30]",
+      "citation": "macos.debug.x86_64      = \"res://addons/dots_ext/bin/macos/libdots_ext.macos.template_debug.x86_64.dylib\"\nmacos.release.x86_64    = \"res://addons/dots_ext/bin/macos/libdots_ext.macos.template_release.x86_64.dylib\"\nandroid.debug.arm64     = \"res://addons/dots_ext/bin/android/libdots_ext.android.template_debug.arm64.so\"\nandroid.release.arm64   = \"res://addons/dots_ext/bin/android/libdots_ext.android.template_release.arm64.so\"\n; 模拟�?x86_64)联调：scons platform=android target=template_debug arch=x86_64 disable_exceptions=no -j8\nandroid.debug.x86_64    = \"res://addons/dots_ext/bin/android/libdots_ext.android.template_debug.x86_64.so\"\nandroid.release.x86_64  = \"res://addons/dots_ext/bin/android/libdots_ext.android.template_release.x86_64.so\"\n\n; Web 侧模块有两套产物，必须与导出预设�?variant/thread_support 一致，否则\n; pthread ABI 不匹配，side module 在浏览器里加载失败：\n;   variant/thread_support=false -> web.*.wasm32（无特性标签）\n;   variant/thread_support=true  -> web.*.threads.wasm32\nweb.debug.threads.wasm32    = \"res://addons/dots_ext/bin/web/libdots_ext.web.template_debug.wasm32.wasm\"\nweb.release.threads.wasm32  = \"res://addons/dots_ext/bin/web/libdots_ext.web.template_release.wasm32.wasm\"\nweb.debug.wasm32            = \"res://addons/dots_ext/bin/web/libdots_ext.web.template_debug.wasm32.nothreads.wasm\"\nweb.release.wasm32          = \"res://addons/dots_ext/bin/web/libdots_ext.web.template_release.wasm32.nothreads.wasm\""
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": ".github/workflows/runtime-full-checks.yml[22-31]",
+      "citation": "          submodules: recursive\n      - uses: actions/setup-python@v5\n        with:\n          python-version: \"3.12\"\n      - name: Install build tool\n        run: python -m pip install scons\n      - name: Build native extension from the pinned submodule\n        working-directory: gdext\n        run: scons platform=linux target=template_debug arch=x86_64 dev_build=no -j2\n      - name: Download Godot"
+     }
+    ],
+    "explanation": "The changed native method adds the result fields, and the changed GDScript emits signals only when it receives them. The manifest selects checked-in Android, macOS and Web artifacts, while the full runtime CI workflow builds Linux debug only; the PR explicitly restores the platform libraries to baseline versions."
+   },
+   "location": {
+    "file_path": "gdext/src/world_ext_simulation_host.cpp",
+    "start_line": 1344,
+    "end_line": 1348,
+    "side": "right",
+    "code_snippet": "+    if (take_days) {\n+        bool quotes_ready;\n+        const Array results = _runtime_host->take_boundary_command_results(quotes_ready);\n+        if (!results.is_empty()) out[\"boundary_results\"] = results;\n+        if (quotes_ready) out[\"colonization_quotes_ready\"] = true;"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "905fe197-78f9-42ab-88d3-977cf197d11d",
+   "description": "`season_history_for` returns the cell's display-mirror history when the published buffer does not cover the cell, with no log or error. Missing or truncated published season history therefore yields plausible values, and `resume_legacy_season_history` reuses the same fallback.",
+   "attribution_status": "pending",
+   "category": "Reliability",
+   "title": "Missing history silently uses the mirror",
+   "git_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/geography/map_data.gd[611-613]",
+      "citation": "\tif start >= 0 and start + HexCell.HISTORY_LEN <= history.size():\n\t\treturn history.slice(start, start + HexCell.HISTORY_LEN)\n\treturn cell.vegetation_history if vegetation else cell.biome_history"
+     }
+    ],
+    "explanation": "The out-of-range branch returns `cell.vegetation_history` or `cell.biome_history` instead of reporting the mismatch. The display mirror stands in for committed state, which the rule forbids when the committed data is missing."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/geography/map_data.gd",
+    "start_line": 611,
+    "end_line": 613,
+    "side": "right",
+    "code_snippet": "+\tif start >= 0 and start + HexCell.HISTORY_LEN <= history.size():\n+\t\treturn history.slice(start, start + HexCell.HISTORY_LEN)\n+\treturn cell.vegetation_history if vegetation else cell.biome_history"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "f86dae7d-183c-400d-8fd0-b75faa14a6ef",
+   "description": "`_restore_narrative_provider` returns success with only a `push_warning` when the `pknr` section is present but empty. A failed or truncated narrative section therefore loads as success and the session continues without the story state.",
+   "attribution_status": "pending",
+   "category": "Reliability",
+   "title": "Empty story save loads as success",
+   "git_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948321?state=active",
+      "id": 4948321,
+      "platform_entity_id": "4948321",
+      "citation": "Keynes: errors fail loudly instead of falling back silently",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/game/save_modules/history_state.gd[62-64]",
+      "citation": "\tif raw_state.is_empty():\n\t\tpush_warning(\"narrative_archive_empty: 剧情存档片段为空。\")\n\t\treturn _result(true, \"ok\", \"\")"
+     }
+    ],
+    "explanation": "The new branch uses `push_warning` and `_result(true, ...)` where the rule asks for `push_error` and an explicit failure. Decoding required data is therefore reported as success."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/scripts/game/save_modules/history_state.gd",
+    "start_line": 62,
+    "end_line": 64,
+    "side": "right",
+    "code_snippet": "+\tif raw_state.is_empty():\n+\t\tpush_warning(\"narrative_archive_empty: 剧情存档片段为空。\")\n+\t\treturn _result(true, \"ok\", \"\")"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "05377eb6-c5ac-417f-8b5d-f4fdfd221d27",
+   "description": "The extension manifest adds an Android x86_64 release entry pointing to a library that is absent from the checked-in Android binaries. The default export preset disables that architecture, but an x86_64 release build using the new entry cannot load the extension unless the library is built separately.",
+   "attribution_status": "pending",
+   "category": "Correctness",
+   "title": "Android x86 release lacks its library",
+   "git_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/addons/dots_ext/dots_ext.gdextension[18-21]",
+      "citation": "android.release.arm64   = \"res://addons/dots_ext/bin/android/libdots_ext.android.template_release.arm64.so\"\n; 模拟�?x86_64)联调：scons platform=android target=template_debug arch=x86_64 disable_exceptions=no -j8\nandroid.debug.x86_64    = \"res://addons/dots_ext/bin/android/libdots_ext.android.template_debug.x86_64.so\"\nandroid.release.x86_64  = \"res://addons/dots_ext/bin/android/libdots_ext.android.template_release.x86_64.so\""
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/export_presets.cfg[108-112]",
+      "citation": "gradle_build/custom_theme_attributes={}\narchitectures/armeabi-v7a=false\narchitectures/arm64-v8a=true\narchitectures/x86=false\narchitectures/x86_64=false"
+     }
+    ],
+    "explanation": "The added manifest entry names `libdots_ext.android.template_release.x86_64.so`, but the checked-in Android directory contains only arm64 debug, arm64 release and x86_64 debug libraries. The current export preset disables x86_64, limiting the failure to builds that select that architecture."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/addons/dots_ext/dots_ext.gdextension",
+    "start_line": 21,
+    "end_line": 21,
+    "side": "right",
+    "code_snippet": "+android.release.x86_64  = \"res://addons/dots_ext/bin/android/libdots_ext.android.template_release.x86_64.so\""
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "remediation_recommended",
+   "id": "28a230da-aa35-4fb6-8e37-1df83d195f74",
+   "description": "The military seal test used to assert a fixed effective day of `settled_day + 1` but now computes `expected` from the receipt's own committed and frozen fields and asserts `admitted == expected`. Because the expectation is derived from the output it checks, a shift of the admission boundary by one day can still pass.",
+   "attribution_status": "pending",
+   "category": "Testability",
+   "title": "Date check now follows the system output",
+   "git_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "rules",
+      "source": "https://app.qodo.ai/rules/4948320?state=active",
+      "id": 4948320,
+      "platform_entity_id": "4948320",
+      "citation": "Keynes: fix the root cause instead of relaxing the check",
+      "platform_entity_type": "rule"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/tests/runtime/background_daily_self_sufficiency_test.gd[245-248]",
+      "citation": "\tvar expected := maxi(requested, maxi(committed + 1, frozen + 1))\n\t_expect(\"military_seal_1x: receipt has the actual admission boundary\",\n\t\tbool(admission.get(\"ok\", false)) and committed >= settled_day and frozen >= settled_day)\n\t_expect(\"military_seal_1x: acceptance does not wait for the day\", elapsed < 5_000)"
+     }
+    ],
+    "explanation": "The original fixed expectation `effective_day == settled_day + 1` was removed, and the replacement derives the expected value from the same receipt it checks. The assertion therefore no longer pins the behaviour the commit message describes."
+   },
+   "location": {
+    "file_path": "Project/project-keynes/tests/runtime/background_daily_self_sufficiency_test.gd",
+    "start_line": 245,
+    "end_line": 248,
+    "side": "right",
+    "code_snippet": "+\tvar expected := maxi(requested, maxi(committed + 1, frozen + 1))\n+\t_expect(\"military_seal_1x: receipt has the actual admission boundary\",\n+\t\tbool(admission.get(\"ok\", false)) and committed >= settled_day and frozen >= settled_day)\n+\t_expect(\"military_seal_1x: acceptance does not wait for the day\", elapsed < 5_000)"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "informational",
+   "id": "84eadcca-f58c-41bd-a25c-21bf8019699f",
+   "description": "`checkpoint_error` only checks that `version` is an integer. It never compares it with the value `capture()` writes (1), and `decode_checkpoint` does not branch on it either. So a narrative archive with an unsupported version passes validation and is decoded with the current field layout instead of being rejected.",
+   "attribution_status": "pending",
+   "category": "Reliability",
+   "title": "Narrative saves from a newer format load as if they were the current one",
+   "git_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_narrative_checkpoint.cpp[82-90]",
+      "citation": "String RuntimeNarrative::checkpoint_error(const Dictionary &archive) {\n    auto error = fields(archive, \"\", Variant::INT, {\n        \"version\", \"world_seed\", \"player_country_handle\", \"next_offer_id\", \"next_offer_generation\",\n        \"next_record_id\", \"next_bias_id\", \"next_mod_source_id\", \"last_pulse_day\", \"last_popup_day\",\n        \"last_fact_event_id\", \"last_ai_request_day\", \"next_ai_request_seq\", \"last_state_probe_day\",\n        \"event_pause_mask\", \"last_notification_fact\", \"notification_sequence\", \"last_notice_era\", \"next_pool_id\"});\n    if (!error.is_empty()) return error;\n    error = fields(archive, \"\", Variant::BOOL, {\"ai_enabled\"});\n    if (!error.is_empty()) return error;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_narrative_save.cpp[53-56]",
+      "citation": "    Dictionary out;\n    out[\"schema\"] = \"PKNarrativeRuntime\";\n    out[\"version\"] = 1;\n    if (_country == 0) return out;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/runtime_narrative.cpp[34-51]",
+      "citation": "bool RuntimeNarrative::configure(const Dictionary &packet, const Dictionary &archive) {\n    const String error = checkpoint_error(archive);\n    if (!error.is_empty()) {\n        UtilityFunctions::push_error(\"narrative_archive_invalid: \", error);\n        return false;\n    }\n    RuntimeNarrative decoded;\n    if (!decoded._catalog.configure(packet)) return false;\n    decoded._country = int64_t(packet.get(\"country\", 0));\n    decoded._seed = std::max<int64_t>(1, packet.get(\"seed\", 1));\n    decoded._days_per_year = std::max<int64_t>(1, packet.get(\"days_per_year\", 365));\n    decoded._ai_enabled = packet.get(\"ai_enabled\", false);\n    decoded._pause_mask = static_cast<uint16_t>(int32_t(packet.get(\"event_pause_mask\", 255)));\n    decoded.decode_checkpoint(archive);\n    if (decoded._country == 0) return false;\n    *this = std::move(decoded);\n    return true;\n}"
+     }
+    ],
+    "explanation": "The validator only type-checks `version`. `capture` writes `version = 1`, and `configure` decodes right after validation with no version check."
+   },
+   "location": {
+    "file_path": "gdext/src/runtime_narrative_checkpoint.cpp",
+    "start_line": 83,
+    "end_line": 85,
+    "side": "right",
+    "code_snippet": "+    auto error = fields(archive, \"\", Variant::INT, {\n+        \"version\", \"world_seed\", \"player_country_handle\", \"next_offer_id\", \"next_offer_generation\",\n+        \"next_record_id\", \"next_bias_id\", \"next_mod_source_id\", \"last_pulse_day\", \"last_popup_day\","
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  },
+  {
+   "action_level": "informational",
+   "id": "6d3bf9db-765e-46d8-8a34-730748fccf2e",
+   "description": "When the worker shuts down, it now clears `_economy_boundary_requests`, `_colonization_read_results` and `_colonization_quotes_ready`. It does this without publishing a result or a readiness signal for quote reads it had already accepted and answered with `pending`. The planner panel retries a stored read only from `_on_colonization_quotes_ready`, so if a restart or fault drops an in-flight quote read, the \"结算中\" (settling) status stays up until the player reopens or refreshes the panel.",
+   "attribution_status": "pending",
+   "category": "Reliability",
+   "title": "Colonization panel can stay stuck on \"settling\" after a runtime stop",
+   "git_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+   "evidence": {
+    "citations": [
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_colonization.cpp[54-92]",
+      "citation": "    std::shared_ptr<const RuntimeEconomyBoundaryRequest> published;\n    bool queued = false;\n    {\n        std::lock_guard<std::mutex> control(_control_mutex);\n        if (!available()) return out;\n        const auto existing = std::find_if(_colonization_read_results.begin(),\n            _colonization_read_results.end(), [&](const auto &entry) {\n                return entry->same_query(*request);\n            });\n        // A request completed between frames may already be older than the\n        // latest commit. Deliver its snapshot once before requesting a refresh.\n        if (existing != _colonization_read_results.end() && (*existing)->query_day >= 0 &&\n                (!(*existing)->result_seen || (*existing)->query_day >= committed_day_value())) {\n            (*existing)->result_seen = true;\n            published = *existing;\n        } else if ((existing == _colonization_read_results.end() || (*existing)->query_day >= 0) &&\n                _economy_boundary_requests.size() < RUNTIME_COMMAND_QUEUE_CAPACITY) {\n            constexpr size_t read_capacity = 128;\n            if (existing != _colonization_read_results.end()) _colonization_read_results.erase(existing);\n            if (_colonization_read_results.size() == read_capacity) {\n                const auto ready = std::find_if(_colonization_read_results.begin(),\n                    _colonization_read_results.end(), [](const auto &entry) {\n                        return entry->query_day >= 0;\n                    });\n                if (ready != _colonization_read_results.end()) _colonization_read_results.erase(ready);\n            }\n            if (_colonization_read_results.size() < read_capacity) {\n                _colonization_read_results.push_back(request);\n                _economy_boundary_requests.push_back(std::move(request));\n                queued = true;\n            }\n        }\n    }\n    if (published) return published->result.duplicate(true);\n    if (queued) _control_cv.notify_one();\n    out[\"pending\"] = true;\n    out[\"busy\"] = true;\n    out[\"code\"] = \"economy_busy_retry\";\n    return out;"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "gdext/src/native_simulation_host_worker.cpp[1139-1151]",
+      "citation": "    compact_pending_commands(true);\n    publish_pending_count();\n    {\n        std::lock_guard<std::mutex> control(_control_mutex);\n        _military_commands.clear();\n        _economy_boundary_requests.clear();\n        _colonization_read_results.clear();\n        _colonization_quotes_ready = false;\n        _era_reward_requests.clear();\n        _narrative_requests.clear();\n        _annual_presentations.clear();\n        _control_cv.notify_all();\n    }"
+     },
+     {
+      "source_type": "pr_branch_file",
+      "source": "Project/project-keynes/scripts/ui/components/colonization_planner_panel.gd[198-212]",
+      "citation": "\nfunc _on_colonization_quotes_ready() -> void:\n\tvar reads := _pending_quote_reads\n\t_pending_quote_reads = {}\n\tif not visible or _current_tab != \"quotes\":\n\t\treturn\n\tfor read: Callable in reads.values():\n\t\tread.call()\n\n\nfunc _await_quote_read(kind: StringName, result: Dictionary, read: Callable) -> bool:\n\tif not bool(result.get(\"pending\", false)):\n\t\t_pending_quote_reads.erase(kind)\n\t\treturn false\n\t_pending_quote_reads[kind] = read"
+     }
+    ],
+    "explanation": "Quote reads return `pending`/`busy` and are queued for the worker. The panel keeps a retry callable that only the readiness signal triggers. Worker shutdown clears the queue and the readiness flag without notifying anyone, so the stored callables never run."
+   },
+   "location": {
+    "file_path": "gdext/src/native_simulation_host_worker.cpp",
+    "start_line": 1144,
+    "end_line": 1146,
+    "side": "right",
+    "code_snippet": "+        _economy_boundary_requests.clear();\n+        _colonization_read_results.clear();\n+        _colonization_quotes_ready = false;"
+   },
+   "dismiss_reason": null,
+   "dismiss_explanation": null
+  }
+ ],
+ "review_runs": [
+  {
+   "run_id": 2084561,
+   "commit_sha": "ddfda9a8a69f218a032a2fc468ec1557a820533b",
+   "started_at": "2026-11-21T06:20:14.427897Z",
+   "status": "completed",
+   "review_effort": "extended",
+   "review_complete": true
+  }
+ ]
+}
