@@ -19,6 +19,16 @@ import time
 from runtime_test_hygiene import trace_environment, untracked, unexpected_artifacts
 
 ROOT = Path(__file__).resolve().parents[2]
+# Static guards run before the Godot tests. The architecture-guards job in
+# .github/workflows/runtime-checks.yml runs the same list; a test keeps them equal.
+STATIC_GUARDS = (
+    "check_size_ratchet.py", "check_cpp_deps.py", "check_cross_domain_inventory.py",
+    "check_runtime_advancers.py", "check_runtime_switches.py", "check_committed_views.py",
+    "check_save_contracts.py", "check_module_contracts.py", "check_resolve_apply.py",
+    "check_module_api.py", "check_skill_mirrors.py", "check_doc_links.py", "check_module_map.py",
+    "world_ext_bindings.py", "check_world_ext_bindings.py", "check_script_native_access.py",
+    "test_architecture_guards.py", "test_regression_evidence.py", "test_runtime_load_consistency.py",
+)
 TESTS = (
     "tests/ui/era_advancement_panel_test.gd",
     "tests/ui/annual_report_ui_test.gd",
@@ -296,7 +306,7 @@ def main() -> int:
     logs = args.log_dir or Path(tempfile.mkdtemp(prefix="keynes-regression-logs-"))
     logs = logs.resolve()
     logs.mkdir(parents=True, exist_ok=True)
-    for guard in ("check_size_ratchet.py", "check_cpp_deps.py", "check_cross_domain_inventory.py", "check_runtime_advancers.py", "check_runtime_switches.py", "check_committed_views.py", "check_save_contracts.py", "check_module_contracts.py", "check_resolve_apply.py", "check_module_api.py", "check_skill_mirrors.py", "check_module_map.py", "world_ext_bindings.py", "check_world_ext_bindings.py", "check_script_native_access.py", "test_architecture_guards.py", "test_regression_evidence.py"):
+    for guard in STATIC_GUARDS:
         result = subprocess.run([sys.executable, str(ROOT / "tools/ci" / guard)], check=False)
         if result.returncode:
             return result.returncode

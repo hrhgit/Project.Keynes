@@ -17,6 +17,9 @@ import check_module_contracts as modules
 import check_resolve_apply as resolve_apply
 import check_module_api as module_api
 import check_skill_mirrors as skill_mirrors
+import check_doc_links as doc_links
+import run_regression_checks as regression
+import re
 import world_ext_bindings
 import check_world_ext_bindings as binding_guard
 import check_script_native_access as script_access
@@ -1192,6 +1195,106 @@ facade.native_only()
         tmp, root = tree({"core": ["world_ext.h"], "a": ["world_ext_a.cpp", "world_ext_gone.cpp"]})
         with tmp:
             self.assertTrue(any("missing file" in p for p in world_ext_bindings.inventory(root)[1]))
+
+
+class DocLinksTest(unittest.TestCase):
+    def tree(self, files):
+        tmp = tempfile.TemporaryDirectory()
+        root = Path(tmp.name)
+        for rel, text in files.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_text(text)
+        return tmp, root, sorted(files)
+
+    def test_links_that_resolve_pass_and_unchecked_forms_are_skipped(self):
+        tmp, root, files = self.tree({
+            "docs/a/x.md": "[same](y.md) [dir](../b/) [anchor](y.md#part) [up](../b/z.md)\n"
+                           "[web](https://example.com/q) [mail](mailto:a@b) [here](#top) [root](/src/m.py)\n"
+                           "[ref]: y.md\n",
+            "docs/a/y.md": "", "docs/b/z.md": "", "src/m.py": "",
+        })
+        with tmp:
+            self.assertEqual(doc_links.dead_links(root, files), [])
+
+    def test_dead_targets_are_reported_with_their_line(self):
+        tmp, root, files = self.tree({
+            "docs/visual-optimization/INDEX.md": "ok\n[code](../shader-enhancements-code.md)\n",
+            "docs/visual-optimization/shader-enhancements-code.md": "",
+            "docs/r.md": "[ref]: gone.md\n[escape](../../outside.md)\n[abs](/nope.py)\n",
+        })
+        with tmp:
+            self.assertEqual(doc_links.dead_links(root, files), [
+                ("docs/r.md", 1, "gone.md"), ("docs/r.md", 2, "../../outside.md"), ("docs/r.md", 3, "/nope.py"),
+                ("docs/visual-optimization/INDEX.md", 2, "../shader-enhancements-code.md"),
+            ])
+
+    def test_untracked_target_and_non_docs_sources_are_not_trusted(self):
+        tmp, root, files = self.tree({"docs/x.md": "[local](local.md)\n", "README.md": "[gone](gone.md)\n"})
+        (root / "docs/local.md").write_text("")  # on disk but not tracked, so CI would not have it
+        with tmp:
+            self.assertEqual(doc_links.dead_links(root, files), [("docs/x.md", 1, "local.md")])
+
+    def test_links_inside_fenced_code_are_ignored_until_the_fence_closes(self):
+        tmp, root, files = self.tree({"docs/x.md": "````\n[a](gone1.md)\n```\n[b](gone2.md)\n````\n[c](gone3.md)\n"})
+        with tmp:
+            self.assertEqual(doc_links.dead_links(root, files), [("docs/x.md", 6, "gone3.md")])
+
+    def test_ratchet_rejects_new_links_extra_copies_and_stale_entries(self):
+        dead = [("docs/x.md", 3, "gone.md"), ("docs/x.md", 9, "gone.md"), ("docs/y.md", 1, "new.md")]
+        new, stale = doc_links.compare(dead, {"docs/x.md -> gone.md": 1, "docs/z.md -> fixed.md": 1})
+        self.assertEqual(new, ["docs/x.md:3: dead link gone.md", "docs/x.md:9: dead link gone.md",
+                               "docs/y.md:1: dead link new.md"])
+        self.assertEqual(stale, ["docs/z.md -> fixed.md: baseline 1, now 0"])
+        self.assertEqual(doc_links.compare(dead[:2], {"docs/x.md -> gone.md": 2}), ([], []))
+
+    def test_main_fails_on_new_dead_link_and_write_baseline_refuses_to_loosen(self):
+        tmp, root, files = self.tree({"docs/x.md": "[a](gone.md)\n", "tools/ci/doc_links_baseline.json": "{}\n"})
+        old_root, old_tracked = doc_links.ROOT, doc_links.tracked_files
+        doc_links.ROOT, doc_links.tracked_files = root, lambda _root: files
+        try:
+            with tmp:
+                self.assertEqual(doc_links.main([]), 1)
+                self.assertEqual(doc_links.main(["--write-baseline"]), 1)
+                self.assertEqual((root / doc_links.BASELINE).read_text(), "{}\n")
+                (root / doc_links.BASELINE).unlink()
+                self.assertEqual(doc_links.main(["--write-baseline"]), 0)
+                self.assertEqual(json.loads((root / doc_links.BASELINE).read_text()), {"docs/x.md -> gone.md": 1})
+                self.assertEqual(doc_links.main([]), 0)
+                (root / "docs/x.md").write_text("fixed\n")
+                self.assertEqual(doc_links.main([]), 1)
+                self.assertEqual(doc_links.main(["--write-baseline"]), 0)
+                self.assertEqual(json.loads((root / doc_links.BASELINE).read_text()), {})
+        finally:
+            doc_links.ROOT, doc_links.tracked_files = old_root, old_tracked
+
+    def test_main_refuses_to_run_when_tracked_docs_are_not_checked_out(self):
+        tmp, root, files = self.tree({"docs/x.md": "[a](y.md)\n", "docs/y.md": "", "tools/ci/doc_links_baseline.json": "{}\n"})
+        old_root, old_tracked = doc_links.ROOT, doc_links.tracked_files
+        doc_links.ROOT, doc_links.tracked_files = root, lambda _root: files + ["docs/sparse/left-out.md"]
+        try:
+            with tmp:
+                self.assertEqual(doc_links.missing_sources(root, files + ["docs/sparse/left-out.md"]),
+                                 ["docs/sparse/left-out.md"])
+                self.assertEqual(doc_links.main([]), 1)
+        finally:
+            doc_links.ROOT, doc_links.tracked_files = old_root, old_tracked
+
+
+class GuardListsTest(unittest.TestCase):
+    @staticmethod
+    def workflow_guards(text):
+        loop = re.search(r"for guard in (.*?); do", text, re.S)
+        return tuple(loop.group(1).replace("\\", " ").split()) if loop else ()
+
+    def test_local_regression_runner_and_pull_request_job_run_the_same_guards(self):
+        workflow = (regression.ROOT / ".github/workflows/runtime-checks.yml").read_text()
+        self.assertEqual(self.workflow_guards(workflow), regression.STATIC_GUARDS)
+
+    def test_list_comparison_rejects_a_guard_added_to_only_one_side(self):
+        one_sided = "for guard in a.py \\\n    b.py new.py; do\n"
+        self.assertEqual(self.workflow_guards(one_sided), ("a.py", "b.py", "new.py"))
+        self.assertNotEqual(self.workflow_guards(one_sided), ("a.py", "b.py"))
+        self.assertEqual(self.workflow_guards("no loop here"), ())
 
 if __name__ == "__main__":
     unittest.main()

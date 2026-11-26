@@ -74,7 +74,7 @@ docs/visual-optimization/
 → **[shape-implementation-checklist.md](shape-implementation-checklist.md)** + 按 Phase 顺序
 
 ### "我需要具体代码"
-→ **[shader-enhancements-code.md](../shader-enhancements-code.md)** 的"植物与动物形状系统"部分
+→ **[shader-enhancements-code.md](shader-enhancements-code.md)** 的"植物与动物形状系统"部分
 
 ### "我要做全面优化（参数+形状+光照）"
 → **[implementation-guide.md](implementation-guide.md)** 的 Phase 1-3
@@ -97,13 +97,13 @@ docs/visual-optimization/
 1. [SHAPE-DESIGN-SUMMARY.md](SHAPE-DESIGN-SUMMARY.md) — 理解设计方向（15分钟）
 2. [plant-animal-shape-design.md](plant-animal-shape-design.md) — 深入每种形状的实现（1小时）
 3. [shape-implementation-checklist.md](shape-implementation-checklist.md) — 按步骤实施（每个Phase 1-2小时）
-4. [shader-enhancements-code.md](../shader-enhancements-code.md) — 复制具体代码片段
+4. [shader-enhancements-code.md](shader-enhancements-code.md) — 复制具体代码片段
 
 **总计**：第1天理解设计，第2-5天实施
 
 ### 对于 Shader 程序员
 1. [plant-animal-shape-design.md](plant-animal-shape-design.md) 的"第一部分"和"第二部分" — 理解每种形状的 SDF 逻辑
-2. [shader-enhancements-code.md](../shader-enhancements-code.md) — 完整的 Shader 实现
+2. [shader-enhancements-code.md](shader-enhancements-code.md) — 完整的 Shader 实现
 3. [shape-implementation-checklist.md](shape-implementation-checklist.md) 的 Phase 1-3 — 按步骤集成和测试
 
 **总计**：第1-2天理解设计，第3-5天实施
@@ -124,7 +124,7 @@ docs/visual-optimization/
 
 ### "我需要 Shader 代码具体位置"
 → [plant-animal-shape-design.md](plant-animal-shape-design.md) 的 **Part 1&2** 有完整代码
-→ [shader-enhancements-code.md](../shader-enhancements-code.md) 有代码片段和集成指南
+→ [shader-enhancements-code.md](shader-enhancements-code.md) 有代码片段和集成指南
 
 ### "我不知道性能会不会超预算"
 → [SHAPE-DESIGN-SUMMARY.md](SHAPE-DESIGN-SUMMARY.md) 的"性能保证"部分
@@ -181,7 +181,7 @@ docs/visual-optimization/
 | [plant-animal-shape-design.md](plant-animal-shape-design.md) | 完整设计 + 代码 | ~1200 | 1-2 小时 |
 | [shape-implementation-checklist.md](shape-implementation-checklist.md) | 实施步骤 + 验收 | ~900 | 1 小时 |
 | [implementation-guide.md](implementation-guide.md) | 参数优化 + 分步指南 | ~700 | 45 分钟 |
-| [shader-enhancements-code.md](../shader-enhancements-code.md) | Shader 代码片段 | ~600 | 30 分钟（查阅） |
+| [shader-enhancements-code.md](shader-enhancements-code.md) | Shader 代码片段 | ~600 | 30 分钟（查阅） |
 
 **总文档大小**：~4000 行（相当于 20 页 Word 文档）
 
